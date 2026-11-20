@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field
 from .domain import (card_summary, deck_metrics, normalize_battle, normalize_profile,
                      normalize_tag, source_metadata, validate_deck_ids)
 from .supercell import SupercellClient, SupercellError
+from .traffic import AdmissionError, configured_admission
 
 load_dotenv()
 
@@ -37,6 +38,7 @@ class AnalysisInput(BaseModel):
 def create_app(supercell: SupercellClient | None = None) -> FastAPI:
     app = FastAPI(title="Clash Royale Companion API", version="0.1.0")
     app.state.supercell = supercell or SupercellClient()
+    app.state.admission = configured_admission()
     origins = [x.strip() for x in os.environ.get(
         "CRC_CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000"
     ).split(",") if x.strip()]
@@ -46,8 +48,24 @@ def create_app(supercell: SupercellClient | None = None) -> FastAPI:
     @app.middleware("http")
     async def request_id(request: Request, call_next):
         request.state.request_id = f"req_{uuid4().hex[:16]}"
-        response = await call_next(request)
+        try:
+            peer = request.client.host if request.client else ""
+            await request.app.state.admission.admit(
+                peer, request.headers.get("X-CRC-Internal-Token", "")
+            )
+        except AdmissionError as exc:
+            response = JSONResponse(
+                status_code=exc.status,
+                content={"request_id": request.state.request_id,
+                         "error": {"code": exc.code, "message": exc.message, "retryable": exc.status == 429}},
+            )
+            if exc.retry_after is not None:
+                response.headers["Retry-After"] = str(exc.retry_after)
+        else:
+            response = await call_next(request)
         response.headers["X-Request-ID"] = request.state.request_id
+        response.headers["Cache-Control"] = "no-store"
+        response.headers["X-Content-Type-Options"] = "nosniff"
         return response
 
     @app.exception_handler(SupercellError)
