@@ -118,7 +118,7 @@
 <h2>واردکردن Battle Log</h2><p>فایل JSON پاسخ <span dir="ltr">GET /v1/players/{tag}/battlelog</span> را روی همین دستگاه انتخاب کن. داده‌ها در مرورگر پردازش می‌شوند و ارسال نمی‌شوند.</p><input id="battlesFile" type="file" accept=".json,application/json" aria-label="فایل JSON تاریخچه نبرد">
 </div>
 <div class="section-heading"><div><h2>نبردهای دریافت‌شده</h2><p>فقط مسابقات موجود در فایل ارسالی، نه تاریخچه کامل حساب.</p></div><select id="battleFilter" class="text-field" aria-label="فیلتر نبردها"><option value="all">همه نبردها</option><option value="event">رویدادی</option><option value="other">سایر / نامشخص</option></select></div>
-<div class="panel"><div id="battleStats" class="stat-inline" style="margin-bottom:12px"></div><div id="battleList" class="empty-panel"><span class="emoji">⚔</span><strong>هنوز Battle Log بارگذاری نشده است.</strong><p>فایل واقعی را وارد کن تا نبردها را ببینی.</p></div></div>
+<div class="panel"><div id="battleStats" class="stat-inline" style="margin-bottom:12px"></div><div id="battleInsights" class="battle-insights" aria-live="polite"></div><div id="battleList" class="empty-panel"><span class="emoji">⚔</span><strong>هنوز Battle Log بارگذاری نشده است.</strong><p>فایل واقعی را وارد کن تا نبردها را ببینی.</p></div></div>
 </section>
 
 <section class="page" id="page-roadmap" aria-labelledby="roadmap-title">
@@ -145,5 +145,6 @@
 </nav>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 <div class="modal-backdrop" id="cardModal"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalName"><button type="button" class="close" id="closeModal" aria-label="بستن">✕</button><div class="modal-visual" id="modalVisual"></div><h2 id="modalName"></h2><p id="modalDescription"></p><div id="modalDetails" class="stat-inline"></div><div id="modalCoaching" class="modal-coaching"></div><div class="inline-actions"><button class="btn primary" id="modalToDeck">انتخاب در دک</button></div></div></div>
+<script src="/battle-insights.js" defer></script>
 <script src="/app.js" defer></script>
 </body></html>
