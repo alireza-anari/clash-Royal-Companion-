@@ -23,7 +23,7 @@ function mock(routes,requests=[]){
  return async (path,options)=>{
    requests.push({path,options});
    const record=routes[path];
-   if(record===undefined)throw Error('No response for '+path);
+   if(record===undefined)return {ok:false,status:404,json:async()=>({error:{code:'NOT_FOUND'}})};
    return {ok:record.status===undefined||record.status===200,status:record.status||200,json:async()=>record.body===undefined?record:record.body};
  };
 }
@@ -88,4 +88,29 @@ test('malformed data rejects rather than silently normalizing',()=>{
 test('unknown or dynamic elixir costs are never guessed',()=>{
  const data=api.normalizedToProfile(profile,{items:[{id:1,name:'Mirror',elixir_cost:null}],support_items:[]});
  assert.equal(data.cards[0].elixirCost,undefined);
+});
+
+test('new snapshot endpoint eliminates duplicate upstream profile requests',async()=>{
+ const seen=[];
+ const base='/api/v1/players/%23TEST123';
+ const snapshot={...profile,cards:cards.items,support_items:cards.support_items,battles:battles.items,
+                 partial:false,coverage:{full_history:false,returned_count:1}};
+ const read=mock({'/api/v1/capabilities':capability,[base+'/snapshot?limit=25']:snapshot},seen);
+ const result=await api.loadPlayer(read,tag);
+ assert.equal(result.profile.cards.length,8);
+ assert.equal(result.battles.length,1);
+ assert.equal(result.partial,false);
+ assert.deepEqual(seen.map(x=>x.path),['/api/v1/capabilities',base+'/snapshot?limit=25']);
+});
+test('partial snapshots preserve player data without inventing empty-history claims',async()=>{
+ const seen=[];
+ const base='/api/v1/players/%23TEST123';
+ const snapshot={...profile,cards:cards.items,support_items:cards.support_items,
+                 battles:[],partial:true,battles_error_code:'UPSTREAM_UNAVAILABLE',coverage:{full_history:false,returned_count:0}};
+ const read=mock({'/api/v1/capabilities':capability,[base+'/snapshot?limit=25']:snapshot},seen);
+ const result=await api.loadPlayer(read,tag);
+ assert.equal(result.partial,true);
+ assert.equal(result.profile.tag,tag);
+ assert.equal(result.full_history,false);
+ assert.equal(seen.length,2);
 });
