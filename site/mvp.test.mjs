@@ -85,3 +85,23 @@ test('browser script parses without executing it',()=>{
  assert.ok(frontend.includes('function renderBattles'));
  assert.ok(frontend.includes('function renderCoach'));
 });
+
+test('curated coaching guides are present and clearly unreviewed',async()=>{
+ const response=await request('/guides.json');
+ assert.equal(response.status,200);
+ const data=await response.json();
+ assert.equal(data.status,'editorial-draft-unreviewed');
+ assert.ok(Object.keys(data.guides).length>=12);
+});
+test('manifest, icon and static-only service worker are served',async()=>{
+ const m=await request('/manifest.webmanifest');assert.equal(m.status,200);
+ const manifest=await m.json();assert.equal(manifest.display,'standalone');
+ assert.equal(manifest.lang,'fa');assert.ok(manifest.icons.length);
+ const icon=await request('/icon.svg');assert.equal(icon.status,200);
+ assert.match(await icon.text(),/<svg/);
+ const sw=await request('/sw.js');assert.equal(sw.status,200);
+ const body=await sw.text();
+ assert.match(body,/\/catalog\.json/);
+ assert.doesNotMatch(body,/\/api\/v1\/players/);
+ assert.doesNotMatch(body,/\/api\/v1\/analyses/);
+});
