@@ -130,7 +130,9 @@ async function routeRequest(request,env){
     if(!html.includes(HTML_ANCHOR))return json(503,"BETA_ENTRYPOINT_MISSING");
     const adapted=html.replace(HTML_ANCHOR,
       '<script src="/beta-session.js" defer></script>\n'+HTML_ANCHOR)
-      .replace("</head>",'<meta name="crc-mode" content="private-beta"></head>');
+      .replace("</head>",'<meta name="crc-mode" content="private-beta"></head>')
+      .replace("اتصال خودکار به Supercell هنوز فعال نیست؛ می‌توانی JSON پروفایل خودت را فقط در مرورگر وارد کنی.",
+        "در بتای خصوصی، اتصال بازیکن فقط پس از احراز هویت Cloudflare Access و آماده‌بودن Backend فعال می‌شود؛ واردکردن محلی JSON نیز در دسترس است.");
     return new Response(adapted,{status:200,headers:{
       "Content-Type":"text/html; charset=utf-8","Cache-Control":"no-store",
       "Content-Security-Policy":"default-src 'none'; script-src 'self'; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; img-src 'self' https://api-assets.clashroyale.com; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'",
