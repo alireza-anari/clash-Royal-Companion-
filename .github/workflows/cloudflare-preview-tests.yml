@@ -1,0 +1,18 @@
+name: Cloudflare preview tests
+on:
+  push:
+    branches: [feat/cloudflare-preview]
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --check deploy/cloudflare/worker.js
+      - run: node --test deploy/cloudflare/test-worker.mjs
