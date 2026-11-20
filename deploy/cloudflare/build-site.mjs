@@ -10,6 +10,7 @@ const expected=[
   'var CSS='+JSON.stringify(read('site/styles.css'))+';',
   'var APP='+JSON.stringify(read('site/app.js'))+';',
   'var BATTLE_INSIGHTS='+JSON.stringify(read('site/battle-insights.js'))+';',
+  'var OWNED_OPTIONS='+JSON.stringify(read('site/owned-options.js'))+';',
   'var CATALOG_JSON='+JSON.stringify(read('site/catalog.json'))+';',
   'var GUIDES_JSON='+JSON.stringify(read('site/guides.json'))+';',
   'var MANIFEST='+JSON.stringify(read('site/manifest.webmanifest'))+';',
