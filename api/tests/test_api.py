@@ -64,6 +64,10 @@ def test_end_to_end_read_only_paths():
         assert battle["participants"][0]["tower_hp"]["king"] == 0
         assert battle["battle_time"] == "2026-11-20T12:07:19Z"
         assert b.json()["coverage"]["full_history"] is False
+        caps = c.get("/api/v1/capabilities").json()
+        assert caps["live_lookup_enabled"] is False
+        assert caps["safe_public_exposure"] is False
+        assert caps["player_tag_verifies_ownership"] is False
 
 
 def test_deck_analysis_arithmetic_and_structural_errors():
