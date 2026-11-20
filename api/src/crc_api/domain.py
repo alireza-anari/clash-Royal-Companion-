@@ -96,6 +96,7 @@ def normalize_battle(raw: dict[str, Any]) -> dict[str, Any]:
                 "side": side,
                 "ordinal": ordinal,
                 "tag": p.get("tag"),
+                "name": p.get("name"),
                 "crowns": p.get("crowns"),
                 "elixir_leaked": p.get("elixirLeaked"),
                 "trophy_change": p.get("trophyChange"),
