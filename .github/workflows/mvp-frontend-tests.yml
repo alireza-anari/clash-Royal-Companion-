@@ -21,4 +21,4 @@ jobs:
       - name: Verify bundle is reproducible
         run: node deploy/cloudflare/build-site.mjs --check
       - name: Run deterministic staging checks
-        run: node --test site/mvp.test.mjs site/battle-insights.test.mjs site/owned-options.test.mjs
+        run: node --test site/mvp.test.mjs site/battle-insights.test.mjs site/owned-options.test.mjs site/backend-client.test.mjs
