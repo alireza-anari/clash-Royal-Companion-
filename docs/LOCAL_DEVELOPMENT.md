@@ -43,3 +43,16 @@ Use percent-encoded player tags in URLs, e.g. %23EXAMPLETAG. All upstream calls 
 - Latest available Battle Log is only a snapshot, not a complete history. No placement, replay events, or genuine match win rate is inferred.
 
 **Remaining launch blockers:** authorized fixed outbound IPv4, authenticated public admission, distributed rate limits/quotas, cache privacy/retention policy, upstream retry and quota strategy, stable database and production observability. No Cloudflare live proxy is activated by these changes.
+
+
+## Fail-closed runtime and Docker packaging (SP-DEPLOY-01)
+
+- \`CRC_RUNTIME_MODE=local\` is the only supported setting. Configuring \`remote\`, \`staging\` or \`production\` causes startup failure rather than silently opening an insecure service.
+- Local CORS settings accept exact localhost/loopback HTTP(S) origins with explicit ports only. External origins and wildcard origins are rejected at startup.
+- The API checks the request's Host header and immediate socket peer; this does not make it production-ready.
+- CI builds a non-root Docker image from \`deploy/docker/Dockerfile.local\` and smoke-tests it **inside the container** with external networking disabled.
+- Do **not** publish Docker ports or use a public Tunnel: the local-only request gate intentionally rejects Docker bridge peers and has no vetted reverse-proxy trust configuration yet.
+- On Windows, Python/Uvicorn bound to \`127.0.0.1\` (instructions above) remains the supported local method for real Supercell testing when the personal outbound IP is allowlisted.
+- See \`docs/DEPLOYMENT_READINESS.md\` for fixed-egress options and explicit production launch gates.
+
+The Docker job validates packaging/security guards only. It neither establishes real API availability nor provides an always-on hosted server.
