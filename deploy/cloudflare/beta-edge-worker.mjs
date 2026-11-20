@@ -52,7 +52,7 @@ async function boundedJson(response){
   if(length!==null&&Number(length)>MAX_JSON_BYTES)return null;
   if(!response.headers.get("Content-Type")?.toLowerCase().includes("application/json"))
     return null;
-  if(!response.body)return new Uint8Array(0);
+  if(!response.body)return null;
   const reader=response.body.getReader();
   const parts=[];
   let total=0;
@@ -79,6 +79,11 @@ async function routeRequest(request,env){
     return json(400,"UNTRUSTED_HOST");
   const api=url.pathname==="/api"||url.pathname.startsWith("/api/");
   if(!["GET","HEAD"].includes(request.method))return json(405,"METHOD_NOT_ALLOWED");
+  // Cloudflare Access must protect the entire beta hostname. Even static
+  // assets fail closed if its assertion is missing; backend validates the
+  // cryptographic signature, not this syntactic edge check.
+  const jwt=request.headers.get("Cf-Access-Jwt-Assertion");
+  if(!jwt||jwt.length>8192)return json(401,"ACCESS_TOKEN_MISSING");
   if(api){
     if(request.method!=="GET")return json(405,"METHOD_NOT_ALLOWED");
     const route=apiRoute(url);
@@ -89,8 +94,6 @@ async function routeRequest(request,env){
       return json(403,"CROSS_ORIGIN_DENIED");
     // Access authenticates the browser before this Worker runs. Backend MUST
     // independently verify this signed assertion; mere header presence is not auth.
-    const jwt=request.headers.get("Cf-Access-Jwt-Assertion");
-    if(!jwt||jwt.length>8192)return json(401,"ACCESS_TOKEN_MISSING");
     if(!env.PRIVATE_API||typeof env.PRIVATE_API.fetch!=="function")
       return json(503,"PRIVATE_ORIGIN_NOT_BOUND");
     const headers=new Headers({Accept:"application/json",
