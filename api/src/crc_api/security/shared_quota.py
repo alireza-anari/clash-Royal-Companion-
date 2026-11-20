@@ -48,7 +48,7 @@ class PostgresSharedQuota:
     ):
         if len(hmac_secret) < 32:
             raise ValueError("Quota HMAC secret must be at least 32 bytes.")
-        if not (1 <= per_member <= global_budget <= 10000):
+        if not (1 <= per_member <= 10000 and 1 <= global_budget <= 10000):
             raise ValueError("Invalid quota limits.")
         self._secret = hmac_secret
         self.per_member = per_member
