@@ -9,11 +9,13 @@ This branch contains a mobile-first Persian frontend and a **separate Cloudflare
 ## Functioning features
 
 - Dashboard and persistent local card deck selection (eight slots)
-- Card library with search, cost filters and card details
+- 120-card visual snapshot with image URLs, card search, cost filters and details; historical snapshot, not a live official catalog
+- 12 provisional card-coaching guides, shown with explicit draft/expert-review limitations
 - Deterministic deck arithmetic and evidence-labelled, informational findings
 - Profile import of official Supercell Player JSON via browser-only File API
 - Battle Log import, event-deck distinction and summary rows
 - Planned future Community and Tournament screens clearly not advertised as available
+- Static-only service worker and install metadata for a PWA-like mobile experience; runtime browser installability not yet assessed
 - No player data stored on server, no Supercell token in frontend and no live Supercell lookups
 - Sample catalog populated from **public card metadata only**, extracted from an official API response provided for the project. No player tag, name, card ownership count, levels or account identifiers are in the seed.
 
