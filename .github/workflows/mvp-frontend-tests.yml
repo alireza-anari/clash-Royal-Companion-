@@ -1,0 +1,24 @@
+name: MVP frontend tests
+on:
+  push:
+    branches: [feat/mvp-frontend]
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check source syntax
+        run: |
+          node --check site/app.js
+          node --check deploy/cloudflare/mvp-worker.js
+      - name: Verify bundle is reproducible
+        run: node deploy/cloudflare/build-site.mjs --check
+      - name: Run deterministic staging checks
+        run: node --test site/mvp.test.mjs
