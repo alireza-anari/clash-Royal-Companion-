@@ -46,7 +46,7 @@ The only allowed backend paths are:
 
 Everything else under `/api/` is 404 or 405. The Worker strips user-supplied `Cookie`, `Authorization`, `X-Forwarded-For`, `X-CRC-Internal-Token`, user-email claims and other headers. It explicitly passes only `Accept` and the `Cf-Access-Jwt-Assertion` header. **The JWT header itself is not trusted by the Worker; it must be independently validated in the Python beta gateway.** A nonempty header is never authentication.
 
-Response headers strip upstream `Set-Cookie` and never expose bearer tokens. API responses are bounded to 512 KiB JSON and marked `Cache-Control: no-store`. The beta HTML is noindex and uses a restrictive CSP.
+Response headers strip upstream `Set-Cookie` and never expose bearer tokens. API responses are bounded to 512 KiB JSON and marked `Cache-Control: no-store`. Origin redirects are rejected (502), while numeric `Retry-After` values from 429 quota responses are preserved within a safe bound. The beta HTML is noindex, uses a restrictive CSP, and omits the installable PWA manifest.
 
 ## Configuration sketch (NOT a deployable config, no real resource IDs)
 
