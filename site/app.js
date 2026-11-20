@@ -2,7 +2,7 @@
 (function(){
 "use strict";
 var $ = function(id){return document.getElementById(id);};
-var deck = [], activeSlot=0, deckSource="sample", filter="all", catalog=[], predefined={}, player=null, battles=null, modalCard=null;
+var deck = [], activeSlot=0, deckSource="sample", filter="all", catalog=[], predefined={}, guides={}, player=null, battles=null, modalCard=null;
 var pageNames={home:"داشبورد / نمای کلی",deck:"Deck Studio / دک‌ساز",coach:"Deck Intelligence / مربی",cards:"بانک کارت‌ها",player:"پروفایل بازیکن",battles:"تاریخچه نبردها",roadmap:"نقشه راه محصول"};
 var PAGE_IDS=Object.keys(pageNames);
 var toastTimer=null;
@@ -88,7 +88,9 @@ $("cardsGrid").innerHTML=list.map(function(c){return '<button type="button" clas
 $("cardsGrid").querySelectorAll("[data-card]").forEach(function(b){b.addEventListener("click",function(){showModal(Number(b.dataset.card));});});
 $("cardsSummary").textContent=list.length+" کارت از "+catalog.length+" مورد · نمونه اولیه و داده‌های اختیاری واردشده، نه بانک رسمی کامل.";
 }
-function showModal(id){var c=getCard(id);if(!c)return;modalCard=c;$("modalName").textContent=c.name;$("modalDescription").textContent="اطلاعات این کارت بر اساس مجموعه نمونه / فایل واردشده است. برچسب نقش‌ها پیش‌نویس‌اند و توصیه Matchup قطعی محسوب نمی‌شوند.";$("modalVisual").innerHTML=art(c);$("modalDetails").innerHTML='<div class="stat"><b>'+safe(c.elixir==null?"?":c.elixir)+'</b><span>اکسیر</span></div><div class="stat"><b>'+safe(c.type==="spell"?"طلسم":c.type==="building"?"ساختمان":c.type==="support"?"پشتیبان برج":"نیرو")+'</b><span>نوع</span></div>';$("modalToDeck").hidden=c.type==="support";$("cardModal").classList.add("open");}
+function showModal(id){var c=getCard(id);if(!c)return;modalCard=c;$("modalName").textContent=c.name;$("modalDescription").textContent="اطلاعات این کارت بر اساس مجموعه نمونه / فایل واردشده است. برچسب نقش‌ها پیش‌نویس‌اند و توصیه Matchup قطعی محسوب نمی‌شوند.";$("modalVisual").innerHTML=art(c);$("modalDetails").innerHTML='<div class="stat"><b>'+safe(c.elixir==null?"?":c.elixir)+'</b><span>اکسیر</span></div><div class="stat"><b>'+safe(c.type==="spell"?"طلسم":c.type==="building"?"ساختمان":c.type==="support"?"پشتیبان برج":"نیرو")+'</b><span>نوع</span></div>';var guide=guides[String(c.id)];
+$("modalCoaching").innerHTML=guide?'<div class="chip gold" style="display:inline-flex;margin:12px 0 4px">آموزش پیشنهادی · پیش‌نویس</div><p>'+safe(guide.focus)+'</p><h3>کاربرد در حمله</h3><p>'+safe(guide.attack)+'</p><h3>کاربرد در دفاع</h3><p>'+safe(guide.defense)+'</p><h3>تهدیدها و محدودیت‌ها</h3><p>'+safe(guide.threats)+'</p><h3>اشتباه رایج</h3><p>'+safe(guide.mistake)+'</p><div class="message">'+safe(guide.quality)+'</div>':'<div class="message">راهنمای تخصصی این کارت هنوز توسط تیم کارشناسی تکمیل و تأیید نشده است.</div>';
+$("modalToDeck").hidden=c.type==="support";$("cardModal").classList.add("open");}
 function hideModal(){$("cardModal").classList.remove("open");modalCard=null;}
 function tagFormat(value){var tag=String(value||"").trim().toUpperCase();if(tag.startsWith("#"))tag=tag.slice(1);return /^[A-Z0-9]{3,16}$/.test(tag)?"#"+tag:null;}
 function normalizeImportedCard(c){
@@ -164,6 +166,6 @@ $("battlesFile").addEventListener("change",function(e){if(e.target.files[0])impo
 $("battleFilter").addEventListener("change",renderBattles);
 }
 async function init(){
-try{var res=await fetch("/catalog.json",{cache:"no-store"});if(!res.ok)throw Error("catalog");var data=await res.json();if(!data||!Array.isArray(data.cards)||!data.predefined)throw Error("catalog");catalog=data.cards;predefined=data.predefined;var prev=readDeck();deck=prev&&prev.every(function(id){return !!getCard(id);})?prev.slice():predefined.heavy.slice();deckSource=prev?"manual":"sample";setupEvents();renderAll();view(location.hash.slice(1)||"home");}catch(e){document.querySelectorAll(".page").forEach(function(p){p.classList.remove("active");});$("page-home").classList.add("active");$("page-home").insertAdjacentHTML("afterbegin",'<div class="notice"><strong>خطای بارگذاری بانک کارت‌های نمونه؛ صفحه را تازه‌سازی کن.</strong></div>');}}
+try{var responses=await Promise.all([fetch("/catalog.json",{cache:"no-store"}),fetch("/guides.json",{cache:"no-store"})]);if(!responses[0].ok||!responses[1].ok)throw Error("assets");var data=await responses[0].json(),coaching=await responses[1].json();if(!data||!Array.isArray(data.cards)||!data.predefined||!coaching||!coaching.guides)throw Error("catalog");catalog=data.cards;predefined=data.predefined;guides=coaching.guides;var prev=readDeck();deck=prev&&prev.every(function(id){return !!getCard(id);})?prev.slice():predefined.heavy.slice();deckSource=prev?"manual":"sample";setupEvents();renderAll();view(location.hash.slice(1)||"home");}catch(e){document.querySelectorAll(".page").forEach(function(p){p.classList.remove("active");});$("page-home").classList.add("active");$("page-home").insertAdjacentHTML("afterbegin",'<div class="notice"><strong>خطای بارگذاری بانک کارت‌های نمونه؛ صفحه را تازه‌سازی کن.</strong></div>');}}
 init();
 })();
