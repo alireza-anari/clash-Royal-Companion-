@@ -137,8 +137,12 @@ def deck_metrics(card_ids: list[int], catalog: dict[int, dict[str, Any]]) -> dic
     if missing_ids:
         return {"average_elixir": None, "cycle_cost_four_cheapest": None, "unknown_card_ids": missing_ids}
     costs = [card.get("elixirCost") for card in selected if card]
-    if any(not isinstance(x, int) or x < 0 for x in costs):
-        return {"average_elixir": None, "cycle_cost_four_cheapest": None, "unknown_card_ids": [cid for cid,c in zip(card_ids,costs) if not isinstance(c,int)]}
+    invalid_cost_ids = [
+        card_id for card_id, cost in zip(card_ids, costs)
+        if isinstance(cost, bool) or not isinstance(cost, int) or cost < 0
+    ]
+    if invalid_cost_ids:
+        return {"average_elixir": None, "cycle_cost_four_cheapest": None, "unknown_card_ids": invalid_cost_ids}
     return {
         "average_elixir": sum(costs)/8,
         "cycle_cost_four_cheapest": sum(sorted(costs)[:4]),
