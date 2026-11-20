@@ -1,5 +1,5 @@
-const VERSION='crc-mvp-static-v02';
-const ASSETS=['/','/styles.css','/app.js','/catalog.json','/guides.json','/icon.svg'];
+const VERSION='crc-mvp-static-v03';
+const ASSETS=['/','/styles.css','/app.js','/battle-insights.js','/catalog.json','/guides.json','/icon.svg'];
 self.addEventListener('install',event=>{
   event.waitUntil(caches.open(VERSION).then(cache=>cache.addAll(ASSETS)).then(()=>self.skipWaiting()));
 });
