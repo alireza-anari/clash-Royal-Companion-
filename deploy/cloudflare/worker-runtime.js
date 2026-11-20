@@ -24,6 +24,7 @@ async function serve(request){
   if(request.method==="GET"&&path==="/styles.css")return respond(CSS,"text/css; charset=utf-8");
   if(request.method==="GET"&&path==="/app.js")return respond(APP,"application/javascript; charset=utf-8");
   if(request.method==="GET"&&path==="/battle-insights.js")return respond(BATTLE_INSIGHTS,"application/javascript; charset=utf-8");
+  if(request.method==="GET"&&path==="/owned-options.js")return respond(OWNED_OPTIONS,"application/javascript; charset=utf-8");
   if(request.method==="GET"&&path==="/catalog.json")return respond(CATALOG_JSON,"application/json; charset=utf-8");
   if(request.method==="GET"&&path==="/guides.json")return respond(GUIDES_JSON,"application/json; charset=utf-8");
   if(request.method==="GET"&&path==="/manifest.webmanifest")return respond(MANIFEST,"application/manifest+json; charset=utf-8");
