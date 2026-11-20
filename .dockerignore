@@ -1,0 +1,16 @@
+# Include only the files needed to build the local Python backend.
+**
+!api/
+!api/pyproject.toml
+!api/src/
+!api/src/**
+
+# Never send secret or private files as Docker build context.
+**/.env
+**/.env.*
+**/*.key
+**/*.pem
+**/*token*
+**/__pycache__/
+**/.venv/
+**/*.pyc
