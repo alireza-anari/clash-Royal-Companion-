@@ -113,3 +113,14 @@ test('Battle Intelligence module is independently served and linked by UI',async
  assert.equal(res.status,200);
  assert.match(await res.text(),/CRCBattleIntelligence/);
 });
+
+test('owned-card coaching module is served but player data is not uploaded',async()=>{
+ const page=await (await request('/')).text();
+ assert.match(page,/src="\/owned-options\.js"/);
+ const r=await request('/owned-options.js');
+ assert.equal(r.status,200);
+ assert.match(await r.text(),/CRCOwnedOptions/);
+ const app=await (await request('/app.js')).text();
+ assert.match(app,/player\.cards/);
+ assert.match(app,/file\.text\(\)/);
+});
