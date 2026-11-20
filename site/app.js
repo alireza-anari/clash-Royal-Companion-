@@ -140,17 +140,35 @@ if(ids.every(function(id){return Number.isSafeInteger(id);})&&new Set(ids).size=
 $("playerTag").value=raw.tag;renderCatalog();
 }catch(e){notify(e.message||"خواندن پروفایل ناموفق بود.");}finally{$("profileFile").value="";}
 }
+function apiTransport(){
+  return window.CRCBetaSession ? window.CRCBetaSession.fetch : window.fetch.bind(window);
+}
+function betaLoginVisible(show){
+  if(!window.CRCBetaSession)return;
+  var status=$("liveBackendStatus"),button=$("betaSessionLogin");
+  if(!button){
+    button=document.createElement("button");
+    button.type="button";button.id="betaSessionLogin";button.className="btn ghost";
+    button.textContent="ورود دوباره";
+    button.addEventListener("click",function(){window.CRCBetaSession.signInAgain();});
+    status.parentNode.appendChild(button);
+  }
+  button.hidden=!show;
+}
 async function refreshLiveAvailability(){
   var btn=$("loadLivePlayer"),status=$("liveBackendStatus");
   btn.disabled=true;
   if(!window.CRCBackendClient){status.textContent="ماژول اتصال Backend در دسترس نیست.";return;}
-  var cap=await window.CRCBackendClient.capabilities(window.fetch.bind(window));
+  var cap=await window.CRCBackendClient.capabilities(apiTransport());
   if(cap.live_lookup_enabled){
+    betaLoginVisible(false);
     btn.disabled=false;btn.textContent="دریافت اطلاعات با Player Tag";
-    status.textContent="Backend آمادگی دریافت داده عمومی را اعلام کرده است. مالکیت حساب تأیید نمی‌شود.";
+    status.textContent=window.CRCBetaSession?"بتای خصوصی آماده است؛ ورود از طریق Cloudflare Access انجام شده و Player Tag اثبات مالکیت نیست.":"Backend آمادگی دریافت داده عمومی را اعلام کرده است. مالکیت حساب تأیید نمی‌شود.";
   }else{
     btn.disabled=true;btn.textContent="دریافت مستقیم از Supercell (غیرفعال)";
-    status.textContent="Backend زنده در این محیط فعال نیست؛ واردکردن فایل JSON همچنان در دسترس است.";
+    var needsLogin=!!(window.CRCBetaSession&&["ACCESS_LOGIN_REQUIRED","ACCESS_TOKEN_MISSING","ACCESS_TOKEN_INVALID","HTTP_401","HTTP_403"].includes(cap.reason));
+    betaLoginVisible(needsLogin);
+    status.textContent=needsLogin?"نشست Cloudflare Access معتبر نیست یا منقضی شده؛ با دکمه ورود دوباره اقدام کن.":"Backend زنده در این محیط فعال نیست؛ واردکردن فایل JSON همچنان در دسترس است.";
   }
 }
 async function loadProfileLive(){
@@ -160,7 +178,7 @@ async function loadProfileLive(){
   if(!window.CRCBackendClient)return;
   btn.disabled=true;status.textContent="در حال دریافت پروفایل و نبردها از Backend...";
   try{
-    var payload=await window.CRCBackendClient.loadPlayer(window.fetch.bind(window),tag);
+    var payload=await window.CRCBackendClient.loadPlayer(apiTransport(),tag);
     // Do not mutate local profile state until all mandatory response schemas are verified.
     player=payload.profile;profileSource="live";liveFetchedAt=payload.fetched_at;
     battles=payload.battles;battlesSource="live";
@@ -172,8 +190,13 @@ async function loadProfileLive(){
     renderProfile();renderCoach();renderBattles();renderCatalog();
     status.textContent=payload.partial?"پروفایل دریافت شد؛ بخشی از تاریخچه نبردها در دسترس نبود.":"اطلاعات عمومی دریافت شد؛ مالکیت حساب با Player Tag تأیید نمی‌شود.";
     notify("اطلاعات عمومی بازیکن از Backend دریافت شد.");
-  }catch(e){status.textContent=(e&&e.message)||"اتصال به Backend ناموفق بود.";}
-  finally{btn.disabled=false;}
+  }catch(e){
+    status.textContent=(e&&e.message)||"اتصال به Backend ناموفق بود.";
+    var loginNeeded=!!(window.CRCBetaSession&&e&&
+      ["ACCESS_LOGIN_REQUIRED","ACCESS_TOKEN_MISSING","ACCESS_TOKEN_INVALID","HTTP_401","HTTP_403"].includes(e.code));
+    betaLoginVisible(loginNeeded);
+  }
+  finally{refreshLiveAvailability();}
 }
 function renderProfile(){
 var wrap=$("profileSummary");if(!player)return;
@@ -273,7 +296,7 @@ $("closeModal").addEventListener("click",hideModal);$("cardModal").addEventListe
 window.addEventListener("keydown",function(e){if(e.key==="Escape")hideModal();});
 $("modalToDeck").addEventListener("click",function(){var id=modalCard&&modalCard.id;hideModal();if(id){selectCard(id);toPage("deck");}});
 $("loadLivePlayer").addEventListener("click",loadProfileLive);
-$("checkTag").addEventListener("click",function(){var t=tagFormat($("playerTag").value);$("tagStatus").textContent=t?"قالب تگ معتبر است: "+t+" — اتصال زنده هنوز فعال نیست.":"قالب Player Tag معتبر نیست؛ تگ شامل حروف و عدد و در صورت نیاز # است.";});
+$("checkTag").addEventListener("click",function(){var t=tagFormat($("playerTag").value);$("tagStatus").textContent=t?"قالب تگ معتبر است: "+t+(window.CRCBetaSession?" — دریافت آنلاین به نشست بتای خصوصی وابسته است.":" — اتصال زنده هنوز فعال نیست."):"قالب Player Tag معتبر نیست؛ تگ شامل حروف و عدد و در صورت نیاز # است.";});
 $("profileFile").addEventListener("change",function(e){if(e.target.files[0])importProfile(e.target.files[0]);});
 $("battlesFile").addEventListener("change",function(e){if(e.target.files[0])importBattles(e.target.files[0]);});
 $("battleFilter").addEventListener("change",renderBattles);
@@ -281,5 +304,5 @@ $("battleFilter").addEventListener("change",renderBattles);
 async function init(){
 try{var responses=await Promise.all([fetch("/catalog.json",{cache:"no-store"}),fetch("/guides.json",{cache:"no-store"})]);if(!responses[0].ok||!responses[1].ok)throw Error("assets");var data=await responses[0].json(),coaching=await responses[1].json();if(!data||!Array.isArray(data.cards)||!data.predefined||!coaching||!coaching.guides)throw Error("catalog");catalog=data.cards;predefined=data.predefined;guides=coaching.guides;var prev=readDeck();deck=prev&&prev.every(function(id){return !!getCard(id);})?prev.slice():predefined.heavy.slice();deckSource=prev?"manual":"sample";setupEvents();renderAll();view(location.hash.slice(1)||"home");refreshLiveAvailability();}catch(e){document.querySelectorAll(".page").forEach(function(p){p.classList.remove("active");});$("page-home").classList.add("active");$("page-home").insertAdjacentHTML("afterbegin",'<div class="notice"><strong>خطای بارگذاری بانک کارت‌های نمونه؛ صفحه را تازه‌سازی کن.</strong></div>');}}
 init();
-if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('/sw.js').catch(function(){});});}
+if(!window.CRCBetaSession && 'serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('/sw.js').catch(function(){});});}
 })();
