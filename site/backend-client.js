@@ -30,7 +30,14 @@
         UPSTREAM_FORBIDDEN:'اتصال سرور به Supercell مجاز نیست؛ تنظیم IP یا کلید بررسی شود.',
         UPSTREAM_RATE_LIMITED:'سرویس موقتاً محدودیت درخواست دارد.',
         UPSTREAM_TIMEOUT:'پاسخ Supercell دیر رسید؛ دوباره تلاش کن.',
-        INVALID_PLAYER_TAG:'Player Tag نامعتبر است.'
+        INVALID_PLAYER_TAG:'Player Tag نامعتبر است.',
+        ACCESS_LOGIN_REQUIRED:'نشست ورود منقضی شده است؛ دوباره وارد شو.',
+        ACCESS_TOKEN_MISSING:'ابتدا از طریق Cloudflare Access وارد شو.',
+        ACCESS_TOKEN_INVALID:'نشست دسترسی معتبر نیست؛ دوباره وارد شو.',
+        ACCESS_NOT_INVITED:'حساب فعلی در فهرست دعوت‌شدگان بتا نیست.',
+        MEMBER_QUOTA_EXCEEDED:'سهمیه درخواست‌های این نشست به پایان رسیده است.',
+        GLOBAL_QUOTA_EXCEEDED:'سقف درخواست‌های بتا موقتاً پر شده است.',
+        BETA_ADMISSION_UNAVAILABLE:'خدمات ورود یا سهمیه بتا موقتاً در دسترس نیست.'
       };
       throw new BackendError(code,messages[code]||'درخواست Backend موفق نبود.',response.status);
     }
