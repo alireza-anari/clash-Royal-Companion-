@@ -84,6 +84,21 @@ def create_app(supercell: SupercellClient | None = None) -> FastAPI:
             raise SupercellError("CONFIG_MISSING", "اتصال به Supercell تنظیم نشده است.", 503)
         return {"status": "ok"}
 
+    @app.get("/api/v1/capabilities")
+    def capabilities(request: Request):
+        """Public, non-secret feature flags only. Does not make API safe for public use."""
+        enabled_by_owner = os.environ.get("CRC_LIVE_LOOKUP_ENABLED", "false").lower() == "true"
+        enabled = enabled_by_owner and request.app.state.supercell.configured
+        return {
+            "schema_version": "1.0",
+            "live_lookup_enabled": enabled,
+            "provider": "supercell" if enabled else None,
+            "player_tag_verifies_ownership": False,
+            "battle_log_full_history": False,
+            "safe_public_exposure": False,
+            "message": "Local-only backend. Public deployment requires authentication, rate limits and fixed egress.",
+        }
+
     @app.get("/api/v1/catalog/cards")
     async def cards(request: Request, lang: str = Query(default="fa-IR", pattern="^(fa-IR|en-US)$")):
         raw = await request.app.state.supercell.cards()
