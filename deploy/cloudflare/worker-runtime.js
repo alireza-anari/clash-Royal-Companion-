@@ -24,6 +24,7 @@ async function serve(request){
   if(request.method==="GET"&&path==="/styles.css")return respond(CSS,"text/css; charset=utf-8");
   if(request.method==="GET"&&path==="/app.js")return respond(APP,"application/javascript; charset=utf-8");
   if(request.method==="GET"&&path==="/catalog.json")return respond(CATALOG_JSON,"application/json; charset=utf-8");
+  if(request.method==="GET"&&path==="/guides.json")return respond(GUIDES_JSON,"application/json; charset=utf-8");
   if(request.method==="GET"&&path==="/health")return jsonResponse({status:"ok",service:"crc-mvp-site",version:"0.2.0",mode:"sample-only",supercell_live:false});
   if(request.method==="GET"&&path==="/api/v1/health/live")return jsonResponse({status:"ok"});
   if(request.method==="GET"&&path==="/api/v1/health/ready")return jsonResponse({status:"sample-only",live_supercell:false});
