@@ -50,7 +50,9 @@ def test_structural_deck_validation():
 ])
 def test_battle_timestamp_contract(raw, expected):
     assert normalize_battle_time(raw) == expected
-\n\ndef test_negative_and_boolean_elixir_costs_remain_unknown():
+
+
+def test_negative_and_boolean_elixir_costs_remain_unknown():
     cards = list(range(1, 9))
     catalog = {i: {"id": i, "elixirCost": 3} for i in cards}
     catalog[2]["elixirCost"] = -1
