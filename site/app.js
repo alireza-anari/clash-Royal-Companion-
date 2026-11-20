@@ -168,7 +168,9 @@ async function refreshLiveAvailability(){
     btn.disabled=true;btn.textContent="دریافت مستقیم از Supercell (غیرفعال)";
     var needsLogin=!!(window.CRCBetaSession&&["ACCESS_LOGIN_REQUIRED","ACCESS_TOKEN_MISSING","ACCESS_TOKEN_INVALID","HTTP_401","HTTP_403"].includes(cap.reason));
     betaLoginVisible(needsLogin);
-    status.textContent=needsLogin?"نشست Cloudflare Access معتبر نیست یا منقضی شده؛ با دکمه ورود دوباره اقدام کن.":"Backend زنده در این محیط فعال نیست؛ واردکردن فایل JSON همچنان در دسترس است.";
+    var rateLimited=!!(window.CRCBetaSession&&["MEMBER_QUOTA_EXCEEDED","GLOBAL_QUOTA_EXCEEDED","HTTP_429"].includes(cap.reason));
+    var notInvited=!!(window.CRCBetaSession&&cap.reason==="ACCESS_NOT_INVITED");
+    status.textContent=needsLogin?"نشست Cloudflare Access معتبر نیست یا منقضی شده؛ با دکمه ورود دوباره اقدام کن.":rateLimited?"سهمیه موقت درخواست‌های بتا پر شده است؛ از ارسال مکرر درخواست خودداری کن.":notInvited?"این حساب برای بتای خصوصی دعوت نشده است.":"Backend زنده در این محیط فعال نیست؛ واردکردن فایل JSON همچنان در دسترس است.";
   }
 }
 async function loadProfileLive(){
