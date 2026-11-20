@@ -1,0 +1,354 @@
+{
+  "revision": "sample-2026-11-20",
+  "mode": "sample",
+  "note": "Seeded from publicly described cards and supplied official API samples; not a full live catalog.",
+  "cards": [
+    {
+      "id": 26000049,
+      "name": "Bats",
+      "elixir": 2,
+      "type": "troop",
+      "roles": [
+        "air",
+        "cycle"
+      ],
+      "emoji": "🦇",
+      "icon": "https://api-assets.clashroyale.com/cards/300/EnIcvO21hxiNpoI-zO6MDjLmzwPbq8Z4JPo2OKoVUjU.png",
+      "source": "sample-catalog"
+    },
+    {
+      "id": 26000017,
+      "name": "Wizard",
+      "elixir": 5,
+      "type": "troop",
+      "roles": [
+        "air",
+        "ground",
+        "splash_air",
+        "splash_ground"
+      ],
+      "emoji": "🧙",
+      "icon": "",
+      "source": "sample-catalog"
+    },
+    {
+      "id": 26000011,
+      "name": "Valkyrie",
+      "elixir": 4,
+      "type": "troop",
+      "roles": [
+        "ground",
+        "splash_ground"
+      ],
+      "emoji": "🪓",
+      "icon": "",
+      "source": "sample-catalog"
+    },
+    {
+      "id": 26000007,
+      "name": "Witch",
+      "elixir": 5,
+      "type": "troop",
+      "roles": [
+        "ground",
+        "air",
+        "splash_air",
+        "swarm"
+      ],
+      "emoji": "🪄",
+      "icon": "",
+      "source": "sample-catalog"
+    },
+    {
+      "id": 26000056,
+      "name": "Skeleton Barrel",
+      "elixir": 3,
+      "type": "troop",
+      "roles": [
+        "win",
+        "air",
+        "swarm"
+      ],
+      "emoji": "💀",
+      "icon": "",
+      "source": "sample-catalog"
+    },
+    {
+      "id": 26000055,
+      "name": "Mega Knight",
+      "elixir": 7,
+      "type": "troop",
+      "roles": [
+        "ground",
+        "splash_ground",
+        "tank"
+      ],
+      "emoji": "🛡️",
+      "icon": "",
+      "source": "sample-catalog"
+    },
+    {
+      "id": 26000035,
+      "name": "Lumberjack",
+      "elixir": 4,
+      "type": "troop",
+      "roles": [
+        "ground",
+        "tank_response"
+      ],
+      "emoji": "🪵",
+      "icon": "",
+      "source": "sample-catalog"
+    },
+    {
+      "id": 28000015,
+      "name": "Barbarian Barrel",
+      "elixir": 2,
+      "type": "spell",
+      "roles": [
+        "spell_small",
+        "splash_ground"
+      ],
+      "emoji": "🛢️",
+      "icon": "",
+      "source": "sample-catalog"
+    },
+    {
+      "id": 26000010,
+      "name": "Skeletons",
+      "elixir": 1,
+      "type": "troop",
+      "roles": [
+        "ground",
+        "cycle",
+        "swarm"
+      ],
+      "emoji": "☠️",
+      "icon": "https://api-assets.clashroyale.com/cards/300/oO7iKMU5m0cdxhYPZA3nWQiAUh2yoGgdThLWB1rVSec.png",
+      "source": "sample-catalog"
+    },
+    {
+      "id": 26000014,
+      "name": "Musketeer",
+      "elixir": 4,
+      "type": "troop",
+      "roles": [
+        "ground",
+        "air",
+        "tank_response"
+      ],
+      "emoji": "🎯",
+      "icon": "https://api-assets.clashroyale.com/cards/300/Tex1C48UTq9FKtAX-3tzG0FJmc9jzncUZG3bb5Vf-Ds.png",
+      "source": "sample-catalog"
+    },
+    {
+      "id": 26000021,
+      "name": "Hog Rider",
+      "elixir": 4,
+      "type": "troop",
+      "roles": [
+        "win",
+        "ground"
+      ],
+      "emoji": "🐗",
+      "icon": "https://api-assets.clashroyale.com/cards/300/Ubu0oUl8tZkusnkZf8Xv9Vno5IO29Y-jbZ4fhoNJ5oc.png",
+      "source": "sample-catalog"
+    },
+    {
+      "id": 27000000,
+      "name": "Cannon",
+      "elixir": 3,
+      "type": "building",
+      "roles": [
+        "ground",
+        "building",
+        "tank_response"
+      ],
+      "emoji": "🧱",
+      "icon": "https://api-assets.clashroyale.com/cards/300/nZK1y-beLxO5vnlyUhK6-2zH2NzXJwqykcosqQ1cmZ8.png",
+      "source": "sample-catalog"
+    },
+    {
+      "id": 26000038,
+      "name": "Ice Golem",
+      "elixir": 2,
+      "type": "troop",
+      "roles": [
+        "ground",
+        "cycle",
+        "kite"
+      ],
+      "emoji": "🧊",
+      "icon": "https://api-assets.clashroyale.com/cards/300/r05cmpwV1o7i7FHodtZwW3fmjbXCW34IJCsDEV5cZC4.png",
+      "source": "sample-catalog"
+    },
+    {
+      "id": 26000030,
+      "name": "Ice Spirit",
+      "elixir": 1,
+      "type": "troop",
+      "roles": [
+        "air",
+        "ground",
+        "cycle"
+      ],
+      "emoji": "❄️",
+      "icon": "https://api-assets.clashroyale.com/cards/300/lv1budiafU9XmSdrDkk0NYyqASAFYyZ06CPysXKZXlA.png",
+      "source": "sample-catalog"
+    },
+    {
+      "id": 28000000,
+      "name": "Fireball",
+      "elixir": 4,
+      "type": "spell",
+      "roles": [
+        "spell_big",
+        "splash_air",
+        "splash_ground"
+      ],
+      "emoji": "🔥",
+      "icon": "https://api-assets.clashroyale.com/cards/300/lZD9MILQv7O-P3XBr_xOLS5idwuz3_7Ws9G60U36yhc.png",
+      "source": "sample-catalog"
+    },
+    {
+      "id": 28000011,
+      "name": "The Log",
+      "elixir": 2,
+      "type": "spell",
+      "roles": [
+        "spell_small",
+        "splash_ground"
+      ],
+      "emoji": "🌲",
+      "icon": "https://api-assets.clashroyale.com/cards/300/_iDwuDLexHPFZ_x4_a0eP-rxCS6vwWgTs6DLauwwoaY.png",
+      "source": "sample-catalog"
+    },
+    {
+      "id": 26000058,
+      "name": "Wall Breakers",
+      "elixir": 2,
+      "type": "troop",
+      "roles": [
+        "win",
+        "ground"
+      ],
+      "emoji": "💣",
+      "icon": "https://api-assets.clashroyale.com/cards/300/_xPphEfC8eEwFNrfU3cMQG9-f5JaLQ31ARCA7l3XtW4.png",
+      "source": "sample-catalog"
+    },
+    {
+      "id": 26000062,
+      "name": "Magic Archer",
+      "elixir": 4,
+      "type": "troop",
+      "roles": [
+        "air",
+        "ground"
+      ],
+      "emoji": "🏹",
+      "icon": "https://api-assets.clashroyale.com/cards/300/Avli3W7BxU9HQ2SoLiXnBgGx25FoNXUSFm7OcAk68ek.png",
+      "source": "sample-catalog"
+    },
+    {
+      "id": 28000017,
+      "name": "Giant Snowball",
+      "elixir": 2,
+      "type": "spell",
+      "roles": [
+        "spell_small",
+        "splash_air",
+        "splash_ground"
+      ],
+      "emoji": "🌨️",
+      "icon": "https://api-assets.clashroyale.com/cards/300/7MaJLa6hK9WN2_VIshuh5DIDfGwm0wEv98gXtAxLDPs.png",
+      "source": "sample-catalog"
+    },
+    {
+      "id": 26000002,
+      "name": "Goblins",
+      "elixir": 2,
+      "type": "troop",
+      "roles": [
+        "ground",
+        "cycle",
+        "swarm"
+      ],
+      "emoji": "👺",
+      "icon": "https://api-assets.clashroyale.com/cards/300/X_DQUye_OaS3QN6VC9CPw05Fit7wvSm3XegXIXKP--0.png",
+      "source": "sample-catalog"
+    },
+    {
+      "id": 27000004,
+      "name": "Bomb Tower",
+      "elixir": 4,
+      "type": "building",
+      "roles": [
+        "ground",
+        "building",
+        "splash_ground"
+      ],
+      "emoji": "💥",
+      "icon": "https://api-assets.clashroyale.com/cards/300/rirYRyHPc97emRjoH-c1O8uZCBzPVnToaGuNGusF3TQ.png",
+      "source": "sample-catalog"
+    },
+    {
+      "id": 28000012,
+      "name": "Tornado",
+      "elixir": 3,
+      "type": "spell",
+      "roles": [
+        "spell_small",
+        "splash_air",
+        "splash_ground"
+      ],
+      "emoji": "🌪️",
+      "icon": "https://api-assets.clashroyale.com/cards/300/QJB-QK1QJHdw4hjpAwVSyZBozc2ZWAR9pQ-SMUyKaT0.png",
+      "source": "sample-catalog"
+    },
+    {
+      "id": 26000032,
+      "name": "Miner",
+      "elixir": 3,
+      "type": "troop",
+      "roles": [
+        "win",
+        "ground"
+      ],
+      "emoji": "⛏️",
+      "icon": "https://api-assets.clashroyale.com/cards/300/Y4yWvdwBCg2FpAZgs8T09Gy34WOwpLZW-ttL52Ae8NE.png",
+      "source": "sample-catalog"
+    },
+    {
+      "id": 159000000,
+      "name": "Tower Princess",
+      "elixir": null,
+      "type": "support",
+      "roles": [],
+      "emoji": "🏰",
+      "icon": "https://api-assets.clashroyale.com/cards/300/Nzo5Gjbh7NG6O3Hyu7ev54Pu5zK7vDMR2fbpGdVsS64.png",
+      "source": "sample-catalog"
+    }
+  ],
+  "predefined": {
+    "heavy": [
+      26000049,
+      26000017,
+      26000011,
+      26000007,
+      26000056,
+      26000055,
+      26000035,
+      28000015
+    ],
+    "hog": [
+      26000010,
+      26000014,
+      26000021,
+      27000000,
+      26000038,
+      26000030,
+      28000000,
+      28000011
+    ]
+  }
+}
