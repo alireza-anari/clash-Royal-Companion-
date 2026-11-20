@@ -168,4 +168,5 @@ $("battleFilter").addEventListener("change",renderBattles);
 async function init(){
 try{var responses=await Promise.all([fetch("/catalog.json",{cache:"no-store"}),fetch("/guides.json",{cache:"no-store"})]);if(!responses[0].ok||!responses[1].ok)throw Error("assets");var data=await responses[0].json(),coaching=await responses[1].json();if(!data||!Array.isArray(data.cards)||!data.predefined||!coaching||!coaching.guides)throw Error("catalog");catalog=data.cards;predefined=data.predefined;guides=coaching.guides;var prev=readDeck();deck=prev&&prev.every(function(id){return !!getCard(id);})?prev.slice():predefined.heavy.slice();deckSource=prev?"manual":"sample";setupEvents();renderAll();view(location.hash.slice(1)||"home");}catch(e){document.querySelectorAll(".page").forEach(function(p){p.classList.remove("active");});$("page-home").classList.add("active");$("page-home").insertAdjacentHTML("afterbegin",'<div class="notice"><strong>خطای بارگذاری بانک کارت‌های نمونه؛ صفحه را تازه‌سازی کن.</strong></div>');}}
 init();
+if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('/sw.js').catch(function(){});});}
 })();
