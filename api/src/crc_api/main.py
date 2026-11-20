@@ -1,0 +1,152 @@
+"""Local-only API milestone: read-only Supercell adapter and deck arithmetic.
+
+Not production-ready: no public traffic admission or persistent rate limiting.
+"""
+from __future__ import annotations
+
+import os
+from uuid import uuid4
+
+from dotenv import load_dotenv
+from fastapi import FastAPI, HTTPException, Query, Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel, Field
+
+from .domain import (card_summary, deck_metrics, normalize_battle, normalize_profile,
+                     normalize_tag, source_metadata, validate_deck_ids)
+from .supercell import SupercellClient, SupercellError
+
+load_dotenv()
+
+
+class DeckInput(BaseModel):
+    card_ids: list[int] = Field(default_factory=list, max_length=32)
+    mode: str = "standard"
+    source: str = "manual"
+    support_card_ids: list[int] = Field(default_factory=list, max_length=8)
+
+
+class AnalysisInput(BaseModel):
+    deck: DeckInput
+    locale: str = "fa-IR"
+    player_tag: str | None = None
+
+
+def create_app(supercell: SupercellClient | None = None) -> FastAPI:
+    app = FastAPI(title="Clash Royale Companion API", version="0.1.0")
+    app.state.supercell = supercell or SupercellClient()
+    origins = [x.strip() for x in os.environ.get(
+        "CRC_CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000"
+    ).split(",") if x.strip()]
+    # No wildcard origin; this does not replace authentication/rate limits for public access.
+    app.add_middleware(CORSMiddleware, allow_origins=origins, allow_methods=["GET", "POST"], allow_headers=["Content-Type"])
+
+    @app.middleware("http")
+    async def request_id(request: Request, call_next):
+        request.state.request_id = f"req_{uuid4().hex[:16]}"
+        response = await call_next(request)
+        response.headers["X-Request-ID"] = request.state.request_id
+        return response
+
+    @app.exception_handler(SupercellError)
+    async def supercell_failure(request: Request, exc: SupercellError):
+        return JSONResponse(status_code=exc.http_status,
+                            content={"request_id": request.state.request_id,
+                                     "error": {"code": exc.code, "message": exc.public_message, "retryable": exc.retryable}})
+
+    @app.exception_handler(RequestValidationError)
+    async def bad_request(request: Request, exc: RequestValidationError):
+        return JSONResponse(status_code=422,
+                            content={"request_id": request.state.request_id,
+                                     "error": {"code": "INVALID_INPUT", "message": "ورودی درخواست معتبر نیست.", "retryable": False}})
+
+    def parse_tag(raw: str) -> str:
+        try:
+            return normalize_tag(raw)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail="INVALID_PLAYER_TAG") from exc
+
+    @app.exception_handler(HTTPException)
+    async def http_failure(request: Request, exc: HTTPException):
+        return JSONResponse(status_code=exc.status_code,
+                            content={"request_id": request.state.request_id,
+                                     "error": {"code": str(exc.detail), "message": "درخواست نامعتبر است.", "retryable": False}})
+
+    @app.get("/api/v1/health/live")
+    def live():
+        return {"status": "ok"}
+
+    @app.get("/api/v1/health/ready")
+    def ready(request: Request):
+        if not request.app.state.supercell.configured:
+            raise SupercellError("CONFIG_MISSING", "اتصال به Supercell تنظیم نشده است.", 503)
+        return {"status": "ok"}
+
+    @app.get("/api/v1/catalog/cards")
+    async def cards(request: Request, lang: str = Query(default="fa-IR", pattern="^(fa-IR|en-US)$")):
+        raw = await request.app.state.supercell.cards()
+        return {"request_id": request.state.request_id,
+                "catalog_version": "live-unversioned",
+                "items": [card_summary(c) for c in raw["items"] if isinstance(c, dict)],
+                "source": source_metadata()}
+
+    @app.get("/api/v1/players/{tag}")
+    async def player(tag: str, request: Request):
+        raw = await request.app.state.supercell.player(parse_tag(tag))
+        return {"request_id": request.state.request_id, **normalize_profile(raw), "source": source_metadata()}
+
+    @app.get("/api/v1/players/{tag}/cards")
+    async def player_cards(tag: str, request: Request):
+        raw = await request.app.state.supercell.player(parse_tag(tag))
+        return {"request_id": request.state.request_id,
+                "items": [card_summary(c) for c in raw.get("cards", [])],
+                "support_items": [card_summary(c) for c in raw.get("supportCards", [])],
+                "source": source_metadata()}
+
+    @app.get("/api/v1/players/{tag}/battles")
+    async def battles(tag: str, request: Request, limit: int = Query(default=10, ge=1, le=25)):
+        raw = await request.app.state.supercell.battles(parse_tag(tag))
+        items = [normalize_battle(r) for r in raw[:limit] if isinstance(r, dict)]
+        return {"request_id": request.state.request_id, "items": items,
+                "coverage": {"returned_count": len(items), "full_history": False,
+                             "note": "Only entries currently available from the official API."},
+                "source": source_metadata()}
+
+    @app.post("/api/v1/decks/validate")
+    async def validate(payload: DeckInput, request: Request):
+        if payload.mode != "standard":
+            raise HTTPException(status_code=422, detail="UNSUPPORTED_MODE")
+        errors = validate_deck_ids(payload.card_ids)
+        if errors:
+            return {"request_id": request.state.request_id, "valid": False,
+                    "errors": errors, "metrics": None}
+        catalog_raw = await request.app.state.supercell.cards()
+        catalog = {c["id"]: c for c in catalog_raw["items"] if isinstance(c, dict) and "id" in c}
+        metrics = deck_metrics(payload.card_ids, catalog)
+        return {"request_id": request.state.request_id,
+                "valid": not metrics["unknown_card_ids"],
+                "errors": [{"code": "UNKNOWN_CARD_OR_COST", "message": "داده کارت کامل نیست."}]
+                           if metrics["unknown_card_ids"] else [],
+                "metrics": metrics}
+
+    @app.post("/api/v1/analyses")
+    async def analyses(payload: AnalysisInput, request: Request):
+        # Limited arithmetic-only milestone. All tactical rules deferred pending expert review.
+        if payload.deck.mode != "standard" or validate_deck_ids(payload.deck.card_ids):
+            raise HTTPException(status_code=422, detail="INVALID_DECK")
+        catalog_raw = await request.app.state.supercell.cards()
+        catalog = {c["id"]: c for c in catalog_raw["items"] if isinstance(c, dict) and "id" in c}
+        metrics = deck_metrics(payload.deck.card_ids, catalog)
+        return {"request_id": request.state.request_id,
+                "engine_version": "arithmetic-only-0.1", "ruleset_version": "draft-unreviewed",
+                "facts": {**metrics, "deck_card_ids": payload.deck.card_ids},
+                "findings": [], "recommendations": [],
+                "source": {"profile_fetched_at": None, "stale": False},
+                "disclaimer": "فقط داده‌های قابل اندازه‌گیری ارائه می‌شود؛ پیشنهاد تاکتیکی هنوز تأیید نشده است."}
+
+    return app
+
+
+app = create_app()
