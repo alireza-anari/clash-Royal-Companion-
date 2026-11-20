@@ -2,11 +2,15 @@
 from __future__ import annotations
 
 import os
+import time
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Callable
 from urllib.parse import quote
 
 import httpx
+
+from .traffic import bounded_int
+from .upstream_cache import BudgetExceeded, UpstreamCache
 
 BASE_URL = "https://api.clashroyale.com/v1"
 
@@ -20,15 +24,33 @@ class SupercellError(Exception):
 
 
 class SupercellClient:
-    def __init__(self, token: str | None = None, transport: httpx.AsyncBaseTransport | None = None):
+    def __init__(
+        self,
+        token: str | None = None,
+        transport: httpx.AsyncBaseTransport | None = None,
+        *,
+        clock: Callable[[], float] = time.monotonic,
+        cache_ttls: dict[str, int] | None = None,
+        budget: int | None = None,
+    ):
         self._token = token if token is not None else os.environ.get("SUPERCELL_API_KEY", "")
         self._transport = transport
+        self._cache_ttls = cache_ttls if cache_ttls is not None else {
+            "cards": bounded_int("CRC_CACHE_CARDS_TTL", 900, 0, 3600),
+            "player": bounded_int("CRC_CACHE_PLAYER_TTL", 30, 0, 180),
+            "battles": bounded_int("CRC_CACHE_BATTLES_TTL", 15, 0, 60),
+        }
+        self._cache = UpstreamCache(
+            budget=budget if budget is not None else bounded_int("CRC_UPSTREAM_RPM", 90, 1, 600),
+            max_entries=bounded_int("CRC_CACHE_MAX_ENTRIES", 256, 1, 1024),
+            clock=clock,
+        )
 
     @property
     def configured(self) -> bool:
         return bool(self._token and self._token != "replace-with-your-secret-key")
 
-    async def get(self, path: str) -> dict[str, Any] | list[dict[str, Any]]:
+    async def _get_uncached(self, path: str) -> dict[str, Any] | list[dict[str, Any]]:
         if not self.configured:
             raise SupercellError("CONFIG_MISSING", "کلید Supercell روی Backend تنظیم نشده است.", 503)
         # A fixed base URL and adapter-generated paths prevent SSRF and arbitrary upstream URLs.
@@ -64,20 +86,46 @@ class SupercellClient:
             raise SupercellError("UPSTREAM_BAD_RESPONSE", "فرمت پاسخ قابل پشتیبانی نیست.", 502)
         return payload
 
+    async def _record(self, kind: str, path: str) -> tuple[Any, dict[str, Any]]:
+        async def validated_loader() -> Any:
+            payload = await self._get_uncached(path)
+            if kind == "cards" and (not isinstance(payload, dict) or not isinstance(payload.get("items"), list)):
+                raise SupercellError("UPSTREAM_BAD_RESPONSE", "فهرست کارت‌ها نامعتبر است.", 502)
+            if kind == "player" and (not isinstance(payload, dict) or not isinstance(payload.get("tag"), str)):
+                raise SupercellError("UPSTREAM_BAD_RESPONSE", "اطلاعات بازیکن نامعتبر است.", 502)
+            if kind == "battles" and not isinstance(payload, list):
+                raise SupercellError("UPSTREAM_BAD_RESPONSE", "تاریخچه بازی نامعتبر است.", 502)
+            return payload
+
+        try:
+            data, fetched_at, cached = await self._cache.run(
+                kind + ":" + path, self._cache_ttls.get(kind, 0), validated_loader
+            )
+        except BudgetExceeded as exc:
+            raise SupercellError(
+                "LOCAL_UPSTREAM_BUDGET", "سقف محافظه‌کارانه درخواست‌های سرور پر شده است.", 429, True
+            ) from exc
+        return data, {
+            "provider": "supercell",
+            "fetched_at": fetched_at,
+            "stale": False,
+            "cached": cached,
+        }
+
+    async def cards_record(self) -> tuple[dict[str, Any], dict[str, Any]]:
+        return await self._record("cards", "/cards")
+
+    async def player_record(self, tag: str) -> tuple[dict[str, Any], dict[str, Any]]:
+        return await self._record("player", f"/players/{quote(tag, safe='')}")
+
+    async def battles_record(self, tag: str) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+        return await self._record("battles", f"/players/{quote(tag, safe='')}/battlelog")
+
     async def cards(self) -> dict[str, Any]:
-        payload = await self.get("/cards")
-        if not isinstance(payload, dict) or not isinstance(payload.get("items"), list):
-            raise SupercellError("UPSTREAM_BAD_RESPONSE", "فهرست کارت‌ها نامعتبر است.", 502)
-        return payload
+        return (await self.cards_record())[0]
 
     async def player(self, tag: str) -> dict[str, Any]:
-        payload = await self.get(f"/players/{quote(tag, safe='')}")
-        if not isinstance(payload, dict) or not isinstance(payload.get("tag"), str):
-            raise SupercellError("UPSTREAM_BAD_RESPONSE", "اطلاعات بازیکن نامعتبر است.", 502)
-        return payload
+        return (await self.player_record(tag))[0]
 
     async def battles(self, tag: str) -> list[dict[str, Any]]:
-        payload = await self.get(f"/players/{quote(tag, safe='')}/battlelog")
-        if not isinstance(payload, list):
-            raise SupercellError("UPSTREAM_BAD_RESPONSE", "تاریخچه بازی نامعتبر است.", 502)
-        return payload
+        return (await self.battles_record(tag))[0]
