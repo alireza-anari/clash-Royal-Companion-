@@ -23,6 +23,7 @@ async function serve(request){
   if(request.method==="GET"&&path==="/")return new Response(HTML,{status:200,headers:{"Content-Type":"text/html; charset=utf-8","Cache-Control":"no-store","X-Robots-Tag":"noindex, nofollow","X-Content-Type-Options":"nosniff","Referrer-Policy":"no-referrer","X-Frame-Options":"DENY","Content-Security-Policy":"default-src 'none'; script-src 'self'; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; img-src 'self' https://api-assets.clashroyale.com; worker-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"}});
   if(request.method==="GET"&&path==="/styles.css")return respond(CSS,"text/css; charset=utf-8");
   if(request.method==="GET"&&path==="/app.js")return respond(APP,"application/javascript; charset=utf-8");
+  if(request.method==="GET"&&path==="/battle-insights.js")return respond(BATTLE_INSIGHTS,"application/javascript; charset=utf-8");
   if(request.method==="GET"&&path==="/catalog.json")return respond(CATALOG_JSON,"application/json; charset=utf-8");
   if(request.method==="GET"&&path==="/guides.json")return respond(GUIDES_JSON,"application/json; charset=utf-8");
   if(request.method==="GET"&&path==="/manifest.webmanifest")return respond(MANIFEST,"application/manifest+json; charset=utf-8");
