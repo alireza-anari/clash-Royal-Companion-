@@ -36,6 +36,7 @@ def card_summary(card: dict[str, Any]) -> dict[str, Any]:
         "evolution_level": card.get("evolutionLevel"),
         "max_evolution_level": card.get("maxEvolutionLevel"),
         "star_level": card.get("starLevel"),
+        "count": card.get("count"),
         "icon_url": (card.get("iconUrls") or {}).get("medium"),
     }
 
@@ -47,6 +48,10 @@ def deck_from_cards(cards: Any, source: str) -> dict[str, Any] | None:
 
 
 def normalize_profile(raw: dict[str, Any]) -> dict[str, Any]:
+    current = deck_from_cards(raw.get("currentDeck"), "profile_current")
+    if current is not None:
+        support = deck_from_cards(raw.get("currentDeckSupportCards"), "profile_support")
+        current["support_card_ids"] = support["card_ids"] if support else []
     return {
         "profile": {
             "tag": raw["tag"],
@@ -57,7 +62,7 @@ def normalize_profile(raw: dict[str, Any]) -> dict[str, Any]:
             "arena": raw.get("arena"),
             "ownership_status": "unverified_public_tag",
         },
-        "current_deck": deck_from_cards(raw.get("currentDeck"), "profile_current"),
+        "current_deck": current,
     }
 
 
@@ -66,6 +71,18 @@ def classify_battle(raw: dict[str, Any]) -> tuple[str, str]:
     if raw.get("deckSelection") == "eventDeck":
         return "event", "event_deck_selection"
     return "unknown", "insufficient_mode_evidence"
+
+
+def normalize_battle_time(value: Any) -> str | None:
+    """Convert Supercell compact UTC timestamps to RFC 3339; never guess missing values."""
+    if not isinstance(value, str):
+        return None
+    for fmt in ("%Y%m%dT%H%M%S.%fZ", "%Y%m%dT%H%M%SZ"):
+        try:
+            return datetime.strptime(value, fmt).replace(tzinfo=timezone.utc).isoformat().replace("+00:00", "Z")
+        except ValueError:
+            pass
+    return None
 
 
 def normalize_battle(raw: dict[str, Any]) -> dict[str, Any]:
@@ -81,12 +98,16 @@ def normalize_battle(raw: dict[str, Any]) -> dict[str, Any]:
                 "tag": p.get("tag"),
                 "crowns": p.get("crowns"),
                 "elixir_leaked": p.get("elixirLeaked"),
-                "tower_hit_points": p.get("princessTowersHitPoints"),
+                "trophy_change": p.get("trophyChange"),
+                "tower_hp": {
+                    "king": p.get("kingTowerHitPoints"),
+                    "princess": p.get("princessTowersHitPoints"),
+                },
                 "deck": deck_from_cards(p.get("cards"), f"battle_{side}"),
                 "support_cards": deck_from_cards(p.get("supportCards"), f"battle_{side}_support"),
             })
     return {
-        "battle_time": raw.get("battleTime"),
+        "battle_time": normalize_battle_time(raw.get("battleTime")),
         "type": raw.get("type"),
         "game_mode": raw.get("gameMode"),
         "deck_selection": raw.get("deckSelection"),
