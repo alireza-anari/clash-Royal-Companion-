@@ -105,3 +105,11 @@ test('manifest, icon and static-only service worker are served',async()=>{
  assert.doesNotMatch(body,/\/api\/v1\/players/);
  assert.doesNotMatch(body,/\/api\/v1\/analyses/);
 });
+
+test('Battle Intelligence module is independently served and linked by UI',async()=>{
+ const page=await (await request('/')).text();
+ assert.match(page,/src="\/battle-insights\.js"/);
+ const res=await request('/battle-insights.js');
+ assert.equal(res.status,200);
+ assert.match(await res.text(),/CRCBattleIntelligence/);
+});
