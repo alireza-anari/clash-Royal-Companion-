@@ -15,7 +15,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from .domain import (card_summary, deck_metrics, normalize_battle, normalize_profile,
-                     normalize_tag, source_metadata, validate_deck_ids)
+                     normalize_tag, validate_deck_ids)
 from .supercell import SupercellClient, SupercellError
 from .traffic import AdmissionError, configured_admission
 
@@ -119,11 +119,11 @@ def create_app(supercell: SupercellClient | None = None) -> FastAPI:
 
     @app.get("/api/v1/catalog/cards")
     async def cards(request: Request, lang: str = Query(default="fa-IR", pattern="^(fa-IR|en-US)$")):
-        raw = await request.app.state.supercell.cards()
+        raw, provenance = await request.app.state.supercell.cards_record()
         return {"request_id": request.state.request_id,
                 "catalog_version": "live-unversioned",
                 "items": [card_summary(c) for c in raw["items"] if isinstance(c, dict)],
-                "source": source_metadata()}
+                "source": provenance}
 
     @app.get("/api/v1/players/{tag}/snapshot")
     async def player_snapshot(tag: str, request: Request, limit: int = Query(default=25, ge=1, le=25)):
@@ -133,12 +133,13 @@ def create_app(supercell: SupercellClient | None = None) -> FastAPI:
         A failed Battle Log must not discard a valid profile.
         """
         normalized_tag = parse_tag(tag)
-        raw = await request.app.state.supercell.player(normalized_tag)
+        raw, provenance = await request.app.state.supercell.player_record(normalized_tag)
         result = normalize_profile(raw)
         partial = False
         battle_error_code = None
+        battle_provenance = None
         try:
-            battle_raw = await request.app.state.supercell.battles(normalized_tag)
+            battle_raw, battle_provenance = await request.app.state.supercell.battles_record(normalized_tag)
             battle_items = [normalize_battle(item) for item in battle_raw[:limit] if isinstance(item, dict)]
         except SupercellError as exc:
             partial = True
@@ -153,30 +154,31 @@ def create_app(supercell: SupercellClient | None = None) -> FastAPI:
             "coverage": {"returned_count": len(battle_items), "full_history": False},
             "partial": partial,
             "battles_error_code": battle_error_code,
-            "source": source_metadata(),
+            "source": provenance,
+            "battle_source": battle_provenance,
         }
 
     @app.get("/api/v1/players/{tag}")
     async def player(tag: str, request: Request):
-        raw = await request.app.state.supercell.player(parse_tag(tag))
-        return {"request_id": request.state.request_id, **normalize_profile(raw), "source": source_metadata()}
+        raw, provenance = await request.app.state.supercell.player_record(parse_tag(tag))
+        return {"request_id": request.state.request_id, **normalize_profile(raw), "source": provenance}
 
     @app.get("/api/v1/players/{tag}/cards")
     async def player_cards(tag: str, request: Request):
-        raw = await request.app.state.supercell.player(parse_tag(tag))
+        raw, provenance = await request.app.state.supercell.player_record(parse_tag(tag))
         return {"request_id": request.state.request_id,
                 "items": [card_summary(c) for c in raw.get("cards", [])],
                 "support_items": [card_summary(c) for c in raw.get("supportCards", [])],
-                "source": source_metadata()}
+                "source": provenance}
 
     @app.get("/api/v1/players/{tag}/battles")
     async def battles(tag: str, request: Request, limit: int = Query(default=10, ge=1, le=25)):
-        raw = await request.app.state.supercell.battles(parse_tag(tag))
+        raw, provenance = await request.app.state.supercell.battles_record(parse_tag(tag))
         items = [normalize_battle(r) for r in raw[:limit] if isinstance(r, dict)]
         return {"request_id": request.state.request_id, "items": items,
                 "coverage": {"returned_count": len(items), "full_history": False,
                              "note": "Only entries currently available from the official API."},
-                "source": source_metadata()}
+                "source": provenance}
 
     @app.post("/api/v1/decks/validate")
     async def validate(payload: DeckInput, request: Request):
