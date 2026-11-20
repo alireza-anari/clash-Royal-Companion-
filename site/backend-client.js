@@ -119,14 +119,22 @@
     const cap=await capabilities(fetchFn);
     if(!cap.live_lookup_enabled)throw new BackendError('NOT_ENABLED','اتصال زنده هنوز در این محیط فعال نشده است.',503);
     const base=route(valid);
-    const [profile,cards,battles]=await Promise.all([
+    const [p,c,b]=await Promise.allSettled([
       json(fetchFn,base),json(fetchFn,base+'/cards'),json(fetchFn,base+'/battles?limit=25')
     ]);
-    const normalized=normalizedToProfile(profile,cards);
+    if(p.status!=='fulfilled')throw p.reason;
+    if(c.status!=='fulfilled')throw c.reason;
+    const profile=p.value;
+    const normalized=normalizedToProfile(profile,c.value);
     if(normalizeTag(normalized.tag)!==valid)
       throw new BackendError('TAG_MISMATCH','پروفایل دریافتی با Tag درخواستی مطابقت ندارد.');
+    let battles=[],partial=b.status==='rejected';
+    if(b.status==='fulfilled'){
+      try{battles=normalizedToBattles(b.value);}
+      catch(e){partial=true;}
+    }
     return {
-      tag:valid,profile:normalized,battles:normalizedToBattles(battles),
+      tag:valid,profile:normalized,battles,partial,
       source:'live-supercell-backend',fetched_at:profile.source&&profile.source.fetched_at||null,
       full_history:false,ownership_verified:false
     };
