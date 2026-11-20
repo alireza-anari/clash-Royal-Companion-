@@ -1,6 +1,6 @@
 import pytest
 
-from crc_api.domain import classify_battle, deck_metrics, normalize_tag, validate_deck_ids
+from crc_api.domain import classify_battle, deck_metrics, normalize_battle_time, normalize_tag, validate_deck_ids
 
 
 @pytest.mark.parametrize("raw,expected", [
@@ -40,3 +40,13 @@ def test_structural_deck_validation():
     assert validate_deck_ids([1, 2, 3, 4, 5, 6, 7, 8]) == []
     errors = validate_deck_ids([1, 1, -2])
     assert {e["code"] for e in errors} == {"CARD_COUNT", "DUPLICATE_CARD", "INVALID_CARD_ID"}
+
+
+@pytest.mark.parametrize("raw,expected", [
+    ("20261120T120719.000Z", "2026-11-20T12:07:19Z"),
+    ("20261120T120719Z", "2026-11-20T12:07:19Z"),
+    ("broken", None),
+    (None, None),
+])
+def test_battle_timestamp_contract(raw, expected):
+    assert normalize_battle_time(raw) == expected
