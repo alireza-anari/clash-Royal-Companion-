@@ -10,6 +10,7 @@ const expected=[
   'var CSS='+JSON.stringify(read('site/styles.css'))+';',
   'var APP='+JSON.stringify(read('site/app.js'))+';',
   'var CATALOG_JSON='+JSON.stringify(read('site/catalog.json'))+';',
+  'var GUIDES_JSON='+JSON.stringify(read('site/guides.json'))+';',
   runtime
 ].join('\n');
 const file=path.join(root,'deploy/cloudflare/mvp-worker.js');
