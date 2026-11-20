@@ -11,6 +11,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
@@ -18,6 +19,7 @@ from .domain import (card_summary, deck_metrics, normalize_battle, normalize_pro
                      normalize_tag, validate_deck_ids)
 from .supercell import SupercellClient, SupercellError
 from .traffic import AdmissionError, configured_admission
+from .runtime import SAFE_HOSTS, checked_local_cors_origins, checked_runtime_mode
 
 load_dotenv()
 
@@ -36,14 +38,16 @@ class AnalysisInput(BaseModel):
 
 
 def create_app(supercell: SupercellClient | None = None) -> FastAPI:
+    checked_runtime_mode()  # Refuse remote/production modes until reviewed security exists.
     app = FastAPI(title="Clash Royale Companion API", version="0.1.0")
     app.state.supercell = supercell or SupercellClient()
     app.state.admission = configured_admission()
-    origins = [x.strip() for x in os.environ.get(
-        "CRC_CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000"
-    ).split(",") if x.strip()]
-    # No wildcard origin; this does not replace authentication/rate limits for public access.
+    origins = checked_local_cors_origins()
+    # Origin validation is not authentication. Remote clients are rejected by admission.
     app.add_middleware(CORSMiddleware, allow_origins=origins, allow_methods=["GET", "POST"], allow_headers=["Content-Type"])
+    # HTTP Host validation is defense-in-depth against Host header/DNS rebinding.
+    # Keep "testserver" only to allow Starlette's synthetic TestClient.
+    app.add_middleware(TrustedHostMiddleware, allowed_hosts=list(SAFE_HOSTS))
 
     @app.middleware("http")
     async def request_id(request: Request, call_next):
