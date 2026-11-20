@@ -22,12 +22,13 @@ def fake_upstream(request: httpx.Request) -> httpx.Response:
             "cards": [{"id": 1, "name": "Example main", "level": 6}],
             "supportCards": [{"id": 159000000, "name": "Tower Princess", "level": 8}],
             "currentDeck": [{"id": i, "name": f"Card {i}"} for i in range(1, 9)],
+            "currentDeckSupportCards": [{"id": 159000000, "name": "Tower Princess"}],
         })
     if path == "/v1/players/#TEST123/battlelog":
         return httpx.Response(200, json=[{
             "type": "trail", "deckSelection": "eventDeck", "battleTime": "20261120T120719.000Z",
             "team": [{"tag": "#TEST123", "crowns": 0, "elixirLeaked": 25.8,
-                      "princessTowersHitPoints": None,
+                      "kingTowerHitPoints": 0, "princessTowersHitPoints": None,
                       "cards": [{"id": i} for i in range(1, 9)]}],
             "opponent": [{"tag": "#OPP123", "crowns": 3, "elixirLeaked": 1.28,
                           "cards": [{"id": i} for i in range(1, 9)]}],
@@ -51,6 +52,7 @@ def test_end_to_end_read_only_paths():
         assert p.status_code == 200
         assert p.json()["profile"]["ownership_status"] == "unverified_public_tag"
         assert p.json()["current_deck"]["source"] == "profile_current"
+        assert p.json()["current_deck"]["support_card_ids"] == [159000000]
         pc = c.get("/api/v1/players/%23TEST123/cards").json()
         assert len(pc["items"]) == 1 and len(pc["support_items"]) == 1
         b = c.get("/api/v1/players/%23TEST123/battles")
@@ -58,7 +60,9 @@ def test_end_to_end_read_only_paths():
         battle = b.json()["items"][0]
         assert battle["classification"] == "event"
         assert len(battle["participants"]) == 2
-        assert battle["participants"][0]["tower_hit_points"] is None
+        assert battle["participants"][0]["tower_hp"]["princess"] is None
+        assert battle["participants"][0]["tower_hp"]["king"] == 0
+        assert battle["battle_time"] == "2026-11-20T12:07:19Z"
         assert b.json()["coverage"]["full_history"] is False
 
 
