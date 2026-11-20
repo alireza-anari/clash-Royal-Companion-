@@ -188,7 +188,7 @@ def create_app(supercell: SupercellClient | None = None) -> FastAPI:
         if errors:
             return {"request_id": request.state.request_id, "valid": False,
                     "errors": errors, "metrics": None}
-        catalog_raw = await request.app.state.supercell.cards()
+        catalog_raw, catalog_source = await request.app.state.supercell.cards_record()
         catalog = {c["id"]: c for c in catalog_raw["items"] if isinstance(c, dict) and "id" in c}
         metrics = deck_metrics(payload.card_ids, catalog)
         return {"request_id": request.state.request_id,
@@ -202,14 +202,14 @@ def create_app(supercell: SupercellClient | None = None) -> FastAPI:
         # Limited arithmetic-only milestone. All tactical rules deferred pending expert review.
         if payload.deck.mode != "standard" or validate_deck_ids(payload.deck.card_ids):
             raise HTTPException(status_code=422, detail="INVALID_DECK")
-        catalog_raw = await request.app.state.supercell.cards()
+        catalog_raw, catalog_source = await request.app.state.supercell.cards_record()
         catalog = {c["id"]: c for c in catalog_raw["items"] if isinstance(c, dict) and "id" in c}
         metrics = deck_metrics(payload.deck.card_ids, catalog)
         return {"request_id": request.state.request_id,
                 "engine_version": "arithmetic-only-0.1", "ruleset_version": "draft-unreviewed",
                 "facts": {**metrics, "deck_card_ids": payload.deck.card_ids},
                 "findings": [], "recommendations": [],
-                "source": {"profile_fetched_at": None, "stale": False},
+                "source": {"profile_fetched_at": None, "catalog": catalog_source, "stale": False},
                 "disclaimer": "فقط داده‌های قابل اندازه‌گیری ارائه می‌شود؛ پیشنهاد تاکتیکی هنوز تأیید نشده است."}
 
     return app
