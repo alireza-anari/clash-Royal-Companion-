@@ -7,7 +7,7 @@ function responseJSON(data,status) {return new Response(JSON.stringify(data),{st
 async function handle(request){
   var url=new URL(request.url);
   if(request.method==='GET'&&url.pathname==='/'){
-    return new Response(HTML,{headers:{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','Content-Security-Policy':"default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'"}});
+    return new Response(HTML,{headers:{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','X-Robots-Tag':'noindex, nofollow','Content-Security-Policy':"default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'"}});
   }
   if(request.method==='GET'&&url.pathname==='/health')return responseJSON({status:'ok',service:'crc-deck-lab-preview',version:'0.1.0',mode:'sample-only',supercell_live:false});
   if(request.method==='GET'&&url.pathname==='/api/cards')return responseJSON({mode:'sample-only',cards:catalog,sample_decks:sampleDecks});
