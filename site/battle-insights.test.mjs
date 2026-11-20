@@ -96,3 +96,9 @@ test('large log never processes more than 200 records',()=>{
  assert.equal(res.total_entries,200);
  assert.equal(res.counts.loss,200);
 });
+
+test('accepts API normalized RFC3339 time without inventing timezone',()=>{
+ const t=BI.date('2026-11-20T12:07:19Z');
+ assert.equal(t,'2026-11-20T12:07:19.000Z');
+ assert.equal(BI.date('2026-02-31T12:07:19Z'),null);
+});
