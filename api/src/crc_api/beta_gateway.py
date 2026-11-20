@@ -1,0 +1,244 @@
+"""Invite-only beta FastAPI entrypoint: NOT deployed or enabled by local app.
+
+Design:
+- Explicit opt-in for the separate factory; existing crc_api.main remains local-only.
+- Signed Cloudflare Access JWT -> PostgreSQL quota -> Supercell in that order.
+- Same-origin frontend and privately network-isolated backend required at deployment.
+- Never trust forwarded identity headers, Host for authentication, or raw player tags.
+"""
+from __future__ import annotations
+
+from contextlib import asynccontextmanager
+from dataclasses import dataclass
+import os
+import re
+from urllib.parse import urlsplit
+from uuid import uuid4
+from typing import Any, Callable
+
+from fastapi import FastAPI, HTTPException, Query, Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
+from starlette.middleware.trustedhost import TrustedHostMiddleware
+
+from .domain import card_summary, normalize_battle, normalize_profile, normalize_tag
+from .security.cloudflare_access import AccessDenied, AccessVerifier
+from .security.private_beta import PrivateBetaAdmission
+from .security.shared_quota import PostgresSharedQuota, QuotaDenied
+from .supercell import SupercellClient, SupercellError
+
+
+HOST = re.compile(r"^[a-z0-9](?:[a-z0-9.-]{0,251}[a-z0-9])?$")
+SECRET_MARKER = "private-beta-explicit-owner-approval"
+
+
+class UnsafeBetaConfiguration(RuntimeError):
+    pass
+
+
+@dataclass(frozen=True)
+class BetaConfig:
+    hostname: str
+    team_domain: str
+    audience: str
+    allowed_subjects: frozenset[str]
+    quota_hmac_secret: bytes
+    database_dsn: str
+    enabled: bool = True
+
+    @classmethod
+    def from_environment(cls) -> "BetaConfig":
+        # This is a deployment switch, NOT an access credential. Fail closed.
+        if os.environ.get("CRC_BETA_RUNTIME_GATE", "") != SECRET_MARKER:
+            raise UnsafeBetaConfiguration("Private beta runtime has not been approved for activation.")
+        host = os.environ.get("CRC_BETA_HOST", "").strip().lower()
+        team = os.environ.get("CRC_BETA_TEAM_DOMAIN", "").strip().lower()
+        audience = os.environ.get("CRC_BETA_AUDIENCE", "").strip()
+        subjects = frozenset(s.strip() for s in
+                             os.environ.get("CRC_BETA_ALLOWED_SUBJECTS", "").split(",") if s.strip())
+        dsn = os.environ.get("CRC_BETA_POSTGRES_DSN", "")
+        secret = os.environ.get("CRC_BETA_QUOTA_HMAC_HEX", "")
+        try:
+            secret_bytes = bytes.fromhex(secret)
+        except ValueError as exc:
+            raise UnsafeBetaConfiguration("Invalid beta quota key configuration.") from exc
+        config = cls(host, team, audience, subjects, secret_bytes, dsn)
+        config.validate()
+        return config
+
+    def validate(self) -> None:
+        # Host is exact, not a wildcard. Test clients must supply an explicit
+        # test-only hostname in their injected BetaConfig.
+        if not self.enabled or not self.hostname or not HOST.fullmatch(self.hostname):
+            raise UnsafeBetaConfiguration("Private beta hostname is not configured.")
+        if (self.hostname.startswith(".") or ".." in self.hostname or
+                self.hostname in ("localhost", "127.0.0.1", "0.0.0.0", "testserver")):
+            raise UnsafeBetaConfiguration("Private beta hostname is not valid.")
+        if not self.team_domain or not self.audience or not self.allowed_subjects:
+            raise UnsafeBetaConfiguration("Cloudflare Access beta policy is incomplete.")
+        if len(self.quota_hmac_secret) < 32:
+            raise UnsafeBetaConfiguration("Private beta quota key is not configured.")
+        try:
+            parsed = urlsplit(self.database_dsn)
+            if parsed.scheme not in ("postgres", "postgresql") or not parsed.hostname:
+                raise ValueError("Invalid postgres DSN")
+            if parsed.username is None or parsed.password is None:
+                raise ValueError("Postgres credentials missing")
+        except (ValueError, TypeError) as exc:
+            raise UnsafeBetaConfiguration("Private beta database is not configured.") from exc
+
+
+def create_beta_app(
+    *,
+    config: BetaConfig | None = None,
+    verifier: AccessVerifier | None = None,
+    quota: PostgresSharedQuota | None = None,
+    supercell: SupercellClient | None = None,
+    pool_factory: Callable[[str], Any] | None = None,
+) -> FastAPI:
+    """Separate --factory ASGI target, never imported by local crc_api.main.
+
+    Dependency injections are for offline tests only. No server is provisioned,
+    configured or made remotely reachable by constructing this app.
+    """
+    settings = config if config is not None else BetaConfig.from_environment()
+    settings.validate()
+    api = supercell if supercell is not None else SupercellClient()
+    if not api.configured:
+        raise UnsafeBetaConfiguration("Private beta Supercell provider is not configured.")
+    access = verifier or AccessVerifier(settings.team_domain, settings.audience, settings.allowed_subjects)
+    budget = quota or PostgresSharedQuota(settings.quota_hmac_secret)
+
+    if pool_factory is None:
+        async def default_pool(dsn: str):
+            import asyncpg  # Optional beta-only dependency.
+            return await asyncpg.create_pool(
+                dsn=dsn, min_size=1, max_size=5, timeout=5,
+                command_timeout=5, server_settings={"application_name": "crc_private_beta"},
+            )
+        pool_factory = default_pool
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        try:
+            pool = await pool_factory(settings.database_dsn)
+        except Exception as exc:
+            raise UnsafeBetaConfiguration("Private beta quota database unavailable.") from exc
+        if pool is None:
+            raise UnsafeBetaConfiguration("Private beta quota database unavailable.")
+        app.state.pool = pool
+        try:
+            yield
+        finally:
+            await pool.close()
+
+    app = FastAPI(
+        title="Clash Royale Companion — private beta",
+        docs_url=None, redoc_url=None, openapi_url=None,
+        version="0.1.0-beta", lifespan=lifespan,
+    )
+    app.state.supercell = api
+    app.state.admission = PrivateBetaAdmission(access, budget)
+    app.add_middleware(TrustedHostMiddleware, allowed_hosts=[settings.hostname])
+
+    def error(status: int, code: str, rid: str, retry: int | None = None):
+        response = JSONResponse(
+            status_code=status,
+            content={"request_id": rid, "error": {
+                "code": code, "message": "درخواست قابل انجام نیست.", "retryable": status in (429, 503)}},
+        )
+        if retry is not None:
+            response.headers["Retry-After"] = str(retry)
+        return response
+
+    @app.middleware("http")
+    async def protected(request: Request, call_next):
+        rid = "req_" + uuid4().hex[:16]
+        request.state.request_id = rid
+        # Do not expose any unauthenticated route, even capabilities. No CORS
+        # middleware: browser app and protected gateway must share an origin.
+        assertion = request.headers.get("Cf-Access-Jwt-Assertion", "")
+        if not assertion:
+            response = error(401, "ACCESS_TOKEN_MISSING", rid)
+        else:
+            try:
+                pool = request.app.state.pool
+                async with pool.acquire() as connection:
+                    admission = await request.app.state.admission.admit(assertion, connection)
+                request.state.verified_subject = admission["subject"]
+                response = await call_next(request)
+            except AccessDenied as exc:
+                status = 503 if exc.code == "ACCESS_KEYS_UNAVAILABLE" else 403
+                response = error(status, exc.code, rid)
+            except QuotaDenied as exc:
+                response = error(429, exc.code, rid, exc.retry_after_seconds)
+            except Exception:
+                # Postgres unavailable, acquisition timeout or any unexpected
+                # admission failure: no upstream calls, no exception leakage.
+                response = error(503, "BETA_ADMISSION_UNAVAILABLE", rid)
+        response.headers["Cache-Control"] = "no-store"
+        response.headers["X-Request-ID"] = rid
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["Referrer-Policy"] = "no-referrer"
+        response.headers["X-Frame-Options"] = "DENY"
+        return response
+
+    @app.exception_handler(SupercellError)
+    async def supercell_error(request: Request, exc: SupercellError):
+        return JSONResponse(
+            status_code=exc.http_status,
+            content={"request_id": request.state.request_id,
+                     "error": {"code": exc.code, "message": exc.public_message, "retryable": exc.retryable}},
+        )
+
+    @app.exception_handler(RequestValidationError)
+    async def validation_error(request: Request, exc: RequestValidationError):
+        return error(422, "INVALID_INPUT", request.state.request_id)
+
+    @app.exception_handler(HTTPException)
+    async def invalid_tag(request: Request, exc: HTTPException):
+        return error(exc.status_code, str(exc.detail), request.state.request_id)
+
+    def parse_tag(value: str) -> str:
+        try:
+            return normalize_tag(value)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail="INVALID_PLAYER_TAG") from exc
+
+    @app.get("/api/v1/capabilities")
+    def capabilities():
+        return {"schema_version": "1.0", "live_lookup_enabled": True,
+                "provider": "supercell", "player_tag_verifies_ownership": False,
+                "battle_log_full_history": False, "safe_public_exposure": False}
+
+    @app.get("/api/v1/catalog/cards")
+    async def cards(request: Request):
+        data, provenance = await request.app.state.supercell.cards_record()
+        return {"request_id": request.state.request_id,
+                "catalog_version": "live-unversioned",
+                "items": [card_summary(c) for c in data["items"] if isinstance(c, dict)],
+                "source": provenance}
+
+    @app.get("/api/v1/players/{tag}/snapshot")
+    async def snapshot(tag: str, request: Request, limit: int = Query(default=25, ge=1, le=25)):
+        normalized = parse_tag(tag)
+        raw, source = await request.app.state.supercell.player_record(normalized)
+        profile = normalize_profile(raw)
+        partial = False
+        battle_code = None
+        battle_source = None
+        try:
+            battle_raw, battle_source = await request.app.state.supercell.battles_record(normalized)
+            battles = [normalize_battle(row) for row in battle_raw[:limit] if isinstance(row, dict)]
+        except SupercellError as exc:
+            partial, battle_code, battles = True, exc.code, []
+        return {
+            "request_id": request.state.request_id, **profile,
+            "cards": [card_summary(c) for c in raw.get("cards", []) if isinstance(c, dict)],
+            "support_items": [card_summary(c) for c in raw.get("supportCards", []) if isinstance(c, dict)],
+            "battles": battles, "coverage": {"returned_count": len(battles), "full_history": False},
+            "partial": partial, "battles_error_code": battle_code,
+            "source": source, "battle_source": battle_source,
+        }
+
+    return app
