@@ -163,3 +163,10 @@ test('unconfigured static asset binding fails closed',async()=>{
  const res=await routeRequest(req('/'),env);
  assert.equal(res.status,503);
 });
+
+test('even static beta assets require the Access assertion header',async()=>{
+ const {env,staticCalls}=sandbox();
+ const response=await routeRequest(req('/',{}),env);
+ assert.equal(response.status,401);
+ assert.equal(staticCalls.length,0);
+});
