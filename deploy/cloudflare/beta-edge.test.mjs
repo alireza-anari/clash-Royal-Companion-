@@ -117,6 +117,7 @@ test('backend errors retain status, never forward Set-Cookie or redirects',async
  })}});
  const res=await routeRequest(req('/api/v1/capabilities'),env);
  assert.equal(res.status,429);
+ assert.equal(res.headers.get('Retry-After'),'30');
  assert.equal(res.headers.get('Set-Cookie'),null);
  assert.equal((await res.json()).error.code,'MEMBER_QUOTA_EXCEEDED');
 });
@@ -169,4 +170,12 @@ test('even static beta assets require the Access assertion header',async()=>{
  const response=await routeRequest(req('/',{}),env);
  assert.equal(response.status,401);
  assert.equal(staticCalls.length,0);
+});
+
+test('backend redirects cannot become browser navigation, even with JSON',async()=>{
+ const {env}=sandbox({PRIVATE_API:{fetch:async()=>json({message:'redirect'},302,{Location:'https://evil.example'})}});
+ const res=await routeRequest(req('/api/v1/capabilities'),env);
+ assert.equal(res.status,502);
+ assert.equal(res.headers.get('Location'),null);
+ assert.equal((await res.json()).error.code,'PRIVATE_ORIGIN_REDIRECT_DENIED');
 });
