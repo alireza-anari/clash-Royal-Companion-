@@ -103,7 +103,8 @@
 <h2>اتصال با Player Tag</h2><p>API رسمی با Tag اطلاعات عمومی بازیکن را می‌دهد، اما خودش اثبات مالکیت حساب نیست.</p>
 <div class="form-row"><input id="playerTag" type="text" class="text-field" placeholder="#20VYUYRCVR" maxlength="17" aria-label="Player Tag" style="flex:1;direction:ltr;text-align:left"><button id="checkTag" type="button" class="btn ghost">بررسی قالب Tag</button></div>
 <p id="tagStatus" class="small"></p>
-<div class="message">دریافت خودکار فعلاً غیرفعال است. Backend پایتون باید از IP مجاز و دارای کنترل امنیتی به Supercell متصل شود. هیچ API Key را اینجا وارد نکن.</div>
+<div class="inline-actions"><button id="loadLivePlayer" type="button" class="btn teal" disabled>دریافت مستقیم از Supercell (غیرفعال)</button><span id="liveBackendStatus" class="small" role="status">در حال بررسی قابلیت اتصال...</span></div>
+<div class="message">این دکمه فقط بعد از فعال‌شدن Backend امن با IP مجاز و کنترل درخواست‌ها کار خواهد کرد. API Key را هرگز در این صفحه وارد نکن. تا آن زمان، واردکردن JSON در مرورگر فعال است.</div>
 </div>
 <div class="panel import-box">
 <h2>واردکردن امن JSON پروفایل</h2><p>فایل پاسخ <span dir="ltr">GET /v1/players/{tag}</span> را انتخاب کن. داده در حافظه همین صفحه پردازش می‌شود و به سرور فرستاده نمی‌شود.</p>
@@ -149,5 +150,6 @@
 <div class="modal-backdrop" id="cardModal"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalName"><button type="button" class="close" id="closeModal" aria-label="بستن">✕</button><div class="modal-visual" id="modalVisual"></div><h2 id="modalName"></h2><p id="modalDescription"></p><div id="modalDetails" class="stat-inline"></div><div id="modalCoaching" class="modal-coaching"></div><div class="inline-actions"><button class="btn primary" id="modalToDeck">انتخاب در دک</button></div></div></div>
 <script src="/battle-insights.js" defer></script>
 <script src="/owned-options.js" defer></script>
+<script src="/backend-client.js" defer></script>
 <script src="/app.js" defer></script>
 </body></html>
