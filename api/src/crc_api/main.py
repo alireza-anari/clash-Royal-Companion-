@@ -107,6 +107,37 @@ def create_app(supercell: SupercellClient | None = None) -> FastAPI:
                 "items": [card_summary(c) for c in raw["items"] if isinstance(c, dict)],
                 "source": source_metadata()}
 
+    @app.get("/api/v1/players/{tag}/snapshot")
+    async def player_snapshot(tag: str, request: Request, limit: int = Query(default=25, ge=1, le=25)):
+        """One backend call, one official profile request plus (at most) one battle-log request.
+
+        The response is public account data only, not verified ownership.
+        A failed Battle Log must not discard a valid profile.
+        """
+        normalized_tag = parse_tag(tag)
+        raw = await request.app.state.supercell.player(normalized_tag)
+        result = normalize_profile(raw)
+        partial = False
+        battle_error_code = None
+        try:
+            battle_raw = await request.app.state.supercell.battles(normalized_tag)
+            battle_items = [normalize_battle(item) for item in battle_raw[:limit] if isinstance(item, dict)]
+        except SupercellError as exc:
+            partial = True
+            battle_error_code = exc.code
+            battle_items = []
+        return {
+            "request_id": request.state.request_id,
+            **result,
+            "cards": [card_summary(c) for c in raw.get("cards", []) if isinstance(c, dict)],
+            "support_items": [card_summary(c) for c in raw.get("supportCards", []) if isinstance(c, dict)],
+            "battles": battle_items,
+            "coverage": {"returned_count": len(battle_items), "full_history": False},
+            "partial": partial,
+            "battles_error_code": battle_error_code,
+            "source": source_metadata(),
+        }
+
     @app.get("/api/v1/players/{tag}")
     async def player(tag: str, request: Request):
         raw = await request.app.state.supercell.player(parse_tag(tag))
