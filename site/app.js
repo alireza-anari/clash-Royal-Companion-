@@ -40,7 +40,7 @@ function renderDeck(){
 var wrap=$("deckSlots");if(!wrap)return;
 wrap.innerHTML=deck.map(function(id,i){return slotHtml(getCard(id),i);}).join("");
 wrap.querySelectorAll("[data-slot]").forEach(function(b){b.addEventListener("click",function(){selectSlot(Number(b.dataset.slot));});});
-$("deckSource").textContent=deckSource==="profile-import"?"دک واردشده از JSON":deckSource==="profile-edited"?"دک ویرایش‌شده پروفایل":deckSource==="manual"?"انتخاب دستی":"داده نمونه";
+$("deckSource").textContent=deckSource==="profile-import"?"دک واردشده از JSON":deckSource==="profile-edited"?"دک ویرایش‌شده پروفایل":deckSource==="battle-event-import"?"دک رویدادی (فایل Battle Log)":deckSource==="battle-import"?"دک نبرد (فایل Battle Log)":deckSource==="manual"?"انتخاب دستی":"داده نمونه";
 var errors=deckErrors();$("deckAlert").textContent=errors.length?errors.join(" "):"۸ جایگاه معتبر انتخاب شده‌اند؛ برای دیدن گزارش روی «تحلیل این دک» بزن.";
 $("deckAlert").className="message"+(errors.length?" error":"");
 renderDeckLibrary();renderHome();
@@ -79,7 +79,7 @@ var metrics=[["میانگین اکسیر",f.average],["هزینه ۴ کارت ا
 $("coachMetrics").innerHTML=metrics.map(function(p){return '<div class="metric"><span class="muted">'+safe(p[0])+'</span><span class="number">'+fmt(p[1])+'</span></div>';}).join("");
 var info=findings(f);
 $("coachFindings").innerHTML=info.length?info.map(function(x){return '<article class="finding"><div class="finding-top"><span class="chip gold">مشاهده</span><h3>'+safe(x.title)+'</h3></div><p>'+safe(x.text)+'</p><div class="evidence">کیفیت شواهد: '+safe(x.quality)+(x.evidence.length?" · کارت‌های مرتبط: "+safe(x.evidence.join("، ")):"")+'</div></article>';}).join(""):'<div class="finding"><h3>اطلاعات قطعی آماده‌اند</h3><p>در این دک هشدار مشروط بیشتری از قواعد اولیه پیدا نشد.</p></div>';
-$("coachProvenance").textContent="منبع دک: "+(deckSource==="sample"?"داده نمونه":deckSource==="profile-import"?"فایل JSON رسمی واردشده (تأیید مالکیت انجام نشده)":deckSource==="manual"?"انتخاب دستی":deckSource==="profile-edited"?"فایل JSON با ویرایش دستی":"داده نمونه")+" · موتور: deterministic-facts-0.2 · نقش‌های کارت‌ها: پیش‌نویس / بدون بازبینی تخصصی · بدون تحلیل ویدئو و بدون AI پولی · هیچ نتیجه‌ای به‌عنوان نرخ برد یا پیش‌بینی ارائه نمی‌شود.";
+$("coachProvenance").textContent="منبع دک: "+(deckSource==="sample"?"داده نمونه":deckSource==="profile-import"?"فایل JSON رسمی واردشده (تأیید مالکیت انجام نشده)":deckSource==="manual"?"انتخاب دستی":deckSource==="profile-edited"?"فایل JSON با ویرایش دستی":deckSource==="battle-event-import"?"دک از Battle Log رویدادی":deckSource==="battle-import"?"دک از Battle Log":"داده نمونه")+" · موتور: deterministic-facts-0.2 · نقش‌های کارت‌ها: پیش‌نویس / بدون بازبینی تخصصی · بدون تحلیل ویدئو و بدون AI پولی · هیچ نتیجه‌ای به‌عنوان نرخ برد یا پیش‌بینی ارائه نمی‌شود.";
 }
 function renderCatalog(){
 var q=$("cardSearch").value.trim().toLowerCase(),cst=$("cardCost").value;
@@ -111,7 +111,7 @@ var text=await file.text();try{return JSON.parse(text);}catch(e){throw Error("م
 }
 async function importProfile(file){
 try{var raw=await parseFile(file);if(!raw||Array.isArray(raw)||typeof raw!=="object"||!tagFormat(raw.tag))throw Error("این فایل پاسخ Player Profile معتبر نیست.");
-player=raw;mergeProfileCards(raw);renderProfile();
+player=raw;mergeProfileCards(raw);renderProfile();if(battles)renderBattles();
 if(Array.isArray(raw.currentDeck)&&raw.currentDeck.length===8){
 var ids=raw.currentDeck.map(function(c){return c&&c.id;});
 if(ids.every(function(id){return Number.isSafeInteger(id);})&&new Set(ids).size===8){setDeck(ids,"profile-import",true);notify("پروفایل وارد شد؛ دک ثبت‌شده هم بارگذاری شد.");}
@@ -127,24 +127,80 @@ wrap.className="panel";wrap.innerHTML='<div class="panel-top"><div><div class="e
 var b=$("useProfileDeck");if(b)b.addEventListener("click",function(){var ids=player.currentDeck.map(function(c){return c.id;});if(new Set(ids).size===8){setDeck(ids,"profile-import");toPage("deck");}});
 }
 async function importBattles(file){
-try{var raw=await parseFile(file);if(!Array.isArray(raw)||raw.some(function(b){return !b||typeof b!=="object";})||raw.length>200)throw Error("این فایل قالب معتبر Battle Log ندارد یا خیلی بزرگ است.");battles=raw;renderBattles();notify(raw.length+" نبرد از فایل به‌صورت محلی خوانده شد.");}
+try{var raw=await parseFile(file);if(!Array.isArray(raw)||raw.some(function(b){return !b||typeof b!=="object";})||raw.length>200)throw Error("این فایل قالب معتبر Battle Log ندارد یا خیلی بزرگ است.");battles=raw;mergeBattleCards(raw);renderBattles();renderCatalog();notify(raw.length+" نبرد از فایل به‌صورت محلی خوانده شد.");}
 catch(e){notify(e.message||"خواندن Battle Log ناموفق بود.");}finally{$("battlesFile").value="";}
 }
-function battleDate(raw){if(typeof raw!=="string")return "زمان نامشخص";var m=/^(\d{4})(\d\d)(\d\d)T(\d\d)(\d\d)(\d\d)(?:\.\d+)?Z$/.exec(raw);if(!m)return "زمان نامشخص";var date=new Date(m[1]+"-"+m[2]+"-"+m[3]+"T"+m[4]+":"+m[5]+":"+m[6]+"Z");return Number.isNaN(+date)?"زمان نامشخص":new Intl.DateTimeFormat("fa-IR",{dateStyle:"medium",timeStyle:"short",timeZone:"UTC"}).format(date)+" UTC";}
-function battleRow(b){
-var selfTag=player&&tagFormat(player.tag),team=Array.isArray(b.team)?b.team:[],opp=Array.isArray(b.opponent)?b.opponent:[];
-var me=team.find(function(p){return selfTag&&tagFormat(p.tag)===selfTag;})||team[0]||{};
-var rival=opp[0]||{};
-var myC=Number.isInteger(me.crowns)?me.crowns:null,oppC=Number.isInteger(rival.crowns)?rival.crowns:null;
-var status=myC==null||oppC==null?"نامشخص":myC>oppC?"برد":myC<oppC?"شکست":"مساوی";var cls=status==="برد"?"win":status==="شکست"?"loss":"";
-var event=b.deckSelection==="eventDeck";var label=event?"رویداد / دک مخصوص":"نوع مسابقه نامشخص";
-return '<div class="battle-row"><div><strong>'+safe(me.name||"بازیکن")+' <span class="muted">در برابر</span> '+safe(rival.name||"حریف")+'</strong><div class="sub">'+safe(battleDate(b.battleTime))+'</div></div><div class="result '+cls+'">'+safe(status)+' · '+safe(myC==null?"?":myC)+'–'+safe(oppC==null?"?":oppC)+'</div><div class="extra"><span class="chip '+(event?"gold":"")+'">'+safe(label)+'</span><div class="sub">اکسیر تلف‌شده گزارش‌شده: '+safe(me.elixirLeaked==null?"نامشخص":me.elixirLeaked)+'</div></div></div>';
+function mergeBattleCards(raw){
+  raw.forEach(function(b){
+    ["team","opponent"].forEach(function(side){
+      (Array.isArray(b[side])?b[side]:[]).forEach(function(participant){
+        if(!participant||typeof participant!=="object")return;
+        ["cards","supportCards"].forEach(function(field){
+          (Array.isArray(participant[field])?participant[field]:[]).forEach(function(item){
+            var c=normalizeImportedCard(item);
+            if(!c)return;
+            var old=getCard(c.id);
+            if(!old)catalog.push(c);
+            else{if(old.elixir==null&&c.elixir!=null)old.elixir=c.elixir;if(!old.icon&&c.icon)old.icon=c.icon;}
+          });
+        });
+      });
+    });
+  });
+}
+function battleDate(raw){
+  var normalized=window.CRCBattleIntelligence.date(raw);
+  if(!normalized)return "زمان نامشخص";
+  return new Intl.DateTimeFormat("fa-IR",{dateStyle:"medium",timeStyle:"short",timeZone:"UTC"}).format(new Date(normalized))+" UTC";
+}
+function battleRow(entry){
+  var names=(entry.self_name||"بازیکن")+" در برابر "+(entry.opponent_name||"حریف");
+  var outcomeName=entry.outcome==="win"?"برد":entry.outcome==="loss"?"شکست":entry.outcome==="draw"?"مساوی":"نامشخص";
+  var cls=entry.outcome==="win"?"win":entry.outcome==="loss"?"loss":"";
+  var label=entry.classification==="event"?"رویداد / دک مخصوص":"نوع رقابت تأییدنشده";
+  var score=(entry.crowns==null?"?":entry.crowns)+"–"+(entry.opponent_crowns==null?"?":entry.opponent_crowns);
+  return '<div class="battle-row"><div><strong>'+safe(names)+'</strong><div class="sub">'+safe(battleDate(entry.raw_battle_time))+'</div></div><div class="result '+cls+'">'+safe(outcomeName)+' · '+safe(score)+'</div><div class="extra"><span class="chip '+(entry.classification==="event"?"gold":"")+'">'+safe(label)+'</span><div class="sub">اکسیر تلف‌شده گزارش‌شده: '+safe(entry.elixir_leaked==null?"نامشخص":fmt(entry.elixir_leaked))+(entry.attribution==="single_team_assumed"?" · بازیکن از عضو اول تیم فرض شده":entry.attribution==="unknown"?" · بازیکن شناسایی نشده":"")+'</div></div></div>';
 }
 function renderBattles(){
-if(!battles)return;
-var filtered=battles.filter(function(b){var event=b.deckSelection==="eventDeck";var filt=$("battleFilter").value;return filt==="all"||filt==="event"&&event||filt==="other"&&!event;});
-$("battleStats").innerHTML='<div class="stat"><b>'+battles.length+'</b><span>نبرد در فایل</span></div><div class="stat"><b>'+battles.filter(function(b){return b.deckSelection==="eventDeck";}).length+'</b><span>رویدادی</span></div><div class="stat"><b>'+filtered.length+'</b><span>نتایج فیلترشده</span></div>';
-$("battleList").className="";$("battleList").innerHTML=filtered.length?filtered.slice(0,40).map(battleRow).join(""):'<div class="empty-panel">برای این فیلتر موردی موجود نیست.</div>';
+  if(!battles)return;
+  var module=window.CRCBattleIntelligence;
+  if(!module){$("battleList").textContent="ماژول تحلیل نبرد بارگذاری نشده است.";return;}
+  var inputTag=player&&tagFormat(player.tag)||tagFormat($("playerTag").value);
+  var report=module.summarize(battles,inputTag,$("battleFilter").value);
+  var rows=report.entries;
+  var stats=[
+    [report.filtered_count,"نبرد در فیلتر"],
+    [report.counts.win,"بردهای قابل تشخیص"],
+    [report.counts.loss,"شکست‌های قابل تشخیص"],
+    [report.event_count,"نبرد رویدادی"],
+    [report.unclassified_count,"حالت تأییدنشده"]
+  ];
+  $("battleStats").innerHTML=stats.map(function(pair){return '<div class="stat"><b>'+fmt(pair[0])+'</b><span>'+safe(pair[1])+'</span></div>';}).join("");
+  var insights=[];
+  insights.push('<div class="battle-note">این آمار فقط از <strong>'+fmt(report.total_entries)+'</strong> رکورد موجود در فایل ساخته شده است. به معنی کل تاریخچه حساب، تخمین نرخ برد آینده یا تشخیص اشتباه لحظه‌ای نیست.</div>');
+  if(report.unidentified_count)insights.push('<div class="battle-note warning">'+fmt(report.unidentified_count)+' نبرد به Player Tag انتخاب‌شده قابل انتساب نیست؛ نتیجه آنها نامشخص گذاشته شده است.</div>');
+  if(report.assumed_count)insights.push('<div class="battle-note warning">در '+fmt(report.assumed_count)+' نبرد، به‌دلیل نبود Tag مشخص، عضو اول تیم به‌طور موقت بازیکن فرض شده است؛ این اثبات مالکیت نیست.</div>');
+  if(report.average_elixir_leaked!==null){
+    insights.push('<div class="battle-stat-head"><strong>میانگین Elixir Leaked گزارش‌شده: '+fmt(report.average_elixir_leaked)+'</strong><span class="data-pill">نمونه دارای داده: '+fmt(report.elixir_sample_count)+'</span></div><p class="small">این عدد فقط شاخص گزارش‌شده API است؛ بدون Replay زمان یا علت نشت اکسیر و تقصیر تاکتیکی را مشخص نمی‌کند.</p>');
+  }
+  if(report.decks.length){
+    insights.push('<h3>دک‌های مشاهده‌شده در همین فایل</h3><div class="observed-decks">'+report.decks.slice(0,4).map(function(d,i){
+      var names=d.card_ids.map(function(id){var c=getCard(id);return c?c.name:"کارت "+id;});
+      return '<div class="observed-deck"><div><strong>'+safe(names.join("، "))+'</strong><div class="sub">'+fmt(d.plays)+' مسابقه · '+fmt(d.event_plays)+' رویدادی · '+fmt(d.unknown)+' نتیجه نامشخص</div></div><button type="button" class="btn ghost" data-deck-index="'+i+'">انتخاب این دک</button></div>';
+    }).join("")+'</div>');
+  }
+  $("battleInsights").innerHTML=insights.join("");
+  $("battleInsights").querySelectorAll("[data-deck-index]").forEach(function(btn){
+    btn.addEventListener("click",function(){
+      var entry=report.decks[Number(btn.dataset.deckIndex)];
+      if(!entry)return;
+      setDeck(entry.card_ids,entry.event_plays?"battle-event-import":"battle-import");
+      toPage("deck");
+      notify("دک مسابقه برای تحلیل انتخاب شد؛ سطح و حالت ویژه رویداد جدا از حساب اصلی است.");
+    });
+  });
+  $("battleList").className="";
+  $("battleList").innerHTML=rows.length?rows.slice(0,40).map(battleRow).join(""):'<div class="empty-panel">برای این فیلتر موردی موجود نیست.</div>';
 }
 function renderAll(){renderDeck();renderCoach();renderCatalog();}
 function setupEvents(){
