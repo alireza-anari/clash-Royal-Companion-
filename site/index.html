@@ -82,6 +82,8 @@
 <div class="metric-grid" id="coachMetrics"><div class="metric"><span class="muted">میانگین اکسیر</span><span class="number">—</span></div></div>
 <div class="section-heading"><div><h2>یافته‌های قابل توضیح</h2><p>نتیجه‌ها به‌صورت مشاهده و همراه با محدودیت تحلیل ارائه می‌شوند.</p></div><button class="btn ghost" id="refreshAnalysis">محاسبه دوباره</button></div>
 <div id="coachFindings" class="result-list"></div>
+<div class="section-heading"><div><h2>کارت‌های موجود برای بررسی</h2><p>گزینه‌های مشروط فقط بر اساس کارت‌های فایل پروفایل؛ بدون پیشنهاد تعویض قطعی</p></div></div>
+<div id="coachOwnedOptions" class="result-list"></div>
 <div class="section-heading"><div><h2>مبنای تحلیل</h2></div></div>
 <div class="panel"><p id="coachProvenance" class="small">—</p></div>
 </section>
@@ -146,5 +148,6 @@
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 <div class="modal-backdrop" id="cardModal"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalName"><button type="button" class="close" id="closeModal" aria-label="بستن">✕</button><div class="modal-visual" id="modalVisual"></div><h2 id="modalName"></h2><p id="modalDescription"></p><div id="modalDetails" class="stat-inline"></div><div id="modalCoaching" class="modal-coaching"></div><div class="inline-actions"><button class="btn primary" id="modalToDeck">انتخاب در دک</button></div></div></div>
 <script src="/battle-insights.js" defer></script>
+<script src="/owned-options.js" defer></script>
 <script src="/app.js" defer></script>
 </body></html>
