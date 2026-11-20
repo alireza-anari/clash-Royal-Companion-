@@ -1,0 +1,23 @@
+# LOCAL/CI-ONLY artifact. Deliberately not a publicly reachable API image.
+# Requires Docker BuildKit and repository root as build context.
+FROM python:3.12-slim
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    CRC_RUNTIME_MODE=local \
+    CRC_LIVE_LOOKUP_ENABLED=false
+
+WORKDIR /opt/crc
+COPY api/ /opt/crc/api/
+RUN python -m pip install --no-cache-dir /opt/crc/api \
+    && python -m compileall -q /opt/crc/api/src
+
+# Build and runtime do not require root privileges. Do not set a listener on
+# 0.0.0.0 or publish ports: this artifact intentionally runs localhost-only.
+USER 10001:10001
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+  CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health/live', timeout=3).read()" || exit 1
+
+CMD ["python", "-m", "uvicorn", "crc_api.main:app", "--host", "127.0.0.1", "--port", "8000", "--workers", "1", "--no-access-log"]
