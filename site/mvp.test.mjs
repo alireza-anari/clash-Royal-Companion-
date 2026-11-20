@@ -124,3 +124,20 @@ test('owned-card coaching module is served but player data is not uploaded',asyn
  assert.match(app,/player\.cards/);
  assert.match(app,/file\.text\(\)/);
 });
+
+test('Cloudflare staging exposes a disabled live flag and never requests Supercell',async()=>{
+ const caps=await request('/api/v1/capabilities');
+ const payload=await caps.json();
+ assert.equal(caps.status,200);
+ assert.equal(payload.live_lookup_enabled,false);
+ assert.equal(payload.schema_version,'1.0');
+ assert.equal(payload.player_tag_verifies_ownership,false);
+ const denied=await request('/api/v1/players/%23TEST123');
+ assert.equal(denied.status,503);
+ const page=await (await request('/')).text();
+ assert.match(page,/id="loadLivePlayer"[^>]*disabled/);
+ assert.match(page,/backend-client\.js/);
+ const client=await request('/backend-client.js');
+ assert.equal(client.status,200);
+ assert.match(await client.text(),/CRCBackendClient/);
+});
