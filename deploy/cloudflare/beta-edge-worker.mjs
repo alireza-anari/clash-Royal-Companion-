@@ -110,14 +110,20 @@ async function routeRequest(request,env){
     }catch(e){return json(503,"PRIVATE_ORIGIN_UNAVAILABLE");}
     const body=await boundedJson(result).catch(()=>null);
     if(body===null)return json(502,"PRIVATE_ORIGIN_INVALID_RESPONSE");
+    // Redirects from the private origin are not part of this API contract.
+    if(result.status>=300&&result.status<400)return json(502,"PRIVATE_ORIGIN_REDIRECT_DENIED");
     const allowedStatus=result.status>=200&&result.status<=599?result.status:502;
-    return new Response(body,{status:allowedStatus,headers:{
+    const safeHeaders=new Headers({
       "Content-Type":"application/json; charset=utf-8",
       "Cache-Control":"no-store","X-Content-Type-Options":"nosniff",
       "X-Robots-Tag":"noindex, nofollow",
       "Referrer-Policy":"no-referrer","X-Frame-Options":"DENY",
       "Cross-Origin-Resource-Policy":"same-origin"
-    }});
+    });
+    const retry=result.headers.get("Retry-After");
+    if(allowedStatus===429&&retry&&/^\d{1,4}$/.test(retry)&&Number(retry)<=3600)
+      safeHeaders.set("Retry-After",retry);
+    return new Response(body,{status:allowedStatus,headers:safeHeaders});
   }
   if(!env.ASSETS||typeof env.ASSETS.fetch!=="function")
     return json(503,"STATIC_ASSETS_NOT_BOUND");
@@ -128,7 +134,8 @@ async function routeRequest(request,env){
   if((url.pathname==="/"||url.pathname==="/index.html")&&staticResponse.ok){
     const html=await staticResponse.text();
     if(!html.includes(HTML_ANCHOR))return json(503,"BETA_ENTRYPOINT_MISSING");
-    const adapted=html.replace(HTML_ANCHOR,
+    const adapted=html.replace('<link rel="manifest" href="/manifest.webmanifest">',"")
+      .replace(HTML_ANCHOR,
       '<script src="/beta-session.js" defer></script>\n'+HTML_ANCHOR)
       .replace("</head>",'<meta name="crc-mode" content="private-beta"></head>')
       .replace("اتصال خودکار به Supercell هنوز فعال نیست؛ می‌توانی JSON پروفایل خودت را فقط در مرورگر وارد کنی.",
