@@ -1,5 +1,5 @@
-const VERSION='crc-mvp-static-v04';
-const ASSETS=['/','/styles.css','/app.js','/battle-insights.js','/owned-options.js','/catalog.json','/guides.json','/icon.svg'];
+const VERSION='crc-mvp-static-v05';
+const ASSETS=['/','/styles.css','/app.js','/battle-insights.js','/owned-options.js','/backend-client.js','/catalog.json','/guides.json','/icon.svg'];
 self.addEventListener('install',event=>{
   event.waitUntil(caches.open(VERSION).then(cache=>cache.addAll(ASSETS)).then(()=>self.skipWaiting()));
 });
