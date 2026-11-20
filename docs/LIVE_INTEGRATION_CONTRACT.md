@@ -10,9 +10,11 @@ Branches: \`feat/mvp-frontend\` (UI) and \`feat/backend-bootstrap\` (FastAPI). B
 Browser (CRC frontend, Player Tag only)
       │  GET /api/v1/capabilities     [no secrets, fail-closed]
       │  when live_lookup_enabled == true
-      ├──GET /api/v1/players/%23TAG
-      ├──GET /api/v1/players/%23TAG/cards
-      └──GET /api/v1/players/%23TAG/battles?limit=25
+      ├──GET /api/v1/players/%23TAG/snapshot?limit=25  [preferred]
+      └──(fallback if old backend has no snapshot route)
+         ├──GET /api/v1/players/%23TAG
+         ├──GET /api/v1/players/%23TAG/cards
+         └──GET /api/v1/players/%23TAG/battles?limit=25
                         │
              Protected FastAPI backend
              Official Supercell API
