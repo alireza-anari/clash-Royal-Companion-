@@ -47,12 +47,12 @@ Use percent-encoded player tags in URLs, e.g. %23EXAMPLETAG. All upstream calls 
 
 ## Fail-closed runtime and Docker packaging (SP-DEPLOY-01)
 
-- \`CRC_RUNTIME_MODE=local\` is the only supported setting. Configuring \`remote\`, \`staging\` or \`production\` causes startup failure rather than silently opening an insecure service.
+- `CRC_RUNTIME_MODE=local` is the only supported setting. Configuring `remote`, `staging` or `production` causes startup failure rather than silently opening an insecure service.
 - Local CORS settings accept exact localhost/loopback HTTP(S) origins with explicit ports only. External origins and wildcard origins are rejected at startup.
 - The API checks the request's Host header and immediate socket peer; this does not make it production-ready.
-- CI builds a non-root Docker image from \`deploy/docker/Dockerfile.local\` and smoke-tests it **inside the container** with external networking disabled.
+- CI builds a non-root Docker image from `deploy/docker/Dockerfile.local` and smoke-tests it **inside the container** with external networking disabled.
 - Do **not** publish Docker ports or use a public Tunnel: the local-only request gate intentionally rejects Docker bridge peers and has no vetted reverse-proxy trust configuration yet.
-- On Windows, Python/Uvicorn bound to \`127.0.0.1\` (instructions above) remains the supported local method for real Supercell testing when the personal outbound IP is allowlisted.
-- See \`docs/DEPLOYMENT_READINESS.md\` for fixed-egress options and explicit production launch gates.
+- On Windows, Python/Uvicorn bound to `127.0.0.1` (instructions above) remains the supported local method for real Supercell testing when the personal outbound IP is allowlisted.
+- See `docs/DEPLOYMENT_READINESS.md` for fixed-egress options and explicit production launch gates.
 
 The Docker job validates packaging/security guards only. It neither establishes real API availability nor provides an always-on hosted server.
