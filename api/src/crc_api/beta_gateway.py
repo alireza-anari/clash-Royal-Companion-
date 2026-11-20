@@ -157,8 +157,20 @@ def create_beta_app(
         request.state.request_id = rid
         # Do not expose any unauthenticated route, even capabilities. No CORS
         # middleware: browser app and protected gateway must share an origin.
+        # Reject unsafe Host/Origin *before* spending JWT/JWKS or quota work.
+        host = request.headers.get("host", "").lower()
+        host_ok = host == settings.hostname or (
+            host.startswith(settings.hostname + ":")
+            and host[len(settings.hostname) + 1:].isdigit()
+        )
+        origin = request.headers.get("origin")
+        origin_ok = origin is None or origin == "https://" + settings.hostname
         assertion = request.headers.get("Cf-Access-Jwt-Assertion", "")
-        if not assertion:
+        if not host_ok:
+            response = error(400, "UNTRUSTED_HOST", rid)
+        elif not origin_ok:
+            response = error(403, "CROSS_ORIGIN_DENIED", rid)
+        elif not assertion:
             response = error(401, "ACCESS_TOKEN_MISSING", rid)
         else:
             try:
