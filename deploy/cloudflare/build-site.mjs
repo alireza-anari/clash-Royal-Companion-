@@ -9,6 +9,7 @@ const expected=[
   'var HTML='+JSON.stringify(read('site/index.html'))+';',
   'var CSS='+JSON.stringify(read('site/styles.css'))+';',
   'var APP='+JSON.stringify(read('site/app.js'))+';',
+  'var BATTLE_INSIGHTS='+JSON.stringify(read('site/battle-insights.js'))+';',
   'var CATALOG_JSON='+JSON.stringify(read('site/catalog.json'))+';',
   'var GUIDES_JSON='+JSON.stringify(read('site/guides.json'))+';',
   'var MANIFEST='+JSON.stringify(read('site/manifest.webmanifest'))+';',
