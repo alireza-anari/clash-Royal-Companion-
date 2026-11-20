@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+<title>Clash Royale Companion</title>
+<defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#0f3449"/><stop offset="1" stop-color="#09111e"/></linearGradient><linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ffe9ab"/><stop offset="1" stop-color="#d99d4d"/></linearGradient></defs>
+<rect width="512" height="512" rx="114" fill="url(#bg)"/>
+<rect x="20" y="20" width="472" height="472" rx="99" fill="none" stroke="#f4ce83" opacity=".27" stroke-width="7"/>
+<path d="M110 188l70 64 75-119 75 119 72-64-28 176H139z" fill="url(#gold)" stroke="#d79745" stroke-width="7" stroke-linejoin="round"/>
+<path d="M144 384h228" stroke="#fff2c4" stroke-width="22" stroke-linecap="round"/>
+<circle cx="110" cy="182" r="18" fill="#ffeac0"/><circle cx="255" cy="131" r="20" fill="#ffeac0"/><circle cx="402" cy="182" r="18" fill="#ffeac0"/>
+</svg>
