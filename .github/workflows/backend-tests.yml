@@ -19,3 +19,37 @@ jobs:
           python-version: '3.12'
       - run: python -m pip install -e '.[test]'
       - run: python -m pytest
+
+  local-container:
+    name: Isolated Docker build and smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Build local-only image
+        run: docker build --file deploy/docker/Dockerfile.local --tag crc-local-ci .
+      - name: Reject nonlocal configuration at startup
+        run: |
+          if docker run --rm --network none --env CRC_RUNTIME_MODE=production \
+            --entrypoint python crc-local-ci -c "from crc_api.main import app" >/dev/null 2>&1; then
+            echo "::error::Public mode unexpectedly started"
+            exit 1
+          fi
+      - name: Smoke local health inside a network-isolated container
+        run: |
+          docker run -d --name crc-api-smoke \
+            --network none --read-only --cap-drop ALL \
+            --security-opt no-new-privileges crc-local-ci
+          trap 'docker rm -f crc-api-smoke >/dev/null 2>&1 || true' EXIT
+          success=0
+          for attempt in $(seq 1 20); do
+            if docker exec crc-api-smoke python -c \
+                "import json,urllib.request; d=json.load(urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health/live',timeout=2)); assert d['status']=='ok'; c=json.load(urllib.request.urlopen('http://127.0.0.1:8000/api/v1/capabilities',timeout=2)); assert c['live_lookup_enabled'] is False"; then
+              success=1
+              break
+            fi
+            sleep 1
+          done
+          docker logs --tail 15 crc-api-smoke
+          test "$success" = 1
+          test "$(docker inspect -f '{{.HostConfig.NetworkMode}}' crc-api-smoke)" = none
+          test "$(docker inspect -f '{{.Config.User}}' crc-api-smoke)" = "10001:10001"
