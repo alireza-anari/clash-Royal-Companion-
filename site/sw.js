@@ -12,5 +12,5 @@ self.addEventListener('fetch',event=>{
   event.respondWith(fetch(req).then(async response=>{
     if(response.ok){const c=await caches.open(VERSION);await c.put(req,response.clone());}
     return response;
-  }).catch(async()=>await caches.match(req)||new Response('Offline asset unavailable',{status:503})));
+  }).catch(async()=>await caches.match(req,{ignoreSearch:true})||new Response('Offline asset unavailable',{status:503})));
 });
