@@ -72,8 +72,29 @@ if(f.roleCount("win")===0)out.push(roleFinding("Win Condition در برچسب‌
 }else out.push(roleFinding("داده نقش کارت‌ها ناقص است","برای بخشی از کارت‌ها برچسب نقش تأییدشده نداریم؛ درباره پوشش هوایی یا Win Condition ادعای قطعی نمی‌کنیم.",[],"داده ناقص"));
 return out.slice(0,4);
 }
+function renderOwnedOptions(){
+  var root=$("coachOwnedOptions");
+  if(!root)return;
+  if(!player||!Array.isArray(player.cards)||!player.cards.length){
+    root.innerHTML='<div class="empty-panel"><strong>برای پیشنهاد بر اساس کارت‌های خودت، فایل Player Profile را وارد کن.</strong><p>هیچ اطلاعات حساب یا سطح کارتی را حدس نمی‌زنیم.</p><a href="#player" class="btn ghost">واردکردن فایل JSON پروفایل</a></div>';
+    return;
+  }
+  if(!window.CRCOwnedOptions){root.textContent="ماژول گزینه‌های پیشنهادی بارگذاری نشده است.";return;}
+  var result=window.CRCOwnedOptions.ownedOptions(deck,catalog,player.cards);
+  if(!result.candidates.length){
+    root.innerHTML='<div class="empty-panel"><strong>از روی اطلاعات فعلی گزینه مطمئنی برای بررسی پیدا نشد.</strong><p>این به معنی بی‌نقص‌بودن دک نیست؛ نقش بسیاری از کارت‌ها هنوز تأیید تخصصی نشده است.</p></div>';
+    return;
+  }
+  root.innerHTML='<div class="battle-note warning">این‌ها «کارت‌های موجود برای بررسی» هستند، نه تعویض قطعی. نقش‌ها پیش‌نویس‌اند و سطح خام کارت‌ها در کمیابی‌های مختلف قابل مقایسه مستقیم نیست.</div>'+
+    result.candidates.map(function(c){
+      return '<div class="finding"><div class="finding-top"><span class="chip gold">پیشنهاد اولیه</span><h3>'+safe(c.name)+'</h3><span class="data-pill">'+safe(c.elixir_cost)+' اکسیر</span></div>'+
+      '<p>'+safe(c.reasons.join(" "))+'</p><div class="evidence">در فایل پروفایل موجود است · Level خام: '+safe(c.level_raw==null?"نامشخص":c.level_raw)+'</div>'+
+      '<div class="evidence">'+safe(c.tradeoff)+'</div></div>';
+    }).join("");
+}
 function renderCoach(){
 var f=calcFacts();
+renderOwnedOptions();
 if(f.errors.length){$("coachMetrics").innerHTML="";$("coachFindings").innerHTML='<div class="empty-panel"><span class="emoji">▦</span><strong>'+safe(f.errors.join(" "))+'</strong><p>ابتدا دک را در صفحه دک‌ساز کامل کن.</p><a class="btn ghost" href="#deck">رفتن به دک‌ساز</a></div>';$("coachProvenance").textContent="دک هنوز معتبر نیست.";return;}
 var metrics=[["میانگین اکسیر",f.average],["هزینه ۴ کارت ارزان",f.cycle],["کارت‌های ۵ اکسیر یا بیشتر",f.expensive],["کارت‌های ۲ اکسیر یا کمتر",f.cheap]];
 $("coachMetrics").innerHTML=metrics.map(function(p){return '<div class="metric"><span class="muted">'+safe(p[0])+'</span><span class="number">'+fmt(p[1])+'</span></div>';}).join("");
@@ -111,7 +132,7 @@ var text=await file.text();try{return JSON.parse(text);}catch(e){throw Error("م
 }
 async function importProfile(file){
 try{var raw=await parseFile(file);if(!raw||Array.isArray(raw)||typeof raw!=="object"||!tagFormat(raw.tag))throw Error("این فایل پاسخ Player Profile معتبر نیست.");
-player=raw;mergeProfileCards(raw);renderProfile();if(battles)renderBattles();
+player=raw;mergeProfileCards(raw);renderProfile();renderCoach();if(battles)renderBattles();
 if(Array.isArray(raw.currentDeck)&&raw.currentDeck.length===8){
 var ids=raw.currentDeck.map(function(c){return c&&c.id;});
 if(ids.every(function(id){return Number.isSafeInteger(id);})&&new Set(ids).size===8){setDeck(ids,"profile-import",true);notify("پروفایل وارد شد؛ دک ثبت‌شده هم بارگذاری شد.");}
