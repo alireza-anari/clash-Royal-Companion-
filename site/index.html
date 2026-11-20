@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#09111e">
+<meta name="robots" content="noindex,nofollow">
+<meta name="description" content="Clash Royale Companion — پیش‌نمایش MVP فارسی؛ دک‌ساز، بانک کارت‌ها و تحلیل قابل توضیح.">
+<title>Clash Royale Companion | مربی بازی</title>
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<div class="app-shell">
+<aside class="sidebar">
+<a class="logo" href="#home" aria-label="صفحه اصلی"><span class="emblem" aria-hidden="true">♛</span><span>Clash Royale<br>Companion<small>COACHING PLATFORM</small></span></a>
+<div class="section-label">محیط بازیکن</div>
+<nav class="nav" aria-label="پیمایش اصلی">
+<a href="#home" data-nav="home" class="active"><span aria-hidden="true">⌂</span> داشبورد</a>
+<a href="#deck" data-nav="deck"><span aria-hidden="true">▦</span> دک‌ساز</a>
+<a href="#coach" data-nav="coach"><span aria-hidden="true">✦</span> مربی دک</a>
+<a href="#cards" data-nav="cards"><span aria-hidden="true">◈</span> بانک کارت‌ها</a>
+<a href="#player" data-nav="player"><span aria-hidden="true">♙</span> پروفایل بازیکن</a>
+<a href="#battles" data-nav="battles"><span aria-hidden="true">⚔</span> نبردها</a>
+</nav>
+<div class="section-label">فازهای آینده</div>
+<nav class="nav" aria-label="نقشه راه">
+<a href="#roadmap" data-nav="roadmap"><span aria-hidden="true">◉</span> Community / Tournament <span class="soon">آینده</span></a>
+</nav>
+<div class="sidebar-footer">MVP STAGING · نسخه ۰.۲<br>استقرار Cloudflare Workers Free</div>
+</aside>
+<div class="main">
+<header class="topbar">
+<div class="crumb" id="pageTitle">داشبورد / نمای کلی</div>
+<div class="top-actions"><span class="status">● محیط توسعه · داده نمونه</span><span class="avatar" aria-hidden="true">♛</span></div>
+</header>
+<div class="content">
+<section class="page active" id="page-home" aria-labelledby="home-title">
+<div class="hero">
+<div>
+<div class="eyebrow">YOUR PERSONAL ROYALE COMPANION</div>
+<h1 id="home-title">بهتر بازی کن،<br><span class="gold">هوشمندانه‌تر تصمیم بگیر.</span></h1>
+<p>یک فضای یکپارچه برای ساخت دک، شناخت کارت‌ها و یادگرفتن علت نقاط قوت و محدودیت ترکیب‌ها. اول داده قابل توضیح؛ بعد مربی پیشرفته.</p>
+<div class="hero-actions"><a href="#deck" class="btn primary">ساخت و تحلیل دک <span aria-hidden="true">←</span></a><a href="#player" class="btn ghost">اطلاعات بازیکن</a></div>
+</div>
+<div class="hero-art" aria-hidden="true"><div class="arena"><div class="tower">♛</div><div class="tower">♛</div></div><div class="float-card one">⚔️</div><div class="float-card two">🛡️</div></div>
+</div>
+<div class="notice"><span aria-hidden="true">ⓘ</span><span><strong>نسخه پیش‌نمایش MVP:</strong> اطلاعات کارت‌ها در محیط تست محدود است. اتصال خودکار به Supercell هنوز فعال نیست؛ می‌توانی JSON پروفایل خودت را فقط در مرورگر وارد کنی. هیچ داده شخصی روی Cloudflare ذخیره نمی‌شود.</span></div>
+<div class="section-heading"><div><div class="eyebrow">شروع سریع</div><h2>ابزارهای کاربردی</h2></div></div>
+<div class="grid three">
+<a href="#deck" class="panel feature"><div class="icon">▦</div><h3>Deck Builder</h3><p>هشت کارت انتخاب کن، ترکیب را تغییر بده و میانگین اکسیر را ببین.</p></a>
+<a href="#coach" class="panel feature"><div class="icon">✦</div><h3>Deck Intelligence</h3><p>فکت‌های دقیق و مشاهده‌های محتاطانه و قابل پیگیری درباره دک.</p></a>
+<a href="#battles" class="panel feature"><div class="icon">⚔</div><h3>Battle Explorer</h3><p>مشاهده تاریخچه مسابقات از فایل JSON رسمی، با تفکیک رویدادها.</p></a>
+</div>
+<div class="section-heading"><div><div class="eyebrow">LAST DECK</div><h2>دک انتخاب‌شده</h2></div><a href="#deck" class="btn ghost">ویرایش دک ←</a></div>
+<div class="panel"><div class="panel-top"><span class="chip gold" id="homeDeckSource">داده نمونه</span><span class="data-pill" id="homeDeckElixir">— اکسیر</span></div><div class="deck-grid" id="homeDeck"></div></div>
+</section>
+
+<section class="page" id="page-deck" aria-labelledby="deck-title">
+<div class="eyebrow">DECK STUDIO</div><h1 id="deck-title">دک‌ساز هوشمند</h1><p class="intro">هر جایگاه را لمس کن و کارت را از فهرست انتخاب کن. دک انتخاب‌شده فقط روی دستگاهت ذخیره می‌شود؛ Player Tag به‌معنی احراز مالکیت نیست.</p>
+<div class="deck-layout">
+<div class="panel">
+<div class="panel-top"><h2>دک فعلی</h2><span class="chip gold" id="deckSource">داده نمونه</span></div>
+<div class="deck-grid" id="deckSlots"></div>
+<div class="preset"><button class="btn ghost" id="loadHeavy" type="button">دک سنگین نمونه</button><button class="btn ghost" id="loadHog" type="button">Hog Cycle نمونه</button><button class="btn ghost" id="clearDeck" type="button">پاک‌کردن دک</button></div>
+<div class="inline-actions"><button class="btn primary" id="analyzeDeck" type="button">تحلیل این دک ✦</button><button class="btn ghost" id="copyDeck" type="button">کپی شناسه کارت‌ها</button></div>
+<div id="deckAlert" class="message"></div>
+</div>
+<div class="panel">
+<div class="panel-top"><h2>انتخاب کارت</h2><span class="data-pill" id="catalogCount">— کارت</span></div>
+<input class="text-field" id="deckSearch" type="search" placeholder="جستجو با نام کارت..." aria-label="جستجوی کارت در دک‌ساز" style="width:100%">
+<div class="filterbar" id="deckFilters"><button class="filter active" data-filter="all">همه</button><button class="filter" data-filter="troop">نیرو</button><button class="filter" data-filter="spell">طلسم</button><button class="filter" data-filter="building">ساختمان</button></div>
+<p class="tiny-label">ابتدا جایگاه را انتخاب کن؛ کارت انتخاب‌شده جایگزین همان جایگاه می‌شود.</p><div class="library card-list" id="deckLibrary"></div>
+</div>
+</div>
+</section>
+
+<section class="page" id="page-coach" aria-labelledby="coach-title">
+<div class="eyebrow">DECK INTELLIGENCE</div><h1 id="coach-title">گزارش مربی دک</h1><p class="intro">محاسبات از روی کارت‌های فعلی انجام می‌شود. قواعد تاکتیکی در حال بازبینی هستند؛ هیچ نرخ برد ساختگی یا ادعای تحلیل Replay نمایش نمی‌دهیم.</p>
+<div class="notice"><span>✧</span><span>داده‌ها و مشاهده‌های فعلی یک <strong>نسخه آزمایشی</strong> هستند. سطح کارت‌ها، Matchup و وضعیت Evolution بدون شواهد کافی تخمین زده نمی‌شوند.</span></div>
+<div class="metric-grid" id="coachMetrics"><div class="metric"><span class="muted">میانگین اکسیر</span><span class="number">—</span></div></div>
+<div class="section-heading"><div><h2>یافته‌های قابل توضیح</h2><p>نتیجه‌ها به‌صورت مشاهده و همراه با محدودیت تحلیل ارائه می‌شوند.</p></div><button class="btn ghost" id="refreshAnalysis">محاسبه دوباره</button></div>
+<div id="coachFindings" class="result-list"></div>
+<div class="section-heading"><div><h2>مبنای تحلیل</h2></div></div>
+<div class="panel"><p id="coachProvenance" class="small">—</p></div>
+</section>
+
+<section class="page" id="page-cards" aria-labelledby="cards-title">
+<div class="eyebrow">CARD ENCYCLOPEDIA</div><h1 id="cards-title">بانک کارت‌ها</h1><p class="intro">فهرست اولیه کارت‌های شناخته‌شده و تصاویر رسمی قابل‌دسترسی؛ با واردکردن JSON پروفایل، کارت‌های همان فایل هم به فهرست اضافه می‌شوند.</p>
+<div class="panel">
+<div class="form-row"><input id="cardSearch" class="text-field" type="search" placeholder="نام کارت..." aria-label="جستجو در کارت‌ها" style="flex:1"><select id="cardCost" class="text-field" aria-label="فیلتر هزینه اکسیر"><option value="all">همه هزینه‌ها</option><option value="1-2">۱ تا ۲</option><option value="3-4">۳ تا ۴</option><option value="5+">۵ یا بیشتر</option></select></div>
+<div id="cardsGrid" class="cards-grid"></div><p id="cardsSummary" class="small"></p>
+</div>
+</section>
+
+<section class="page" id="page-player" aria-labelledby="player-title">
+<div class="eyebrow">PLAYER INTELLIGENCE</div><h1 id="player-title">شناخت بازیکن</h1><p class="intro">برای تحلیل شخصی‌سازی‌شده به اطلاعات رسمی حساب نیاز داریم. در این مرحله می‌توان فایل JSON دریافت‌شده از API رسمی را مستقیماً داخل مرورگر باز کرد.</p>
+<div class="grid two" style="margin-top:18px">
+<div class="panel">
+<h2>اتصال با Player Tag</h2><p>API رسمی با Tag اطلاعات عمومی بازیکن را می‌دهد، اما خودش اثبات مالکیت حساب نیست.</p>
+<div class="form-row"><input id="playerTag" type="text" class="text-field" placeholder="#20VYUYRCVR" maxlength="17" aria-label="Player Tag" style="flex:1;direction:ltr;text-align:left"><button id="checkTag" type="button" class="btn ghost">بررسی قالب Tag</button></div>
+<p id="tagStatus" class="small"></p>
+<div class="message">دریافت خودکار فعلاً غیرفعال است. Backend پایتون باید از IP مجاز و دارای کنترل امنیتی به Supercell متصل شود. هیچ API Key را اینجا وارد نکن.</div>
+</div>
+<div class="panel import-box">
+<h2>واردکردن امن JSON پروفایل</h2><p>فایل پاسخ <span dir="ltr">GET /v1/players/{tag}</span> را انتخاب کن. داده در حافظه همین صفحه پردازش می‌شود و به سرور فرستاده نمی‌شود.</p>
+<input id="profileFile" type="file" accept=".json,application/json" aria-label="فایل JSON پروفایل">
+<p class="hint">حداکثر ۲ مگابایت. فایل می‌تواند مشخصات کارت‌ها و دک فعلی را داشته باشد.</p>
+</div>
+</div>
+<div id="profileSummary" style="margin-top:20px" class="empty-panel"><span class="emoji">♙</span><strong>هنوز پروفایلی بارگذاری نشده است.</strong><p>بدون داده واقعی، پروفایل ساختگی نمایش نمی‌دهیم.</p></div>
+</section>
+
+<section class="page" id="page-battles" aria-labelledby="battles-title">
+<div class="eyebrow">BATTLE INTELLIGENCE</div><h1 id="battles-title">تاریخچه نبردها</h1><p class="intro">نبردهای رویدادی با Trophy Road یکسان نیستند؛ نتایج را از هم جدا نمایش می‌دهیم و بدون Replay درباره جای‌گذاری کارت‌ها قضاوت نمی‌کنیم.</p>
+<div class="panel import-box" style="margin-top:18px">
+<h2>واردکردن Battle Log</h2><p>فایل JSON پاسخ <span dir="ltr">GET /v1/players/{tag}/battlelog</span> را روی همین دستگاه انتخاب کن. داده‌ها در مرورگر پردازش می‌شوند و ارسال نمی‌شوند.</p><input id="battlesFile" type="file" accept=".json,application/json" aria-label="فایل JSON تاریخچه نبرد">
+</div>
+<div class="section-heading"><div><h2>نبردهای دریافت‌شده</h2><p>فقط مسابقات موجود در فایل ارسالی، نه تاریخچه کامل حساب.</p></div><select id="battleFilter" class="text-field" aria-label="فیلتر نبردها"><option value="all">همه نبردها</option><option value="event">رویدادی</option><option value="other">سایر / نامشخص</option></select></div>
+<div class="panel"><div id="battleStats" class="stat-inline" style="margin-bottom:12px"></div><div id="battleList" class="empty-panel"><span class="emoji">⚔</span><strong>هنوز Battle Log بارگذاری نشده است.</strong><p>فایل واقعی را وارد کن تا نبردها را ببینی.</p></div></div>
+</section>
+
+<section class="page" id="page-roadmap" aria-labelledby="roadmap-title">
+<div class="eyebrow">WHAT'S NEXT</div><h1 id="roadmap-title">آینده Companion</h1><p class="intro">ساخت محصول را با کارکردهای واقعی و قابل نگهداری جلو می‌بریم. قابلیت‌های اجتماعی و مسابقات در نسخه فعلی منتشر نشده‌اند.</p>
+<div class="roadmap" style="margin-top:24px">
+<div class="step"><div class="seq">PHASE 01 · MVP</div><h3>مربی و شناخت دک</h3><p>پروفایل، دک‌ساز، تحلیل قابل توضیح و بانک کارت؛ اتصال زنده پس از آماده‌شدن Backend.</p><span class="chip gold">در توسعه</span></div>
+<div class="step"><div class="seq">PHASE 02 · COMMUNITY</div><h3>WTF Moments و Feed</h3><p>ویدئو، دنبال‌کردن، نظر، گزارش محتوا و ابزار مدیریت؛ پس از سنجش MVP.</p><span class="chip">برنامه‌ریزی‌شده</span></div>
+<div class="step"><div class="seq">PHASE 03 · COMPETITIVE</div><h3>Tournament & League</h3><p>ثبت‌نام، جدول حذفی و مدیریت نتایج؛ با رعایت مقررات Supercell.</p><span class="chip">برنامه‌ریزی‌شده</span></div>
+</div>
+<div class="panel" style="margin-top:20px"><h3>درباره این محصول</h3><p>Clash Royale Companion یک ابزار غیررسمی طرفداران بازی است و توسط Supercell تأیید یا حمایت نمی‌شود. در این نسخه از API Key یا پرداخت آنلاین استفاده نمی‌شود. نام و سیاست‌های برند عمومی پیش از عرضه رسمی بازبینی می‌شوند.</p></div>
+</section>
+
+<footer class="footer">Clash Royale Companion · نسخه توسعه ۰.۲ · ساخته‌شده برای یادگیری و تحلیل بازی، نه ارائه تضمین برد. <span dir="ltr">Not affiliated with or endorsed by Supercell.</span></footer>
+</div>
+</div>
+</div>
+
+<nav class="bottom-nav" aria-label="پیمایش موبایل">
+<a href="#home" data-nav="home" class="active"><span style="font-size:21px">⌂</span><span>خانه</span></a>
+<a href="#deck" data-nav="deck"><span style="font-size:21px">▦</span><span>دک</span></a>
+<a href="#coach" data-nav="coach"><span style="font-size:21px">✦</span><span>مربی</span></a>
+<a href="#cards" data-nav="cards"><span style="font-size:21px">◈</span><span>کارت‌ها</span></a>
+<a href="#player" data-nav="player"><span style="font-size:21px">♙</span><span>بازیکن</span></a>
+</nav>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<div class="modal-backdrop" id="cardModal"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalName"><button type="button" class="close" id="closeModal" aria-label="بستن">✕</button><div class="modal-visual" id="modalVisual"></div><h2 id="modalName"></h2><p id="modalDescription"></p><div id="modalDetails" class="stat-inline"></div><div class="inline-actions"><button class="btn primary" id="modalToDeck">انتخاب در دک</button></div></div></div>
+<script src="/app.js" defer></script>
+</body></html>
