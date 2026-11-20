@@ -119,6 +119,29 @@
     const cap=await capabilities(fetchFn);
     if(!cap.live_lookup_enabled)throw new BackendError('NOT_ENABLED','اتصال زنده هنوز در این محیط فعال نشده است.',503);
     const base=route(valid);
+    // New backend: a single internal response, requiring only one upstream
+    // profile call and one Battle Log call. Older local backends fall back.
+    let snapshot=null;
+    try{snapshot=await json(fetchFn,base+'/snapshot?limit=25');}
+    catch(e){
+      if(e.status!==404||!['HTTP_404','NOT_FOUND'].includes(e.code))throw e;
+    }
+    if(snapshot){
+      const prof=normalizedToProfile(
+        {profile:snapshot.profile,current_deck:snapshot.current_deck,source:snapshot.source},
+        {items:snapshot.cards,support_items:snapshot.support_items}
+      );
+      if(normalizeTag(prof.tag)!==valid)
+        throw new BackendError('TAG_MISMATCH','پروفایل دریافتی با Tag درخواستی مطابقت ندارد.');
+      if(!Array.isArray(snapshot.battles))
+        throw new BackendError('SCHEMA_MISMATCH','نبردهای تجمیعی معتبر نیستند.');
+      const battleData=normalizedToBattles({items:snapshot.battles});
+      return {
+        tag:valid,profile:prof,battles:battleData,partial:snapshot.partial===true,
+        source:'live-supercell-backend',fetched_at:snapshot.source&&snapshot.source.fetched_at||null,
+        full_history:false,ownership_verified:false
+      };
+    }
     const [p,c,b]=await Promise.allSettled([
       json(fetchFn,base),json(fetchFn,base+'/cards'),json(fetchFn,base+'/battles?limit=25')
     ]);
