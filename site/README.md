@@ -13,7 +13,9 @@ This branch contains a mobile-first Persian frontend and a **separate Cloudflare
 - 12 provisional card-coaching guides, shown with explicit draft/expert-review limitations
 - Deterministic deck arithmetic and evidence-labelled, informational findings
 - Profile import of official Supercell Player JSON via browser-only File API
-- Battle Log import, event-deck distinction and summary rows
+- Battle Log import, verified player-tag attribution when available, safe event/unclassified handling, summary rows, known outcomes and reported Elixir Leaked.
+- Repeated-deck grouping (card order independent, tower troop distinguished when present) and selection of an observed deck for arithmetic analysis.
+- Ambiguous 2v2 or nonmatching tag outcomes are marked unknown; no implicit assignment to the first player.
 - Planned future Community and Tournament screens clearly not advertised as available
 - Static-only service worker and install metadata for a PWA-like mobile experience; runtime browser installability not yet assessed
 - No player data stored on server, no Supercell token in frontend and no live Supercell lookups
@@ -24,7 +26,7 @@ This branch contains a mobile-first Persian frontend and a **separate Cloudflare
 - \`site/index.html\`, \`styles.css\`, \`app.js\`, \`catalog.json\`: plain static files, no new dependency required for this temporary Worker-hosted UI.
 - \`deploy/cloudflare/worker-runtime.js\`: stateless sample-only routes and assets.
 - \`deploy/cloudflare/build-site.mjs\`: reproducible bundle to \`deploy/cloudflare/mvp-worker.js\`.
-- \`node --test site/mvp.test.mjs\`: pure HTTP handler tests and source syntax checks.
+- \`node --test site/mvp.test.mjs site/battle-insights.test.mjs\`: pure HTTP handler tests and source syntax checks.
 - \`feat/backend-bootstrap\`: Python FastAPI (not deployed). Production architecture target remains Next.js + FastAPI + PostgreSQL; this stage is **not** a completed Next.js build.
 
 ## Deployment / operator rules
@@ -40,3 +42,7 @@ Production blockers:
 - Do not merge this branch into main without owner approval.
 
 **Status**: website staging deployed; not a complete production MVP. Automated checks run in CI. Manual user acceptance testing should be scheduled only after MVP feature completion, per product owner.
+
+## Battle Intelligence v0.3
+
+Pure logic in `site/battle-insights.js`; 10 deterministic regression tests in `site/battle-insights.test.mjs`. All computations occur locally after the user chooses a JSON file. No player data sent to Cloudflare or written to Cloudflare storage. `deckSelection=eventDeck` is classified as event; other battle types are **unclassified**, not assumed Trophy Road. Available data is a partial snapshot, not a full lifetime win rate. Elixir leaked is reported, not a reconstructed tactical error.
