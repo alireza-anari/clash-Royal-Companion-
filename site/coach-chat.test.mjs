@@ -95,3 +95,9 @@ test('online consent explains external routing and data-collection restriction a
  assert.match(html,/به معنی پردازش محلی یا تضمین حذف فوری نیست/);
  assert.match(html,/رضایت برای هر ارسال جداگانه است/);
 });
+
+test('coach header distinguishes offline default from consent-based private AI',()=>{
+ const html=fs.readFileSync(new URL('./index.html',import.meta.url),'utf8');
+ assert.match(html,/آفلاین پیش‌فرض/);
+ assert.match(html,/مربی آنلاین فقط با رضایت جداگانه/);
+});
