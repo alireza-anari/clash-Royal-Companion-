@@ -1,0 +1,66 @@
+name: AWS OIDC read-only Frankfurt verification
+# No AWS infrastructure deployments, no mutating calls, no permanent keys.
+# Only branch push; workflow_dispatch requires a future explicit main merge.
+on:
+  push:
+    branches: [feat/backend-bootstrap]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inventory:
+    name: OIDC verify temporary role and EC2 inventory (read only)
+    if: >-
+      github.repository == 'alireza-anari/clash-Royal-Companion-' &&
+      github.ref == 'refs/heads/feat/backend-bootstrap' &&
+      vars.AWS_CRC_OIDC_ROLE_ARN != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      AWS_CRC_ROLE_ARN: ${{ vars.AWS_CRC_OIDC_ROLE_ARN }}
+      AWS_REGION: eu-central-1
+      AWS_EC2_METADATA_DISABLED: 'true'
+    steps:
+      - name: Assume AWS read-only role via GitHub OIDC (no access keys)
+        uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502
+        with:
+          role-to-assume: ${{ vars.AWS_CRC_OIDC_ROLE_ARN }}
+          aws-region: eu-central-1
+          role-session-name: crc-gh-${{ github.run_id }}
+          role-duration-seconds: 900
+          mask-aws-account-id: true
+          unset-current-credentials: true
+      - name: Confirm intended role and count existing AWS inventory only
+        shell: bash
+        run: |
+          set -euo pipefail
+          trap 'rm -f "${RUNNER_TEMP}/crc-identity.json" "${RUNNER_TEMP}/crc-instances.json" "${RUNNER_TEMP}/crc-vpcs.json" "${RUNNER_TEMP}/crc-subnets.json" "${RUNNER_TEMP}/crc-ips.json"' EXIT
+          aws sts get-caller-identity --output json > "${RUNNER_TEMP}/crc-identity.json"
+          aws ec2 describe-vpcs --region eu-central-1 --output json > "${RUNNER_TEMP}/crc-vpcs.json"
+          aws ec2 describe-subnets --region eu-central-1 --output json > "${RUNNER_TEMP}/crc-subnets.json"
+          aws ec2 describe-instances --region eu-central-1 --output json > "${RUNNER_TEMP}/crc-instances.json"
+          aws ec2 describe-addresses --region eu-central-1 --output json > "${RUNNER_TEMP}/crc-ips.json"
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          base = Path(os.environ["RUNNER_TEMP"])
+          identity = json.loads((base / "crc-identity.json").read_text())
+          expected_role = os.environ["AWS_CRC_ROLE_ARN"].rsplit("/", 1)[-1]
+          arn = identity.get("Arn", "")
+          parts = arn.split(":assumed-role/", 1)
+          if len(parts) != 2 or parts[1].split("/", 1)[0] != expected_role:
+              raise SystemExit("OIDC trust failure: unexpected assumed role")
+          vpcs = json.loads((base / "crc-vpcs.json").read_text()).get("Vpcs", [])
+          subnets = json.loads((base / "crc-subnets.json").read_text()).get("Subnets", [])
+          reservations = json.loads((base / "crc-instances.json").read_text()).get("Reservations", [])
+          addresses = json.loads((base / "crc-ips.json").read_text()).get("Addresses", [])
+          instance_count = sum(len(r.get("Instances", [])) for r in reservations)
+          print("AWS OIDC read-only role verified; no changes made.")
+          print(f"Frankfurt counts: EC2={instance_count}, VPCs={len(vpcs)}, Subnets={len(subnets)}, ElasticIPs={len(addresses)}")
+          print("Account identifiers, network identifiers, access keys and IPs withheld from logs.")
+          PY
