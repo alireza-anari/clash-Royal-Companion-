@@ -1,0 +1,158 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "CRC opt-in GitHub backend code synchronization through GitHub OIDC and AWS SSM, targeting only the existing Stockholm EC2; no service start, public exposure or new compute.",
+  "Parameters": {
+    "GitHubOidcProviderArn": {
+      "Type": "String",
+      "AllowedPattern": "^arn:aws:iam::[0-9]{12}:oidc-provider/token[.]actions[.]githubusercontent[.]com$",
+      "Description": "Existing GitHub OIDC provider ARN in this AWS account; create only once at account level."
+    }
+  },
+  "Resources": {
+    "BackendSyncDocument": {
+      "Type": "AWS::SSM::Document",
+      "Properties": {
+        "Name": "CRC-Sync-Private-Backend",
+        "DocumentType": "Command",
+        "DocumentFormat": "JSON",
+        "Content": {
+          "schemaVersion": "2.2",
+          "description": "Safely fast-forward only the CRC private backend checkout on the fixed EC2 instance. No service activation.",
+          "parameters": {
+            "CommitSha": {
+              "type": "String",
+              "description": "Verified forty-hex commit from the trusted backend branch.",
+              "allowedPattern": "^[0-9a-f]{40}$",
+              "interpolationType": "ENV_VAR"
+            }
+          },
+          "mainSteps": [
+            {
+              "action": "aws:runShellScript",
+              "name": "backendCodeSync",
+              "inputs": {
+                "timeoutSeconds": "240",
+                "runCommand": [
+                  "set -Eeuo pipefail",
+                  "umask 077",
+                  "SHA=\"${SSM_CommitSha:-}\"",
+                  "[[ \"$SHA\" =~ ^[0-9a-f]{40}$ ]] || { echo 'Invalid commit'; exit 1; }",
+                  "command -v curl >/dev/null",
+                  "command -v runuser >/dev/null",
+                  "id ec2-user >/dev/null",
+                  "STAGE=\"$(mktemp -d /tmp/crc-backend-ssm.XXXXXXXX)\"",
+                  "trap 'rm -rf -- \"$STAGE\"' EXIT",
+                  "curl --fail --location --silent --show-error --max-time 35 \"https://raw.githubusercontent.com/alireza-anari/clash-Royal-Companion-/$SHA/deploy/aws/sync-private-backend.sh\" --output \"$STAGE/sync-private-backend.sh\"",
+                  "chmod 0755 \"$STAGE\"",
+                  "chmod 0644 \"$STAGE/sync-private-backend.sh\"",
+                  "runuser -u ec2-user -- /bin/bash \"$STAGE/sync-private-backend.sh\" \"$SHA\""
+                ]
+              }
+            }
+          ]
+        }
+      }
+    },
+    "GitHubBackendSyncRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "Description": "Only GitHub feat/backend-bootstrap can trigger CRC-Sync-Private-Backend SSM document on fixed EC2.",
+        "MaxSessionDuration": 3600,
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Federated": {
+                  "Ref": "GitHubOidcProviderArn"
+                }
+              },
+              "Action": "sts:AssumeRoleWithWebIdentity",
+              "Condition": {
+                "StringEquals": {
+                  "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
+                  "token.actions.githubusercontent.com:sub": "repo:alireza-anari/clash-Royal-Companion-:ref:refs/heads/feat/backend-bootstrap"
+                }
+              }
+            }
+          ]
+        },
+        "Policies": [
+          {
+            "PolicyName": "OnlyCRCBackendSyncOneInstance",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Sid": "OnlyFixedDocumentAndInstance",
+                  "Effect": "Allow",
+                  "Action": [
+                    "ssm:SendCommand"
+                  ],
+                  "Resource": [
+                    {
+                      "Fn::Sub": "arn:${AWS::Partition}:ssm:eu-north-1:${AWS::AccountId}:document/CRC-Sync-Private-Backend"
+                    },
+                    {
+                      "Fn::Sub": "arn:${AWS::Partition}:ec2:eu-north-1:${AWS::AccountId}:instance/i-0d4cbc63a5953cf14"
+                    }
+                  ],
+                  "Condition": {
+                    "StringEquals": {
+                      "aws:RequestedRegion": "eu-north-1"
+                    }
+                  }
+                },
+                {
+                  "Sid": "ReadOnlySentCommandResult",
+                  "Effect": "Allow",
+                  "Action": [
+                    "ssm:GetCommandInvocation"
+                  ],
+                  "Resource": "*",
+                  "Condition": {
+                    "StringEquals": {
+                      "aws:RequestedRegion": "eu-north-1"
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        ],
+        "Tags": [
+          {
+            "Key": "Project",
+            "Value": "ClashRoyaleCompanion"
+          },
+          {
+            "Key": "Use",
+            "Value": "backend-code-sync-only"
+          }
+        ]
+      }
+    }
+  },
+  "Outputs": {
+    "BackendSyncRoleArn": {
+      "Description": "Put in GitHub Actions repository variable AWS_CRC_BACKEND_SYNC_ROLE_ARN",
+      "Value": {
+        "Fn::GetAtt": [
+          "GitHubBackendSyncRole",
+          "Arn"
+        ]
+      }
+    },
+    "SsmSyncDocumentName": {
+      "Description": "Fixed SSM document (no general AWS-RunShellScript access)",
+      "Value": {
+        "Ref": "BackendSyncDocument"
+      }
+    },
+    "TargetInstance": {
+      "Description": "Only approved target instance",
+      "Value": "i-0d4cbc63a5953cf14"
+    }
+  }
+}
