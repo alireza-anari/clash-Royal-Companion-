@@ -35,6 +35,8 @@ jobs:
           python-version: '3.12'
       - run: python -m pip install -e '.[test]'
       - run: python -m pytest
+      - name: Verify release template is disabled (no deployment)
+        run: python -m crc_api.release_preflight ../deploy/release/beta-manifest.example.json --mode require-disabled
 
   local-container:
     name: Isolated Docker build and smoke
