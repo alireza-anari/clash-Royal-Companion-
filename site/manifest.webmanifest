@@ -1,0 +1,21 @@
+{
+  "id": "/",
+  "name": "Clash Royale Companion — Development",
+  "short_name": "CRC Coach",
+  "description": "مربی و دک‌ساز آزمایشی Clash Royale Companion",
+  "start_url": "/?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#09111e",
+  "theme_color": "#09111e",
+  "lang": "fa",
+  "dir": "rtl",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
