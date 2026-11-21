@@ -40,6 +40,7 @@ Official Supercell API from owner-authorized fixed outbound IPv4
 ## Path and privilege controls
 
 The only allowed backend paths are:
+- `GET /api/v1/health/ready` — authenticated, quota-backed operator diagnostic only; does **not** test Supercell and must not be polled frequently
 - `GET /api/v1/capabilities`
 - `GET /api/v1/catalog/cards`
 - `GET /api/v1/players/%23TAG/snapshot?limit=N` with N = 1..25 and canonical valid Tag.
@@ -82,3 +83,7 @@ Do not enable the production Worker on its `workers.dev` or preview URL without 
 - Cloudflare [Workers Static Assets routing](https://developers.cloudflare.com/workers/static-assets/routing/worker-script/) — `run_worker_first` and explicit `ASSETS` binding.
 
 **Remaining blocker:** no private origin, Access app, approved domain, database or fixed-egress VM exists. Therefore this branch supplies testable code, NOT a live beta site.
+
+## SP-BETA-05 readiness / rollback alignment
+
+The backend branch now provides a separately protected `/api/v1/health/ready` handler and an offline, default-disabled release manifest. The Worker passes readiness only through its existing JWT-gated VPC Service route. Setting `BETA_ENABLED=false` blocks readiness, API and static beta assets. The backend `CRC_BETA_LIVE_LOOKUP_ENABLED=false` independently stops official lookups after restart. Neither switch is managed automatically by GitHub Actions; see `docs/PRIVATE_BETA_DEPLOYMENT_SP_BETA_05.md` in backend PR #2 for activation and rollback details. Real Cloudflare Access, private VPC, host and database do not exist yet.
