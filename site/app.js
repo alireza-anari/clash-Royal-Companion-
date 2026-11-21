@@ -111,6 +111,74 @@ function renderOfflineCoach(){
     target.appendChild(article);
   });
 }
+// Chat transcript stays in memory. Render text nodes only; never HTML from questions.
+function addCoachChatMessage(role, message, source){
+  var transcript=$("coachChatMessages");
+  if(!transcript)return;
+  var row=document.createElement("article");
+  row.className="coach-chat-message "+(role==="user"?"is-user":"is-coach");
+  var heading=document.createElement("span");
+  heading.className="coach-chat-speaker";
+  heading.textContent=role==="user"?"شما":"مربی آفلاین";
+  var body=document.createElement("p");
+  body.textContent=String(message==null?"":message);
+  row.append(heading,body);
+  if(source){
+    var evidence=document.createElement("small");
+    evidence.className="coach-chat-evidence";
+    evidence.textContent="مبنای پاسخ: "+source;
+    row.appendChild(evidence);
+  }
+  transcript.appendChild(row);
+  while(transcript.children.length>20)transcript.firstElementChild.remove();
+  transcript.scrollTop=transcript.scrollHeight;
+}
+function clearCoachChat(){
+  $("coachChatMessages").replaceChildren();
+  addCoachChatMessage("coach",
+    "سلام! من راهنمای آفلاین دک و نبردهای تو هستم. از پرسش‌های آماده شروع کن یا سؤال کوتاهی درباره دک و آمار نبردها بنویس. پاسخ‌ها از داده‌های واقعی همین صفحه محاسبه می‌شوند.",
+    "قواعد قابل توضیح · بدون مدل زبانی مولد");
+}
+function askCoachChat(question){
+  var text=String(question==null?"":question).trim().slice(0,280);
+  if(!text)return;
+  addCoachChatMessage("user",text);
+  var f=calcFacts();
+  var evidence=window.CRCOfflineCoach
+    ? window.CRCOfflineCoach.evidence(
+        battles,(player&&player.tag)||$("playerTag").value,
+        $("coachBattleScope").value,deck)
+    : null;
+  var result=window.CRCChatCoach
+    ? window.CRCChatCoach.respond(text,{
+        facts:f,
+        findings:Array.isArray(f.errors)&&!f.errors.length?findings(f):[],
+        battleEvidence:evidence
+      })
+    : {text:"موتور راهنمای آفلاین بارگذاری نشده است.",source:"خطای بارگذاری",kind:"missing"};
+  addCoachChatMessage("coach",result.text,result.source);
+}
+function setupCoachChat(){
+  var form=$("coachChatForm");
+  var input=$("coachChatQuestion");
+  if(!form||!input)return;
+  clearCoachChat();
+  form.addEventListener("submit",function(event){
+    event.preventDefault();
+    var text=input.value.trim();
+    if(!text)return;
+    input.value="";
+    askCoachChat(text);
+    input.focus();
+  });
+  document.querySelectorAll("[data-coach-question]").forEach(function(button){
+    button.addEventListener("click",function(){
+      askCoachChat(button.getAttribute("data-coach-question"));
+    });
+  });
+  $("clearCoachChat").addEventListener("click",clearCoachChat);
+}
+
 function renderCoach(){
 renderOfflineCoach();
 var f=calcFacts();
@@ -305,6 +373,7 @@ function renderBattles(){
 }
 function renderAll(){renderDeck();renderCoach();renderCatalog();}
 function setupEvents(){
+setupCoachChat();
 window.addEventListener("hashchange",function(){view(location.hash.slice(1));});
 $("loadHeavy").addEventListener("click",function(){setDeck(predefined.heavy,"sample");});
 $("loadHog").addEventListener("click",function(){setDeck(predefined.hog,"sample");});
