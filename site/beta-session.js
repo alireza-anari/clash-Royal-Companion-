@@ -12,6 +12,7 @@
     try{
       var url=new URL(value,root.location.origin);
       if(url.origin!==root.location.origin||url.hash)return false;
+      if(url.pathname==="/api/v1/health/ready"&&url.search==="")return true;
       if(url.pathname==="/api/v1/capabilities"&&url.search==="")return true;
       if(url.pathname==="/api/v1/catalog/cards"&&url.search==="")return true;
       if(/^\/api\/v1\/players\/%23[A-Z0-9]{3,16}\/snapshot$/.test(url.pathname)&&
