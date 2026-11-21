@@ -32,12 +32,14 @@ function privateHost(value,allowWorkersDev=false){
   if(h.endsWith(".workers.dev")){
     if(!allowWorkersDev||! /^[a-z0-9-]+\.[a-z0-9-]+\.workers\.dev$/.test(h))
       return null;
-    if(h==="crc-mvp-stage-20261120.alirezaanari117.workers.dev")
+    if(["crc-mvp-stage-20261120.alirezaanari117.workers.dev","crc-coach-ci-stage-20261121.alirezaanari117.workers.dev"].includes(h))
       return null;
   }
   return h;
 }
-function apiRoute(url){
+function apiRoute(url,method="GET"){
+  if(method==="POST")return url.pathname==="/api/v1/coach/chat"&&url.search===""?url.pathname:null;
+  if(method!=="GET")return null;
   // Authenticated operational probe, never an unauthenticated liveness route.
   if(url.pathname==="/api/v1/health/ready"&&url.search==="")
     return url.pathname;
@@ -60,9 +62,9 @@ function apiRoute(url){
   }
   return "/api/v1/players/"+encodeURIComponent(tag)+"/snapshot?limit="+limit;
 }
-async function boundedJson(response){
+async function boundedJson(response,maxBytes=MAX_JSON_BYTES){
   const length=response.headers.get("Content-Length");
-  if(length!==null&&Number(length)>MAX_JSON_BYTES)return null;
+  if(length!==null&&Number(length)>maxBytes)return null;
   if(!response.headers.get("Content-Type")?.toLowerCase().includes("application/json"))
     return null;
   if(!response.body)return null;
@@ -74,7 +76,7 @@ async function boundedJson(response){
       const {done,value}=await reader.read();
       if(done)break;
       total+=value.byteLength;
-      if(total>MAX_JSON_BYTES){await reader.cancel();return null;}
+      if(total>maxBytes){await reader.cancel();return null;}
       parts.push(value);
     }
   }finally{reader.releaseLock();}
@@ -91,15 +93,15 @@ async function routeRequest(request,env){
   if(url.protocol!=="https:"||url.hostname.toLowerCase()!==expected||url.port)
     return json(400,"UNTRUSTED_HOST");
   const api=url.pathname==="/api"||url.pathname.startsWith("/api/");
-  if(!["GET","HEAD"].includes(request.method))return json(405,"METHOD_NOT_ALLOWED");
+  if(!["GET","HEAD"].includes(request.method)&&!(request.method==="POST"&&url.pathname==="/api/v1/coach/chat"))return json(405,"METHOD_NOT_ALLOWED");
   // Cloudflare Access must protect the entire beta hostname. Even static
   // assets fail closed if its assertion is missing; backend validates the
   // cryptographic signature, not this syntactic edge check.
   const jwt=request.headers.get("Cf-Access-Jwt-Assertion");
   if(!jwt||jwt.length>8192)return json(401,"ACCESS_TOKEN_MISSING");
   if(api){
-    if(request.method!=="GET")return json(405,"METHOD_NOT_ALLOWED");
-    const route=apiRoute(url);
+    if(!["GET","POST"].includes(request.method))return json(405,"METHOD_NOT_ALLOWED");
+    const route=apiRoute(url,request.method);
     if(!route)return json(404,"NOT_FOUND");
     if(request.headers.get("Origin")&&request.headers.get("Origin")!=="https://"+expected)
       return json(403,"CROSS_ORIGIN_DENIED");
@@ -114,11 +116,22 @@ async function routeRequest(request,env){
     // VPC Service routing is pinned to its registered host/port regardless of
     // this URL. Build a deterministic Host and path; never use user-supplied
     // target URLs, Authorization, Cookies, or forwarded identity headers.
+    let bodyForOrigin;
+    if(request.method==="POST"){
+      if(env.BETA_AI_CHAT_ENABLED!=="true")return json(503,"AI_COACH_DISABLED");
+      if(request.headers.get("Origin")!=="https://"+expected)return json(403,"CROSS_ORIGIN_DENIED");
+      bodyForOrigin=await boundedJson(request,4096).catch(()=>null);
+      if(bodyForOrigin===null)return json(422,"INVALID_INPUT");
+      const parsed=JSON.parse(new TextDecoder().decode(bodyForOrigin));
+      if(!parsed||parsed.consent_to_external_ai!==true)return json(403,"AI_CONSENT_REQUIRED");
+      headers.set("Content-Type","application/json");
+      headers.set("Origin","https://"+expected);
+    }
     const target="http://"+expected+route;
     let result;
     try{
       result=await env.PRIVATE_API.fetch(new Request(target,{
-        method:"GET",headers,redirect:"manual",cache:"no-store"
+        method:request.method,headers,body:bodyForOrigin,redirect:"manual",cache:"no-store"
       }));
     }catch(e){return json(503,"PRIVATE_ORIGIN_UNAVAILABLE");}
     const body=await boundedJson(result).catch(()=>null);
@@ -134,7 +147,7 @@ async function routeRequest(request,env){
       "Cross-Origin-Resource-Policy":"same-origin"
     });
     const retry=result.headers.get("Retry-After");
-    if(allowedStatus===429&&retry&&/^\d{1,4}$/.test(retry)&&Number(retry)<=3600)
+    if(allowedStatus===429&&retry&&/^\d{1,5}$/.test(retry)&&Number(retry)<=86400)
       safeHeaders.set("Retry-After",retry);
     return new Response(body,{status:allowedStatus,headers:safeHeaders});
   }

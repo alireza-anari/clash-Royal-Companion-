@@ -231,3 +231,21 @@ test('public sample workers.dev hostname can never be reused as beta',async()=>{
  assert.equal(response.status,503);
  assert.equal(env.outbound.length,0);
 });
+
+test('coach POST is disabled by default then gated by origin, consent and body limit',async()=>{
+ const body=JSON.stringify({question:'test',consent_to_external_ai:true});
+ const headers={...HEADER,Origin:BASE,'Content-Type':'application/json',Authorization:'never-forward'};
+ const post=(data=body,h=headers)=>req('/api/v1/coach/chat',h,{method:'POST',body:data});
+ const off=sandbox();
+ assert.equal((await routeRequest(post(),off.env)).status,503);
+ const {env,outbound}=sandbox({BETA_AI_CHAT_ENABLED:'true'});
+ assert.equal((await routeRequest(post(body,{...headers,Origin:'https://evil.example'}),env)).status,403);
+ assert.equal((await routeRequest(post('{}'),env)).status,403);
+ assert.equal((await routeRequest(post('x'.repeat(5000)),env)).status,422);
+ assert.equal(outbound.length,0);
+ assert.equal((await routeRequest(post(),env)).status,200);
+ assert.equal(outbound[0].method,'POST');
+ assert.equal(outbound[0].headers.get('Authorization'),null);
+ assert.equal(await outbound[0].text(),body);
+ assert.equal(privateHost('crc-coach-ci-stage-20261121.alirezaanari117.workers.dev',true),null);
+});

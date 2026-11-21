@@ -7,11 +7,13 @@
   var enabled=!!(root.document&&root.document.querySelector('meta[name="crc-mode"][content="private-beta"]'));
   if(!enabled)return;
 
-  function permittedPath(value){
+  function permittedPath(value,method="GET"){
     if(typeof value!=="string"||value[0]!=="/"||value.startsWith("//"))return false;
     try{
       var url=new URL(value,root.location.origin);
       if(url.origin!==root.location.origin||url.hash)return false;
+      if(method==="POST")return url.pathname==="/api/v1/coach/chat"&&url.search==="";
+      if(method!=="GET")return false;
       if(url.pathname==="/api/v1/health/ready"&&url.search==="")return true;
       if(url.pathname==="/api/v1/capabilities"&&url.search==="")return true;
       if(url.pathname==="/api/v1/catalog/cards"&&url.search==="")return true;
@@ -31,13 +33,21 @@
 
   function createTransport(fetchFn){
     return async function(path,options){
-      if(!permittedPath(path))return blockedResponse("BETA_ROUTE_DENIED",403);
-      if(options&&options.method&&options.method.toUpperCase()!=="GET")
-        return blockedResponse("BETA_METHOD_DENIED",405);
+      var method=options&&options.method?String(options.method).toUpperCase():"GET";
+      if(!["GET","POST"].includes(method))return blockedResponse("BETA_METHOD_DENIED",405);
+      if(!permittedPath(path,method))return blockedResponse("BETA_ROUTE_DENIED",403);
+      var headers={"Accept":"application/json"},body;
+      if(method==="POST"){
+        body=options&&options.body;
+        if(typeof body!=="string"||body.length>4096)return blockedResponse("INVALID_INPUT",422);
+        try{if(JSON.parse(body).consent_to_external_ai!==true)return blockedResponse("AI_CONSENT_REQUIRED",403);}
+        catch(e){return blockedResponse("INVALID_INPUT",422);}
+        headers["Content-Type"]="application/json";
+      }
       var response;
       try{
         response=await fetchFn(path,{
-          method:"GET",headers:{"Accept":"application/json"},
+          method,headers,body,
           credentials:"same-origin",cache:"no-store",redirect:"manual"
         });
       }catch(e){

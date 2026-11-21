@@ -114,3 +114,15 @@ test('protected readiness uses same-origin Access session and never calls arbitr
  assert.equal((await session.fetch('/api/v1/health/ready?private=1')).status,403);
  assert.equal(calls.length,1);
 });
+
+test('coach POST is exact and consent-bound',async()=>{
+ const calls=[];
+ const {session}=context({fetchImpl:async(path,options)=>{calls.push({path,options});return new Response('{}',{headers:{'Content-Type':'application/json'}});}});
+ const body=JSON.stringify({question:'test',consent_to_external_ai:true});
+ assert.equal((await session.fetch('/api/v1/capabilities',{method:'POST',body})).status,403);
+ assert.equal((await session.fetch('/api/v1/coach/chat',{method:'POST',body:'{}'})).status,403);
+ assert.equal(calls.length,0);
+ assert.equal((await session.fetch('/api/v1/coach/chat',{method:'POST',body})).status,200);
+ assert.equal(calls[0].options.credentials,'same-origin');
+ assert.equal(calls[0].options.body,body);
+});
