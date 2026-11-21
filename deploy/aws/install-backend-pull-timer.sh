@@ -35,8 +35,13 @@ TMP="$(mktemp -d /tmp/crc-backend-install.XXXXXXXX)"
 trap 'rm -rf -- "$TMP"' EXIT
 curl -fsSL --max-time 30 "https://raw.githubusercontent.com/alireza-anari/clash-Royal-Companion-/$REV/deploy/aws/sync-private-backend.sh" -o "$TMP/sync"
 # The pinned sync helper is restricted to the new development worktree.
-sed -i 's|ROOT="/opt/clash-royale-companion/backend"|ROOT="/opt/clash-royale-companion/backend-github"|' "$TMP/sync"
-grep -Fx 'ROOT="/opt/clash-royale-companion/backend-github"' "$TMP/sync" >/dev/null
+grep -Fx 'readonly ROOT="/opt/clash-royale-companion/backend"' "$TMP/sync" >/dev/null || {
+  echo "Refusing: pinned sync helper has an unexpected root declaration."; exit 1;
+}
+sed -i 's|^readonly ROOT="/opt/clash-royale-companion/backend"$|readonly ROOT="/opt/clash-royale-companion/backend-github"|' "$TMP/sync"
+grep -Fx 'readonly ROOT="/opt/clash-royale-companion/backend-github"' "$TMP/sync" >/dev/null || {
+  echo "Refusing: could not restrict sync helper to the dedicated checkout."; exit 1;
+}
 bash -n "$TMP/sync"
 install -o root -g root -m 0755 "$TMP/sync" /usr/local/sbin/crc-sync-private-backend
 cat > "$TMP/check" <<'SCRIPT'
@@ -116,5 +121,16 @@ WantedBy=timers.target
 TIMER
 systemctl daemon-reload
 systemctl enable --now crc-sync-private-backend.timer
-echo "CRC backend CI-gated autosync timer installed. Code only; no backend or AI service activated."
+systemctl is-enabled --quiet crc-sync-private-backend.timer
+systemctl is-active --quiet crc-sync-private-backend.timer
+echo "CRC backend CI-gated autosync timer installed and active. Code only; no backend or AI service activated."
+# Run the first check now, but keep installation and sync outcomes distinct.
+if systemctl start crc-sync-private-backend.service; then
+  echo "Initial backend sync check: completed."
+else
+  echo "Initial backend sync check: failed; timer remains enabled."
+  journalctl -u crc-sync-private-backend.service -n 12 --no-pager
+  exit 1
+fi
 systemctl list-timers --all --no-pager crc-sync-private-backend.timer
+journalctl -u crc-sync-private-backend.service -n 12 --no-pager
