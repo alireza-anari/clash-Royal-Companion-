@@ -203,3 +203,31 @@ test('disabled Worker blocks authenticated readiness and all traffic before orig
  assert.equal(outbound.length,0);
  assert.equal(staticCalls.length,0);
 });
+
+
+test('distinct Access-protected workers.dev beta hostname is explicit opt-in',async()=>{
+ const host='crc-private-beta.alirezaanari117.workers.dev';
+ assert.equal(privateHost(host),null);
+ assert.equal(privateHost(host,true),host);
+ assert.equal(privateHost('my.workers.dev',true),null);
+ assert.equal(privateHost('crc-mvp-stage-20261120.alirezaanari117.workers.dev',true),null);
+ const request=new Request('https://'+host+'/api/v1/capabilities',{headers:HEADER});
+ const blocked=sandbox({BETA_HOSTNAME:host});
+ assert.equal((await routeRequest(request,blocked.env)).status,503);
+ assert.equal(blocked.outbound.length,0);
+ const enabled=sandbox({BETA_HOSTNAME:host,BETA_ALLOW_WORKERS_DEV:'true'});
+ const response=await routeRequest(request,enabled.env);
+ assert.equal(response.status,200);
+ assert.equal(enabled.outbound.length,1);
+ assert.equal(enabled.outbound[0].headers.get('Cf-Access-Jwt-Assertion'),ACCESS);
+ assert.equal(enabled.outbound[0].url,'http://'+host+'/api/v1/capabilities');
+});
+
+test('public sample workers.dev hostname can never be reused as beta',async()=>{
+ const host='crc-mvp-stage-20261120.alirezaanari117.workers.dev';
+ const env=sandbox({BETA_HOSTNAME:host,BETA_ALLOW_WORKERS_DEV:'true'});
+ const response=await routeRequest(
+   new Request('https://'+host+'/api/v1/capabilities',{headers:HEADER}),env.env);
+ assert.equal(response.status,503);
+ assert.equal(env.outbound.length,0);
+});
