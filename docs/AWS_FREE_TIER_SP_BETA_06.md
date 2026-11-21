@@ -2,6 +2,22 @@
 
 **Status: research + non-deploying configuration only (21 November 2026).** The product owner has access to an AWS Free Tier account. We have **not** connected to AWS credentials/account inventory, checked actual balances, or launched any EC2/EIP, EBS, RDS, Cloudflare or paid resources. The connected DigitalOcean account was checked earlier; it had 0 Droplets, but DigitalOcean is no longer the primary candidate.
 
+## User-reported Free Plan clock: 156 days remaining (2026-11-21)
+
+The owner reports **156 days remaining** in the AWS Free Plan, displayed in AWS Cost and Usage on **21 November 2026**. This implies a **planning** end date of approximately **26 April 2027** (calendar-day arithmetic, not an API-verified exact expiry timestamp; recheck AWS console for timezone and current countdown). The 50 USD credit balance is separately user-reported. These figures must **never** be used as an authorization to enable provisioning or recurring billing.
+
+**Critical distinction:** The Free Plan stops at the earlier of (a) its six-month deadline or (b) exhausting the applicable credits. At the earlier event the account becomes unavailable without an upgrade; arrange data export and resource decommissioning **while the account is still accessible**. Do not rely on the post-expiry recovery window to retrieve data without upgrading to Paid. See [AWS Free plan rules](https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/free-tier-plans.html).
+
+Planning milestones (not scheduled automation):
+- **29 March 2027** (28 days beforehand): audit credit balance, storage costs and actual remaining calendar days; make go/no-go hosting decision.
+- **12 April 2027** (14 days beforehand): export and independently verify PostgreSQL backups, configuration (without exposing secrets), and immutable source/build references. Treat this as the latest recommended decision cutoff, not the last day to back up.
+- **19 April 2027** (7 days beforehand): reconfirm account state, initiate no-cost cleanup/decommission of unused infrastructure before expiry unless an explicit Paid migration is approved.
+- **26 April 2027** (approximate): do **not** expect continued access on Free Plan; the actual AWS deadline and credit exhaustion may occur earlier.
+
+These dates assume today's user report is accurate. The public Cloudflare sample preview remains independent and unchanged; the private AWS beta is not yet deployed. The credit-sensitive launch must include ongoing observation of credits, not merely this calendar schedule.
+
+---
+
 ## Confirmed by owner: AWS Free Plan (21 November 2026)
 
 The owner has now explicitly confirmed that **Current Plan = Free**, along with the previously reported **USD 50 credit balance** and account age of approximately one to two months. These details are **user-reported**, not verified by reading AWS Billing, because this project has no connected AWS account/EC2 tools. Do not treat the reported USD 50 as an independently audited balance.
