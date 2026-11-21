@@ -5,20 +5,45 @@ set -Eeuo pipefail
 umask 077
 [[ "$(id -u)" == 0 ]] || { echo "Root required for one-time timer installation."; exit 1; }
 id ec2-user >/dev/null
-for cmd in curl git python3 systemctl install; do command -v "$cmd" >/dev/null; done
-ROOT=/opt/clash-royale-companion/backend
-[[ -d "$ROOT/.git" ]] || { echo "CRC backend checkout missing."; exit 1; }
+for cmd in curl git python3 systemctl install sed grep runuser timeout; do command -v "$cmd" >/dev/null; done
+# Existing backend may be an extracted release, not a Git clone.
+# Preserve it, its config and running processes; use a separate dev worktree.
+ROOT=/opt/clash-royale-companion/backend-github
+REMOTE=https://github.com/alireza-anari/clash-Royal-Companion-.git
+BRANCH=feat/backend-bootstrap
 REV=c611a0ac34c1b62931f7f702b4936932e0533739
+# REV is the previously CI-verified commit used as the initial baseline.
+as_ec2() { runuser -u ec2-user -- env GIT_TERMINAL_PROMPT=0 "$@"; }
+command -v runuser >/dev/null
+[[ ! -L "$ROOT" ]] || { echo "Refusing: sync path is a symlink."; exit 1; }
+if [[ ! -e "$ROOT" ]]; then
+  install -d -o ec2-user -g ec2-user -m 0750 "$ROOT"
+  as_ec2 git clone --no-checkout --single-branch --branch "$BRANCH" "$REMOTE" "$ROOT"
+  as_ec2 git -C "$ROOT" merge-base --is-ancestor "$REV" "refs/remotes/origin/$BRANCH"
+  as_ec2 git -C "$ROOT" checkout -B "$BRANCH" "$REV"
+fi
+[[ "$(as_ec2 git -C "$ROOT" rev-parse --show-toplevel 2>/dev/null)" == "$ROOT" ]] || {
+  echo "Dedicated sync path exists but is not a Git checkout; preserved without modification."; exit 1;
+}
+[[ "$(as_ec2 git -C "$ROOT" branch --show-current)" == "$BRANCH" ]]
+[[ "$(as_ec2 git -C "$ROOT" remote get-url origin)" == "$REMOTE" ]]
+[[ -z "$(as_ec2 git -C "$ROOT" status --porcelain --untracked-files=normal)" ]] || {
+  echo "Dedicated sync checkout contains local changes; preserved."; exit 1;
+}
+echo "Dedicated backend Git checkout: ready (existing backend preserved)."
 TMP="$(mktemp -d /tmp/crc-backend-install.XXXXXXXX)"
 trap 'rm -rf -- "$TMP"' EXIT
 curl -fsSL --max-time 30 "https://raw.githubusercontent.com/alireza-anari/clash-Royal-Companion-/$REV/deploy/aws/sync-private-backend.sh" -o "$TMP/sync"
+# The pinned sync helper is restricted to the new development worktree.
+sed -i 's|ROOT="/opt/clash-royale-companion/backend"|ROOT="/opt/clash-royale-companion/backend-github"|' "$TMP/sync"
+grep -Fx 'ROOT="/opt/clash-royale-companion/backend-github"' "$TMP/sync" >/dev/null
 bash -n "$TMP/sync"
 install -o root -g root -m 0755 "$TMP/sync" /usr/local/sbin/crc-sync-private-backend
 cat > "$TMP/check" <<'SCRIPT'
 #!/usr/bin/env bash
 set -Eeuo pipefail
 export GIT_TERMINAL_PROMPT=0
-cd /opt/clash-royale-companion/backend
+cd /opt/clash-royale-companion/backend-github
 [[ "$(id -un)" == ec2-user ]]
 [[ "$(git branch --show-current)" == feat/backend-bootstrap ]]
 [[ "$(git remote get-url origin)" == https://github.com/alireza-anari/clash-Royal-Companion-.git ]]
@@ -63,7 +88,7 @@ Wants=network-online.target
 Type=oneshot
 User=ec2-user
 Group=ec2-user
-WorkingDirectory=/opt/clash-royale-companion/backend
+WorkingDirectory=/opt/clash-royale-companion/backend-github
 ExecStart=/usr/local/sbin/crc-check-private-backend
 TimeoutStartSec=240
 MemoryMax=384M
@@ -92,3 +117,4 @@ TIMER
 systemctl daemon-reload
 systemctl enable --now crc-sync-private-backend.timer
 echo "CRC backend CI-gated autosync timer installed. Code only; no backend or AI service activated."
+systemctl list-timers --all --no-pager crc-sync-private-backend.timer
