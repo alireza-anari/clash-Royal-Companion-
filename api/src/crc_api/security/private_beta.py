@@ -1,7 +1,8 @@
 """Inactive private-beta admission orchestration.
 
 Intended position: behind authenticated edge + isolated origin, before ANY
-Supercell lookup. This is not mounted on the public FastAPI application.
+Supercell lookup. This is mounted only by the separately created private-beta FastAPI app,
+not by the existing local FastAPI application.
 """
 from __future__ import annotations
 
