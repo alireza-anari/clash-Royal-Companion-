@@ -12,6 +12,7 @@ const expected=[
   'var BATTLE_INSIGHTS='+JSON.stringify(read('site/battle-insights.js'))+';',
   'var OWNED_OPTIONS='+JSON.stringify(read('site/owned-options.js'))+';',
   'var OFFLINE_COACH='+JSON.stringify(read('site/offline-coach.js'))+';',
+  'var COACH_CHAT='+JSON.stringify(read('site/coach-chat.js'))+';',
   'var BACKEND_CLIENT='+JSON.stringify(read('site/backend-client.js'))+';',
   'var CATALOG_JSON='+JSON.stringify(read('site/catalog.json'))+';',
   'var GUIDES_JSON='+JSON.stringify(read('site/guides.json'))+';',
