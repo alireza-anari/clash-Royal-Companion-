@@ -422,3 +422,102 @@ def test_disabled_beta_readiness_reports_disabled_without_upstream():
         assert res.json()["live_lookup_enabled"] is False
         assert res.json()["supercell_connectivity_checked"] is False
     assert calls == []
+
+
+def test_private_ai_chat_opt_in_and_daily_budget(monkeypatch):
+    """No prompt may reach provider without Access, consent and daily budget."""
+    from crc_api.ai_daily_budget import AIDailyBudgetExceeded
+
+    class MockAI:
+        configured = True
+        def __init__(self):
+            self.calls = []
+        async def answer(self, payload):
+            self.calls.append(payload)
+            return {"model": "google/gemma-4-31b-it:free",
+                    "answer": "این فقط داده ارسالی کاربر است.",
+                    "evidence_status": "client_submitted_unverified"}
+
+    class AIBudget:
+        def __init__(self):
+            self.calls = []
+            self.denied = False
+        async def reserve(self, connection, subject):
+            self.calls.append(subject)
+            if self.denied:
+                raise AIDailyBudgetExceeded(3700)
+
+    monkeypatch.setenv("CRC_BETA_AI_ENABLED", "true")
+    verifier, sign = credentials()
+    ai, daily = MockAI(), AIBudget()
+    calls = []
+    app = create_beta_app(
+        config=fake_settings(), verifier=verifier, quota=MockQuota(),
+        supercell=SupercellClient(token="mock-supercell-key", transport=upstream(calls)),
+        pool_factory=fake_pool, ai_client=ai, ai_budget=daily,
+    )
+    payload = {"consent_to_external_ai": True,
+               "question": "اکسیر دک من چقدر است؟",
+               "deck": {"average_elixir": 3.1}}
+    with TestClient(app, base_url="https://" + HOST) as client:
+        headers = {"Cf-Access-Jwt-Assertion": sign()}
+        assert client.post("/api/v1/coach/chat", json=payload).status_code == 401
+        assert client.post("/api/v1/coach/chat", headers=headers,
+                           json={**payload, "consent_to_external_ai": False}).status_code == 403
+        bad = client.post("/api/v1/coach/chat", headers=headers,
+                          json={**payload, "player_tag": "#DONT_SEND"})
+        assert bad.status_code == 422
+        enabled = client.get("/api/v1/capabilities", headers=headers).json()
+        assert enabled["ai_coach_enabled"] is True
+        result = client.post("/api/v1/coach/chat", headers=headers, json=payload)
+        assert result.status_code == 200
+        assert result.json()["external_inference"] is True
+        assert result.json()["replay_analyzed"] is False
+        assert result.json()["model"] == "google/gemma-4-31b-it:free"
+        assert len(ai.calls) == 1
+        assert daily.calls == [SUBJECT]
+        daily.denied = True
+        denied = client.post("/api/v1/coach/chat", headers=headers, json=payload)
+        assert denied.status_code == 429
+        assert denied.headers["Retry-After"] == "3700"
+        assert denied.json()["error"]["code"] == "AI_DAILY_BUDGET_EXCEEDED"
+    assert len(ai.calls) == 1
+    assert calls == []
+
+
+def test_ai_is_disabled_and_budget_failure_fails_closed(monkeypatch):
+    class MockAI:
+        configured = True
+        def __init__(self):
+            self.calls = 0
+        async def answer(self, payload):
+            self.calls += 1
+            return {"answer": "should-not-return"}
+
+    class BrokenBudget:
+        async def reserve(self, connection, subject):
+            raise RuntimeError("private-postgres-ai-budget-unavailable")
+
+    verifier, sign = credentials()
+    ai = MockAI()
+    payload = {"consent_to_external_ai": True, "question": "نکات دک چیست؟"}
+    kwargs = dict(config=fake_settings(), verifier=verifier, quota=MockQuota(),
+                  supercell=SupercellClient(token="mock-supercell-key",
+                                            transport=upstream([])),
+                  pool_factory=fake_pool, ai_client=ai, ai_budget=BrokenBudget())
+    monkeypatch.delenv("CRC_BETA_AI_ENABLED", raising=False)
+    with TestClient(create_beta_app(**kwargs), base_url="https://" + HOST) as client:
+        r = client.post("/api/v1/coach/chat",
+                        headers={"Cf-Access-Jwt-Assertion": sign()}, json=payload)
+        assert r.status_code == 503
+        assert r.json()["error"]["code"] == "AI_COACH_DISABLED"
+        assert client.get("/api/v1/capabilities",
+                          headers={"Cf-Access-Jwt-Assertion": sign()}).json()["ai_coach_enabled"] is False
+    monkeypatch.setenv("CRC_BETA_AI_ENABLED", "true")
+    with TestClient(create_beta_app(**kwargs), base_url="https://" + HOST) as client:
+        r = client.post("/api/v1/coach/chat",
+                        headers={"Cf-Access-Jwt-Assertion": sign()}, json=payload)
+        assert r.status_code == 503
+        assert r.json()["error"]["code"] == "AI_BUDGET_UNAVAILABLE"
+        assert "private-postgres" not in r.text
+    assert ai.calls == 0
