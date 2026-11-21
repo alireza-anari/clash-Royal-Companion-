@@ -2,6 +2,22 @@
 
 **Status: research + non-deploying configuration only (21 November 2026).** The product owner has access to an AWS Free Tier account. We have **not** connected to AWS credentials/account inventory, checked actual balances, or launched any EC2/EIP, EBS, RDS, Cloudflare or paid resources. The connected DigitalOcean account was checked earlier; it had 0 Droplets, but DigitalOcean is no longer the primary candidate.
 
+## Confirmed by owner: AWS Free Plan (21 November 2026)
+
+The owner has now explicitly confirmed that **Current Plan = Free**, along with the previously reported **USD 50 credit balance** and account age of approximately one to two months. These details are **user-reported**, not verified by reading AWS Billing, because this project has no connected AWS account/EC2 tools. Do not treat the reported USD 50 as an independently audited balance.
+
+**Operational rule:** remain on the **Free Plan**. Never click Upgrade to Paid or provision resources with expectations of charges after Free Plan expiry. Per AWS official documentation, Free Plan does not incur out-of-pocket usage charges; it expires after six months from account creation **or upon credit exhaustion**, whichever comes first. At expiry, AWS closes the Free account, and its resources/data may become unavailable; the user must export/back up the MVP data **before expiration**. AWS provides a 90-day paid upgrade/recovery window, not an assurance of indefinite free hosting.
+
+For an account opened after 15 July 2025, AWS lists EC2 `t3.micro`, `t3.small`, `t4g.micro`, `t4g.small`, `c7i-flex.large` and `m7i-flex.large` as Free Tier eligible. **Free Tier eligible does not mean unrestricted free compute or storage**; the applicable usage consumes credits and must be reviewed in the live account console. Consider `t3.small` (2 GiB RAM) for colocated API/PostgreSQL tests only after confirming the exact AMI, region, eligible configuration and estimated credit draw.
+
+**One public IPv4 / Elastic IP:** official IPv4 list pricing is USD 0.005/hour; there are AWS Free Tier public IPv4 benefits for eligible EC2 usage. Treat final credit/allowance application as **unverified** until checked in Billing. An EIP may remain billable while idle; avoid allocating one before the actual launch and release it when the pilot ends.
+
+**Remaining pre-provision checks:** (1) exact remaining days/expiry in AWS Billing, (2) EC2 console's Free Tier eligible label, (3) instance+EBS+public IPv4 expected credit usage, (4) emergency shutdown and data export before Free Plan expiry. No actual EC2/EIP/EBS or Cloudflare beta infrastructure has been provisioned. Credentials must not be shared in chat or committed.
+
+Sources: [AWS Free/Paid Plan documentation](https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/free-tier-plans.html), [EC2 Free Tier eligibility](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-free-tier-usage.html), [IPv4 pricing](https://aws.amazon.com/vpc/pricing/).
+
+---
+
 ## User-reported account age and US$50 planning credit (21 November 2026)
 
 The owner says the AWS account was created **about 1–2 months earlier** (approximately September–October 2026) and currently shows **US$50 of credit**. This is **reported information**, not a verified read from AWS Billing. The official account's Current Plan (**Free or Paid**), credit expiration, actual applied benefits and service eligibility still need verification from the account dashboard.
