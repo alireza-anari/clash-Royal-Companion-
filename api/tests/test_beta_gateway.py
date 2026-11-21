@@ -5,6 +5,7 @@ No network requests to real Supercell, no live Access app, no real credentials.
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 import os
 import time
 from urllib.parse import unquote
@@ -35,7 +36,8 @@ def fake_settings():
         hostname=HOST, team_domain=TEAM, audience=AUD,
         allowed_subjects=frozenset({SUBJECT}),
         quota_hmac_secret=QUOTA_SECRET,
-        database_dsn="postgresql://demo:local-test@postgres:5432/crc_test"
+        database_dsn="postgresql://demo:local-test@postgres:5432/crc_test",
+        live_lookup_enabled=True,
     )
 
 
@@ -292,3 +294,48 @@ def test_real_postgres_rejects_third_request_at_shared_member_quota():
         assert blocked.json()["error"]["code"] == "MEMBER_QUOTA_EXCEEDED"
         assert int(blocked.headers["Retry-After"]) >= 1
     assert not calls
+
+
+
+def test_live_lookup_remains_disabled_with_access_and_database_ready():
+    verifier, sign = credentials()
+    calls = []
+    quota = MockQuota()
+    configuration = replace(fake_settings(), live_lookup_enabled=False)
+    # Deliberately no Supercell API key. A protected beta can be deployed in
+    # read-only preparation mode, without silently enabling upstream calls.
+    app = create_beta_app(
+        config=configuration, verifier=verifier, quota=quota,
+        supercell=SupercellClient(token="", transport=upstream(calls)),
+        pool_factory=fake_pool,
+    )
+    with TestClient(app, base_url="https://" + HOST) as client:
+        headers = {"Cf-Access-Jwt-Assertion": sign()}
+        c = client.get("/api/v1/capabilities", headers=headers)
+        assert c.status_code == 200
+        assert c.json()["live_lookup_enabled"] is False
+        for path in ["/api/v1/catalog/cards",
+                     "/api/v1/players/%23TEST123/snapshot?limit=25"]:
+            response = client.get(path, headers=headers)
+            assert response.status_code == 503
+            assert response.json()["error"]["code"] == "BETA_LIVE_LOOKUP_DISABLED"
+    assert not calls
+    assert len(quota.calls) == 3  # Auth and quotas still applied.
+
+
+def test_live_lookup_switch_requires_exact_explicit_opt_in(monkeypatch):
+    config = fake_settings()
+    monkeypatch.setenv("CRC_BETA_RUNTIME_GATE", "private-beta-explicit-owner-approval")
+    monkeypatch.setenv("CRC_BETA_HOST", HOST)
+    monkeypatch.setenv("CRC_BETA_TEAM_DOMAIN", TEAM)
+    monkeypatch.setenv("CRC_BETA_AUDIENCE", AUD)
+    monkeypatch.setenv("CRC_BETA_ALLOWED_SUBJECTS", SUBJECT)
+    monkeypatch.setenv("CRC_BETA_POSTGRES_DSN", config.database_dsn)
+    monkeypatch.setenv("CRC_BETA_QUOTA_HMAC_HEX", QUOTA_SECRET.hex())
+    monkeypatch.delenv("CRC_BETA_LIVE_LOOKUP_ENABLED", raising=False)
+    assert BetaConfig.from_environment().live_lookup_enabled is False
+    for value in ("TRUE", "1", "yes", "enabled"):
+        monkeypatch.setenv("CRC_BETA_LIVE_LOOKUP_ENABLED", value)
+        assert BetaConfig.from_environment().live_lookup_enabled is False
+    monkeypatch.setenv("CRC_BETA_LIVE_LOOKUP_ENABLED", "true")
+    assert BetaConfig.from_environment().live_lookup_enabled is True
