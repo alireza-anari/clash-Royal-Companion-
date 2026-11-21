@@ -34,6 +34,7 @@ const sandbox = (config={})=>{
 const req=(path,headers=HEADER,options={})=>new Request(BASE+path,{headers,...options});
 
 test('API allowlist is strict and normalizes literal Player Tags',()=>{
+ assert.equal(apiRoute(new URL(BASE+'/api/v1/health/ready')),'/api/v1/health/ready');
  assert.equal(apiRoute(new URL(BASE+'/api/v1/capabilities')),'/api/v1/capabilities');
  assert.equal(apiRoute(new URL(BASE+'/api/v1/catalog/cards')),'/api/v1/catalog/cards');
  assert.equal(apiRoute(new URL(BASE+'/api/v1/players/%23test123/snapshot?limit=2')),
@@ -47,7 +48,8 @@ test('API allowlist is strict and normalizes literal Player Tags',()=>{
    '/api/v1/players/%2523ABC/snapshot',
    '/api/v1/players/%23ABC%2Fadmin/snapshot',
    '/api/v1/capabilities?admin=true',
-   '/api/v1/health/ready',
+   '/api/v1/health/live',
+   '/api/v1/health/ready?expose=1',
    '/api/v1/../admin'
  ])assert.equal(apiRoute(new URL(BASE+path)),null,path);
  assert.equal(privateHost('http://evil.example'),null);
@@ -178,4 +180,26 @@ test('backend redirects cannot become browser navigation, even with JSON',async(
  assert.equal(res.status,502);
  assert.equal(res.headers.get('Location'),null);
  assert.equal((await res.json()).error.code,'PRIVATE_ORIGIN_REDIRECT_DENIED');
+});
+
+test('private operational readiness is identity-gated and forwarded only to fixed VPC binding',async()=>{
+ const {env,outbound}=sandbox();
+ const denied=await routeRequest(req('/api/v1/health/ready',{}),env);
+ assert.equal(denied.status,401);
+ assert.equal(outbound.length,0);
+ const ready=await routeRequest(req('/api/v1/health/ready'),env);
+ assert.equal(ready.status,200);
+ assert.equal(outbound.length,1);
+ assert.equal(new URL(outbound[0].url).pathname,'/api/v1/health/ready');
+ assert.equal(outbound[0].headers.get('Cf-Access-Jwt-Assertion'),ACCESS);
+ assert.equal(ready.headers.get('Cache-Control'),'no-store');
+});
+test('disabled Worker blocks authenticated readiness and all traffic before origin',async()=>{
+ const {env,outbound,staticCalls}=sandbox({BETA_ENABLED:'false'});
+ for(const path of ['/api/v1/health/ready','/api/v1/capabilities','/']){
+   const res=await routeRequest(req(path),env);
+   assert.equal(res.status,503,path);
+ }
+ assert.equal(outbound.length,0);
+ assert.equal(staticCalls.length,0);
 });
