@@ -80,6 +80,33 @@
 <section class="page" id="page-coach" aria-labelledby="coach-title">
 <div class="eyebrow">DECK INTELLIGENCE</div><h1 id="coach-title">گزارش مربی دک</h1><p class="intro">محاسبات از روی کارت‌های فعلی انجام می‌شود. قواعد تاکتیکی در حال بازبینی هستند؛ هیچ نرخ برد ساختگی یا ادعای تحلیل Replay نمایش نمی‌دهیم.</p>
 <div class="notice"><span>✧</span><span>داده‌ها و مشاهده‌های فعلی یک <strong>نسخه آزمایشی</strong> هستند. سطح کارت‌ها، Matchup و وضعیت Evolution بدون شواهد کافی تخمین زده نمی‌شوند.</span></div>
+<section class="panel coach-chat" id="coachChatPanel" aria-labelledby="coachChatTitle">
+  <div class="coach-chat-header">
+    <div>
+      <div class="eyebrow">COACH / GUIDED CHAT</div>
+      <h2 id="coachChatTitle">از مربی بپرس</h2>
+      <p>سؤال‌ها با محاسبات فعلی دک و شواهد Battle Log پاسخ داده می‌شوند؛ بدون مدل مولد و بدون هزینه AI.</p>
+    </div>
+    <span class="coach-chat-mode"><span aria-hidden="true">●</span> آفلاین · خصوصی</span>
+  </div>
+  <div id="coachChatMessages" class="coach-chat-messages" role="log" aria-live="polite" aria-relevant="additions" aria-label="پیام‌های مربی"></div>
+  <div class="coach-chat-suggestions" aria-label="پرسش‌های پیشنهادی">
+    <button type="button" class="coach-chat-prompt" data-coach-question="میانگین اکسیر دکم چقدر است؟">✧ اکسیر دک</button>
+    <button type="button" class="coach-chat-prompt" data-coach-question="چه نکاتی در دک فعلی من قابل بررسی است؟">✦ نکات دک</button>
+    <button type="button" class="coach-chat-prompt" data-coach-question="چند برد و باخت در Battle Log من ثبت شده است؟">⚔ خلاصه نبردها</button>
+    <button type="button" class="coach-chat-prompt" data-coach-question="برای بهتر بازی کردن چه تمرینی پیشنهاد می‌کنی؟">◈ تمرین پیشنهادی</button>
+  </div>
+  <form id="coachChatForm" class="coach-chat-form">
+    <label class="visually-hidden" for="coachChatQuestion">سؤال از مربی آفلاین</label>
+    <input id="coachChatQuestion" class="text-field" name="coachQuestion" type="text" required maxlength="280" autocomplete="off" placeholder="درباره دک یا نبردها سؤال بپرس…">
+    <button class="btn primary" type="submit">ارسال <span aria-hidden="true">←</span></button>
+  </form>
+  <div class="coach-chat-footer">
+    <p>گفت‌وگو فقط در حافظه همین صفحه است. هیچ متن یا داده‌ای برای مدل AI یا سرور ارسال نمی‌شود. این نسخه هنوز تحلیل Replay ندارد.</p>
+    <button id="clearCoachChat" class="btn ghost" type="button">پاک‌کردن گفت‌وگو</button>
+  </div>
+</section>
+
 <div class="metric-grid" id="coachMetrics"><div class="metric"><span class="muted">میانگین اکسیر</span><span class="number">—</span></div></div>
 <div class="section-heading"><div><h2>یافته‌های قابل توضیح</h2><p>نتیجه‌ها به‌صورت مشاهده و همراه با محدودیت تحلیل ارائه می‌شوند.</p></div><button class="btn ghost" id="refreshAnalysis">محاسبه دوباره</button></div>
 <div id="coachFindings" class="result-list"></div>
@@ -165,6 +192,7 @@
 <div class="modal-backdrop" id="cardModal"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalName"><button type="button" class="close" id="closeModal" aria-label="بستن">✕</button><div class="modal-visual" id="modalVisual"></div><h2 id="modalName"></h2><p id="modalDescription"></p><div id="modalDetails" class="stat-inline"></div><div id="modalCoaching" class="modal-coaching"></div><div class="inline-actions"><button class="btn primary" id="modalToDeck">انتخاب در دک</button></div></div></div>
 <script src="/battle-insights.js" defer></script>
 <script src="/offline-coach.js" defer></script>
+<script src="/coach-chat.js" defer></script>
 <script src="/owned-options.js" defer></script>
 <script src="/backend-client.js" defer></script>
 <script src="/app.js" defer></script>
