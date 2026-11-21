@@ -45,6 +45,7 @@ class BetaConfig:
     quota_hmac_secret: bytes
     database_dsn: str
     enabled: bool = True
+    live_lookup_enabled: bool = False
 
     @classmethod
     def from_environment(cls) -> "BetaConfig":
@@ -62,7 +63,8 @@ class BetaConfig:
             secret_bytes = bytes.fromhex(secret)
         except ValueError as exc:
             raise UnsafeBetaConfiguration("Invalid beta quota key configuration.") from exc
-        config = cls(host, team, audience, subjects, secret_bytes, dsn)
+        live = os.environ.get("CRC_BETA_LIVE_LOOKUP_ENABLED", "false") == "true"
+        config = cls(host, team, audience, subjects, secret_bytes, dsn, live_lookup_enabled=live)
         config.validate()
         return config
 
@@ -104,7 +106,7 @@ def create_beta_app(
     settings = config if config is not None else BetaConfig.from_environment()
     settings.validate()
     api = supercell if supercell is not None else SupercellClient()
-    if not api.configured:
+    if settings.live_lookup_enabled and not api.configured:
         raise UnsafeBetaConfiguration("Private beta Supercell provider is not configured.")
     access = verifier or AccessVerifier(settings.team_domain, settings.audience, settings.allowed_subjects)
     budget = quota or PostgresSharedQuota(settings.quota_hmac_secret)
@@ -219,12 +221,14 @@ def create_beta_app(
 
     @app.get("/api/v1/capabilities")
     def capabilities():
-        return {"schema_version": "1.0", "live_lookup_enabled": True,
+        return {"schema_version": "1.0", "live_lookup_enabled": settings.live_lookup_enabled,
                 "provider": "supercell", "player_tag_verifies_ownership": False,
                 "battle_log_full_history": False, "safe_public_exposure": False}
 
     @app.get("/api/v1/catalog/cards")
     async def cards(request: Request):
+        if not settings.live_lookup_enabled:
+            return error(503, "BETA_LIVE_LOOKUP_DISABLED", request.state.request_id)
         data, provenance = await request.app.state.supercell.cards_record()
         return {"request_id": request.state.request_id,
                 "catalog_version": "live-unversioned",
@@ -233,6 +237,8 @@ def create_beta_app(
 
     @app.get("/api/v1/players/{tag}/snapshot")
     async def snapshot(tag: str, request: Request, limit: int = Query(default=25, ge=1, le=25)):
+        if not settings.live_lookup_enabled:
+            return error(503, "BETA_LIVE_LOOKUP_DISABLED", request.state.request_id)
         normalized = parse_tag(tag)
         raw, source = await request.app.state.supercell.player_record(normalized)
         profile = normalize_profile(raw)
