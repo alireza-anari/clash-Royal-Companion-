@@ -2,6 +2,36 @@
 
 **Status: research + non-deploying configuration only (21 November 2026).** The product owner has access to an AWS Free Tier account. We have **not** connected to AWS credentials/account inventory, checked actual balances, or launched any EC2/EIP, EBS, RDS, Cloudflare or paid resources. The connected DigitalOcean account was checked earlier; it had 0 Droplets, but DigitalOcean is no longer the primary candidate.
 
+## User-reported account age and US$50 planning credit (21 November 2026)
+
+The owner says the AWS account was created **about 1–2 months earlier** (approximately September–October 2026) and currently shows **US$50 of credit**. This is **reported information**, not a verified read from AWS Billing. The official account's Current Plan (**Free or Paid**), credit expiration, actual applied benefits and service eligibility still need verification from the account dashboard.
+
+We can avoid buying a separate domain or hosting package for a short MVP: keep the existing Cloudflare public sample frontend and evaluate one Frankfurt EC2 only when AWS credit applicability and security controls have been verified. No AWS resource has been created or purchased.
+
+### Indicative $50 runway, not an actual bill
+
+For one Linux `t3.small` 2 GiB instance in Frankfurt, continuously running for 730 hours per month:
+
+| Cost | Monthly planning estimate |
+| --- | ---: |
+| EC2 `t3.small` at indicative US$0.024/hour | US$17.52 |
+| One public IPv4 at AWS list US$0.005/hour | US$3.65 |
+| 20 GiB gp3 EBS at *assumed* US$0.10/GiB-month | US$2.00 |
+| **Subtotal of only these three items** | **US$23.17** |
+
+On these **illustrative assumptions only**, US$50 covers about **2.16 months** of continuous baseline infrastructure, or **1.73 months** while reserving US$10 unused. Taxes, data egress, backups/snapshots, monitoring, excess burst CPU credits, actual EBS Frankfurt pricing, API limitations and ineligible credit usage are **not included**. A higher bill would shorten that estimate. A lower-cost `t3.micro` uses only 1 GiB and may not safely run PostgreSQL, FastAPI and Cloudflare Tunnel together.
+
+Official references: [AWS pricing and EC2 details](https://aws.amazon.com/ec2/pricing/on-demand/), [AWS public IPv4 pricing](https://aws.amazon.com/vpc/pricing/), [AWS Free Tier FAQs](https://aws.amazon.com/free/free-tier-faqs/). Frankfurt EC2 hourly estimate cross-checked against [2026 price-list summaries](https://cloud-credits.org/prices/ec2/t3-small/eu-central-1); confirm the final rate in the actual AWS calculator. The EBS US$0.10 figure is a budgeting assumption, **not** a verified region quote.
+
+New offline artifacts:
+- `deploy/infra/aws-mvp-credit-scenario.example.json` keeps US$50 as a **reported** number and never claims a verified balance, plan or expiration.
+- `api/src/crc_api/aws_credit_scenario.py` computes only the subtotal and approximate runway. No AWS SDK, provisioning permissions, or deployment actions.
+- `api/tests/test_aws_credit_scenario.py` verifies arithmetic, rejected credentials and disabled release switches. CI executes this cost check.
+
+**Before provisioning:** confirm AWS Billing's Current Plan is **Free** (if the owner intends no out-of-pocket charges), Credits remaining, expiry and whether EC2/EBS/public IPv4 are eligible. The Free Plan ends after six months or when credits are depleted, whichever happens first; AWS may close the Free Plan account and stop access to resources until upgrade. Set budget alerts (alerts are not a hard cost cap on a Paid Plan) and record an explicit maximum tolerated out-of-pocket charge **before creating any EC2/EIP**.
+
+---
+
 ## What depends on the AWS account's opening date
 
 | AWS account history | Potential EC2 eligibility | Caution |
