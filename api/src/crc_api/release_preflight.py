@@ -44,7 +44,7 @@ def validate(data: Any) -> dict[str, Any]:
         "controls", "proofs",
     }:
         raise InvalidReleaseManifest("Unexpected release manifest fields.")
-    if data["schema_version"] != SCHEMA_VERSION or data["target"] != "private-beta":
+    if type(data["schema_version"]) is not int or data["schema_version"] != SCHEMA_VERSION or data["target"] != "private-beta":
         raise InvalidReleaseManifest("Unsupported beta release manifest.")
     for field in ("backend_commit", "frontend_commit"):
         value = data[field]
