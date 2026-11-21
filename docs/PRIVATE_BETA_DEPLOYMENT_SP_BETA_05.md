@@ -6,6 +6,7 @@
 
 - `api/src/crc_api/release_preflight.py`: offline, read-only release assessor and printable rollback plan. It cannot connect to Cloudflare, turn on Supercell, deploy a Worker, or buy a server.
 - `deploy/release/beta-manifest.example.json`: example with **both switches OFF**, no credentials, blank immutable commit IDs, and all evidence fields false.
+- `deploy/release/beta-deployment.blueprint.json`: non-deployable binding and environment contract for distinct beta Worker, private VPC Service and Backend. Deliberately has no domain, service ID, keys or approval.
 - `GET /api/v1/health/ready` in the separate `crc_api.beta_gateway` app: an **authenticated** diagnostic. It uses the normal Cloudflare Access JWT and shared PostgreSQL quota admission. A successful response confirms those components succeeded for this request. It **does not** contact Supercell or prove the network/VM is production-ready.
 - Frontend PR #4 allows **only** this additional protected health path through the private VPC Service Worker and same-origin Access session. The public sample Worker is unchanged.
 - GitHub Actions checks that the committed release template is disabled and runs the new tests. No workflow has permissions or credentials to deploy a beta environment.
