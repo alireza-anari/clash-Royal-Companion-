@@ -112,6 +112,7 @@ function renderOfflineCoach(){
   });
 }
 // Chat transcript stays in memory. Render text nodes only; never HTML from questions.
+var coachAICap=null,coachBusy=false;
 function addCoachChatMessage(role, message, source){
   var transcript=$("coachChatMessages");
   if(!transcript)return;
@@ -119,7 +120,7 @@ function addCoachChatMessage(role, message, source){
   row.className="coach-chat-message "+(role==="user"?"is-user":"is-coach");
   var heading=document.createElement("span");
   heading.className="coach-chat-speaker";
-  heading.textContent=role==="user"?"شما":"مربی آفلاین";
+  heading.textContent=role==="user"?"شما":role==="ai"?"مربی آنلاین · AI":"مربی آفلاین";
   var body=document.createElement("p");
   body.textContent=String(message==null?"":message);
   row.append(heading,body);
@@ -134,14 +135,19 @@ function addCoachChatMessage(role, message, source){
   transcript.scrollTop=transcript.scrollHeight;
 }
 function clearCoachChat(){
+  if(coachBusy)return;
+  $("coachAIConsent").checked=false;
   $("coachChatMessages").replaceChildren();
   addCoachChatMessage("coach",
     "سلام! من راهنمای آفلاین دک و نبردهای تو هستم. از پرسش‌های آماده شروع کن یا سؤال کوتاهی درباره دک و آمار نبردها بنویس. پاسخ‌ها از داده‌های واقعی همین صفحه محاسبه می‌شوند.",
     "قواعد قابل توضیح · بدون مدل زبانی مولد");
 }
-function askCoachChat(question){
+async function askCoachChat(question){
   var text=String(question==null?"":question).trim().slice(0,280);
-  if(!text)return;
+  if(!text||coachBusy)return;
+  var consent=$("coachAIConsent");
+  var useAI=!!(window.CRCBetaSession&&coachAICap&&coachAICap.ai_coach_enabled===true&&consent&&consent.checked&&!$("coachAIOptions").hidden);
+  if(consent)consent.checked=false;
   addCoachChatMessage("user",text);
   var f=calcFacts();
   var evidence=window.CRCOfflineCoach
@@ -156,6 +162,23 @@ function askCoachChat(question){
         battleEvidence:evidence
       })
     : {text:"موتور راهنمای آفلاین بارگذاری نشده است.",source:"خطای بارگذاری",kind:"missing"};
+  if(useAI){
+    coachBusy=true;
+    var buttons=Array.from(document.querySelectorAll("#coachChatForm button,[data-coach-question],#clearCoachChat"));
+    buttons.forEach(b=>b.disabled=true);
+    $("coachAIStatus").textContent="در حال دریافت پاسخ آنلاین…";
+    try{
+      var reply=await window.CRCBackendClient.askAI(window.CRCBetaSession,text,f,evidence,true,coachAICap);
+      addCoachChatMessage("ai",reply.answer,reply.model+" · داده ارسالی تأییدنشده؛ پاسخ مولد ممکن است خطا داشته باشد");
+      $("coachAIStatus").textContent="پاسخ آنلاین دریافت شد؛ ارسال بعدی نیاز به رضایت جدید دارد.";
+      return;
+    }catch(e){
+      $("coachAIStatus").textContent="مربی آنلاین در دسترس نیست؛ پاسخ آفلاین ارائه شد.";
+    }finally{
+      coachBusy=false;
+      buttons.forEach(b=>b.disabled=false);
+    }
+  }
   addCoachChatMessage("coach",result.text,result.source);
 }
 function setupCoachChat(){
@@ -248,6 +271,10 @@ async function refreshLiveAvailability(){
   btn.disabled=true;
   if(!window.CRCBackendClient){status.textContent="ماژول اتصال Backend در دسترس نیست.";return;}
   var cap=await window.CRCBackendClient.capabilities(apiTransport());
+  coachAICap=window.CRCBetaSession&&cap.ai_coach_enabled===true?cap:null;
+  $("coachAIOptions").hidden=!coachAICap;
+  $("coachAIConsent").checked=false;
+  $("coachAIStatus").textContent=coachAICap?"مربی آنلاین در بتای خصوصی آماده است؛ حالت پیش‌فرض آفلاین.":"حالت آفلاین فعال است.";
   if(cap.live_lookup_enabled){
     betaLoginVisible(false);
     btn.disabled=false;btn.textContent="دریافت اطلاعات با Player Tag";

@@ -50,9 +50,9 @@
     let result;
     try{result=await json(fetchFn,'/api/v1/capabilities');}
     catch(e){return {live_lookup_enabled:false,available:false,reason:e.code||'UNAVAILABLE'};}
-    if(result.schema_version!=='1.0'||result.live_lookup_enabled!==true)
-      return {live_lookup_enabled:false,available:true,reason:'DISABLED'};
-    return {live_lookup_enabled:true,available:true,reason:null};
+    const valid=result.schema_version==='1.0';
+    const live=valid&&result.live_lookup_enabled===true;
+    return {live_lookup_enabled:live,ai_coach_enabled:valid&&result.ai_coach_enabled===true&&result.ai_external_data_requires_consent===true,available:valid,reason:live?null:'DISABLED'};
   }
   function toRawCard(value){
     if(!value||!Number.isSafeInteger(value.id)||typeof value.name!=='string')
@@ -169,5 +169,40 @@
       full_history:false,ownership_verified:false
     };
   }
-  root.CRCBackendClient=Object.freeze({VERSION,BackendError,normalizeTag,route,capabilities,loadPlayer,normalizedToProfile,normalizedToBattles});
+  function coachPayload(question,facts,evidence){
+    const q=String(question||'').trim();
+    if(q.length<3||q.length>280)throw new BackendError('INVALID_INPUT','سؤال باید بین ۳ و ۲۸۰ نویسه باشد.');
+    const payload={consent_to_external_ai:true,question:q};
+    if(facts&&Array.isArray(facts.errors)&&!facts.errors.length&&Array.isArray(facts.items)&&facts.items.length===8){
+      payload.deck={selected_card_count:8};
+      if(Number.isFinite(facts.average)&&facts.average>=0&&facts.average<=10)payload.deck.average_elixir=facts.average;
+      if(Number.isFinite(facts.cycle)&&facts.cycle>=0&&facts.cycle<=40)payload.deck.cycle_cost_four_cheapest=facts.cycle;
+    }
+    if(evidence&&['all','event','other'].includes(evidence.filter)&&evidence.outcomes){
+      const c=evidence.outcomes,n=evidence.matched_records;
+      const counts=[c.wins,c.losses,c.draws,c.unknown];
+      if(Number.isInteger(n)&&n>0&&n<=200&&counts.every(x=>Number.isInteger(x)&&x>=0&&x<=200)&&counts.reduce((a,b)=>a+b,0)<=n)
+        payload.battles={filter:evidence.filter,matched_records:n,wins:c.wins,losses:c.losses,draws:c.draws,unknown:c.unknown};
+    }
+    return payload;
+  }
+  async function askAI(session,question,facts,evidence,consent,cap){
+    if(consent!==true)throw new BackendError('AI_CONSENT_REQUIRED','رضایت ارسال داده لازم است.',403);
+    if(!session||session.enabled!==true||typeof session.fetch!=='function'||!cap||cap.ai_coach_enabled!==true)
+      throw new BackendError('AI_DISABLED','مربی آنلاین فعال نیست.',503);
+    const payload=coachPayload(question,facts,evidence);
+    let response;
+    try{response=await session.fetch('/api/v1/coach/chat',{method:'POST',body:JSON.stringify(payload)});}
+    catch(e){throw new BackendError('AI_UNAVAILABLE','ارتباط با مربی آنلاین برقرار نشد.',503);}
+    if(!response||!response.ok)throw new BackendError('AI_UNAVAILABLE','مربی آنلاین موقتاً در دسترس نیست.',response&&response.status);
+    let data;
+    try{data=await response.json();}catch(e){throw new BackendError('BAD_RESPONSE','پاسخ مربی معتبر نیست.');}
+    const allowed=['google/gemma-4-31b-it:free','google/gemma-4-26b-a4b-it:free'];
+    if(!data||data.external_inference!==true||data.replay_analyzed!==false||
+       data.evidence_status!=='client_submitted_unverified'||!allowed.includes(data.model)||
+       typeof data.answer!=='string'||!data.answer.trim()||data.answer.length>2200)
+      throw new BackendError('BAD_RESPONSE','پاسخ مربی معتبر نیست.');
+    return {answer:data.answer,model:data.model};
+  }
+  root.CRCBackendClient=Object.freeze({VERSION,BackendError,normalizeTag,route,capabilities,loadPlayer,normalizedToProfile,normalizedToBattles,coachPayload,askAI});
 })(typeof window!=='undefined'?window:globalThis);

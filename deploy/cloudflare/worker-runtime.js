@@ -36,7 +36,7 @@ async function serve(request){
   if(request.method==="GET"&&path==="/health")return jsonResponse({status:"ok",service:"crc-mvp-site",version:"0.2.0",mode:"sample-only",supercell_live:false});
   if(request.method==="GET"&&path==="/api/v1/health/live")return jsonResponse({status:"ok"});
   if(request.method==="GET"&&path==="/api/v1/health/ready")return jsonResponse({status:"sample-only",live_supercell:false});
-  if(request.method==="GET"&&path==="/api/v1/capabilities")return jsonResponse({schema_version:"1.0",live_lookup_enabled:false,provider:null,player_tag_verifies_ownership:false,battle_log_full_history:false,safe_public_exposure:false,mode:"sample-only"});
+  if(request.method==="GET"&&path==="/api/v1/capabilities")return jsonResponse({schema_version:"1.0",live_lookup_enabled:false,provider:null,player_tag_verifies_ownership:false,battle_log_full_history:false,safe_public_exposure:false,ai_coach_enabled:false,ai_external_data_requires_consent:true,mode:"sample-only"});
   if(request.method==="GET"&&path==="/api/cards")return jsonResponse({mode:"sample-only",cards:CARD_LIBRARY.cards.filter(function(c){return c.type!=="support";}).map(function(c){return {id:c.id,name:c.name,elixir:c.elixir};}),sample_decks:CARD_LIBRARY.predefined});
   if(request.method==="GET"&&path==="/api/v1/catalog/cards")return jsonResponse({items:CARD_LIBRARY.cards.map(function(c){return {id:c.id,name:c.name,elixir_cost:c.elixir,type:c.type,icon_url:c.icon};}),catalog_version:CARD_LIBRARY.revision,source:{provider:"local-seed",stale:true},mode:"sample-only"});
   if(request.method==="GET"&&path.startsWith("/api/v1/players/"))return error("LIVE_BACKEND_NOT_CONFIGURED","ارتباط زنده بازیکن در محیط Cloudflare رایگان فعال نشده است.",503);
@@ -50,6 +50,7 @@ async function serve(request){
     if(path==="/api/v1/analyses")return jsonResponse({engine_version:"arithmetic-sample-0.2",ruleset_version:"unreviewed",facts:check.facts,findings:[],recommendations:[],mode:"sample-only",disclaimer:"Sample card data; no tactical coaching or win prediction."});
     return jsonResponse({valid:check.valid,facts:check.facts,mode:"sample-only"});
   }
+  if(path==="/api/v1/coach/chat")return error("AI_COACH_DISABLED","مربی آنلاین در سایت عمومی فعال نیست.",503);
   if(request.method==="GET"&&path==="/favicon.ico")return new Response(null,{status:204});
   return error("NOT_FOUND","این مسیر در سایت آزمایشی موجود نیست.",404);
 }

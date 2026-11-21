@@ -96,13 +96,18 @@
     <button type="button" class="coach-chat-prompt" data-coach-question="چند برد و باخت در Battle Log من ثبت شده است؟">⚔ خلاصه نبردها</button>
     <button type="button" class="coach-chat-prompt" data-coach-question="برای بهتر بازی کردن چه تمرینی پیشنهاد می‌کنی؟">◈ تمرین پیشنهادی</button>
   </div>
+  <div id="coachAIOptions" class="coach-ai-options" hidden>
+    <label><input type="checkbox" id="coachAIConsent"> ارسال سؤال بعدی به مربی آنلاین Gemma (از طریق OpenRouter)</label>
+    <p>با انتخاب این گزینه، متن سؤال و آمار عددی محدود دک و نبردها برای سرویس خارجی ارسال می‌شود. اطلاعات خصوصی، نام یا Player Tag را در سؤال ننویس. ارائه‌دهندگان خارجی ممکن است داده‌ها را طبق سیاست‌های خود پردازش یا نگهداری کنند. رضایت برای هر ارسال جداگانه است.</p>
+  </div>
+  <p id="coachAIStatus" role="status" class="small">حالت آفلاین فعال است.</p>
   <form id="coachChatForm" class="coach-chat-form">
     <label class="visually-hidden" for="coachChatQuestion">سؤال از مربی آفلاین</label>
     <input id="coachChatQuestion" class="text-field" name="coachQuestion" type="text" required maxlength="280" autocomplete="off" placeholder="درباره دک یا نبردها سؤال بپرس…">
     <button class="btn primary" type="submit">ارسال <span aria-hidden="true">←</span></button>
   </form>
   <div class="coach-chat-footer">
-    <p>گفت‌وگو فقط در حافظه همین صفحه است. هیچ متن یا داده‌ای برای مدل AI یا سرور ارسال نمی‌شود. این نسخه هنوز تحلیل Replay ندارد.</p>
+    <p>تاریخچه چت در حافظه صفحه است. حالت آفلاین داده‌ای ارسال نمی‌کند. در بتای خصوصی، ارسال آنلاین فقط با رضایت جداگانه ممکن است. تحلیل Replay هنوز فعال نیست.</p>
     <button id="clearCoachChat" class="btn ghost" type="button">پاک‌کردن گفت‌وگو</button>
   </div>
 </section>

@@ -114,3 +114,27 @@ test('partial snapshots preserve player data without inventing empty-history cla
  assert.equal(result.full_history,false);
  assert.equal(seen.length,2);
 });
+
+test('AI consent and capability fail closed; structured evidence excludes identities',async()=>{
+ const seen=[];
+ const session={enabled:true,fetch:async(path,options)=>{seen.push({path,options});return {ok:true,json:async()=>({answer:'پاسخ تست',model:'google/gemma-4-31b-it:free',external_inference:true,replay_analyzed:false,evidence_status:'client_submitted_unverified'})};}};
+ const f={errors:[],items:Array(8).fill({name:'PRIVATE_NAME'}),average:3.25,cycle:7,tag:'#SECRET'};
+ const b={filter:'event',matched_records:3,outcomes:{wins:2,losses:1,draws:0,unknown:0},player_tag:'#SECRET'};
+ const cap={ai_coach_enabled:true};
+ await assert.rejects(api.askAI(session,'اکسیر دک من',f,b,false,cap));
+ await assert.rejects(api.askAI(session,'اکسیر دک من',f,b,true,{ai_coach_enabled:false}));
+ assert.equal(seen.length,0);
+ const out=await api.askAI(session,'اکسیر دک من',f,b,true,cap);
+ assert.equal(out.answer,'پاسخ تست');
+ assert.equal(seen.length,1);
+ const payload=JSON.parse(seen[0].options.body);
+ assert.deepEqual(payload.deck,{selected_card_count:8,average_elixir:3.25,cycle_cost_four_cheapest:7});
+ assert.equal(payload.battles.wins,2);
+ assert.ok(!seen[0].options.body.includes('PRIVATE_NAME'));
+ assert.ok(!seen[0].options.body.includes('#SECRET'));
+});
+test('AI capability independently checks explicit backend consent flag',async()=>{
+ const cap=await api.capabilities(mock({'/api/v1/capabilities':{schema_version:'1.0',live_lookup_enabled:false,ai_coach_enabled:true,ai_external_data_requires_consent:true}}));
+ assert.equal(cap.live_lookup_enabled,false);
+ assert.equal(cap.ai_coach_enabled,true);
+});
