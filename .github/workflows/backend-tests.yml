@@ -61,6 +61,7 @@ jobs:
         run: |
           cfn-lint deploy/infra/aws-ec2-private-beta.review.json
           cfn-lint deploy/infra/aws-github-oidc-readonly.bootstrap.json
+          cfn-lint deploy/infra/aws-github-backend-sync.review.json
 
   local-container:
     name: Isolated Docker build and smoke
