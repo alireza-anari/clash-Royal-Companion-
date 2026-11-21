@@ -1,6 +1,7 @@
 """Cloudflare Access JWT verifier for a FUTURE invite-only private beta.
 
-Not wired into FastAPI. Never treat a forwarded identity header as verified.
+Used only by the separate protected beta gateway; not mounted on the local API.
+Never treat a forwarded identity header as verified.
 The JWKS URL is derived from a strictly pinned team hostname to avoid SSRF.
 """
 from __future__ import annotations
