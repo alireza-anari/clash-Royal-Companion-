@@ -41,6 +41,8 @@ jobs:
         run: python -m crc_api.infra_preflight ../deploy/infra/digitalocean-beta-plan.example.json
       - name: Verify AWS Free Tier evaluation is read-only and billing-unapproved
         run: python -m crc_api.aws_free_tier_preflight ../deploy/infra/aws-free-tier-plan.example.json
+      - name: Validate optional $50 budget runway without provisioning
+        run: python -m crc_api.aws_credit_scenario ../deploy/infra/aws-mvp-credit-scenario.example.json
 
   local-container:
     name: Isolated Docker build and smoke
