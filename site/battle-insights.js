@@ -50,10 +50,12 @@
       self=teams[0];side='team';attribution='single_team_assumed';
     }
     const rivalSide=side==='team'?opponents:side==='opponent'?teams:[];
-    const rival=rivalSide.length?rivalSide[0]:null;
+    // Only infer an individual result from an unambiguous 1v1.
+    const oneVsOne=teams.length===1&&opponents.length===1;
+    const rival=oneVsOne?rivalSide[0]:null;
     const myCrowns=self&&Number.isInteger(self.crowns)&&self.crowns>=0?self.crowns:null;
     const rivalCrowns=rival&&Number.isInteger(rival.crowns)&&rival.crowns>=0?rival.crowns:null;
-    const outcome=myCrowns===null||rivalCrowns===null?'unknown':myCrowns>rivalCrowns?'win':myCrowns<rivalCrowns?'loss':'draw';
+    const outcome=!oneVsOne||myCrowns===null||rivalCrowns===null?'unknown':myCrowns>rivalCrowns?'win':myCrowns<rivalCrowns?'loss':'draw';
     const elixir=self&&isNumber(self.elixirLeaked)&&self.elixirLeaked>=0?self.elixirLeaked:null;
     const rivalElixir=rival&&isNumber(rival.elixirLeaked)&&rival.elixirLeaked>=0?rival.elixirLeaked:null;
     const isEvent=battle.deckSelection==='eventDeck';

@@ -84,6 +84,16 @@
 <div id="coachFindings" class="result-list"></div>
 <div class="section-heading"><div><h2>کارت‌های موجود برای بررسی</h2><p>گزینه‌های مشروط فقط بر اساس کارت‌های فایل پروفایل؛ بدون پیشنهاد تعویض قطعی</p></div></div>
 <div id="coachOwnedOptions" class="result-list"></div>
+<div class="section-heading"><div><h2>گزارش مربی از نبردها</h2><p>فقط شواهد قابل انتساب از Battle Log</p></div></div>
+<div class="panel">
+<label for="coachBattleScope">انتخاب نوع نبرد برای تحلیل</label>
+<select id="coachBattleScope" class="text-field">
+<option value="all">همه نبردها</option>
+<option value="event">فقط نبردهای رویدادی</option>
+<option value="other">سایر نبردها / حالت نامشخص</option>
+</select>
+</div>
+<div id="coachBattleReport" class="result-list" aria-live="polite"></div>
 <div class="section-heading"><div><h2>مبنای تحلیل</h2></div></div>
 <div class="panel"><p id="coachProvenance" class="small">—</p></div>
 </section>
@@ -149,6 +159,7 @@
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 <div class="modal-backdrop" id="cardModal"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalName"><button type="button" class="close" id="closeModal" aria-label="بستن">✕</button><div class="modal-visual" id="modalVisual"></div><h2 id="modalName"></h2><p id="modalDescription"></p><div id="modalDetails" class="stat-inline"></div><div id="modalCoaching" class="modal-coaching"></div><div class="inline-actions"><button class="btn primary" id="modalToDeck">انتخاب در دک</button></div></div></div>
 <script src="/battle-insights.js" defer></script>
+<script src="/offline-coach.js" defer></script>
 <script src="/owned-options.js" defer></script>
 <script src="/backend-client.js" defer></script>
 <script src="/app.js" defer></script>

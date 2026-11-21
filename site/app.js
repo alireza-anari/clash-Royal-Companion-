@@ -92,7 +92,27 @@ function renderOwnedOptions(){
       '<div class="evidence">'+safe(c.tradeoff)+'</div></div>';
     }).join("");
 }
+function renderOfflineCoach(){
+  var target=$("coachBattleReport");
+  if(!target)return;
+  target.replaceChildren();
+  var result=window.CRCOfflineCoach
+    ? window.CRCOfflineCoach.analyze(
+        battles, (player&&player.tag)||$("playerTag").value, $("coachBattleScope").value, deck)
+    : {items:[{title:"در دسترس نیست",detail:"ماژول مربی بارگذاری نشده است."}]};
+  result.items.forEach(function(entry){
+    var article=document.createElement("article");
+    article.className="finding";
+    var title=document.createElement("h3");
+    title.textContent=entry.title;
+    var description=document.createElement("p");
+    description.textContent=entry.detail;
+    article.append(title,description);
+    target.appendChild(article);
+  });
+}
 function renderCoach(){
+renderOfflineCoach();
 var f=calcFacts();
 renderOwnedOptions();
 if(f.errors.length){$("coachMetrics").innerHTML="";$("coachFindings").innerHTML='<div class="empty-panel"><span class="emoji">▦</span><strong>'+safe(f.errors.join(" "))+'</strong><p>ابتدا دک را در صفحه دک‌ساز کامل کن.</p><a class="btn ghost" href="#deck">رفتن به دک‌ساز</a></div>';$("coachProvenance").textContent="دک هنوز معتبر نیست.";return;}
@@ -208,7 +228,7 @@ wrap.className="panel";wrap.innerHTML='<div class="panel-top"><div><div class="e
 var b=$("useProfileDeck");if(b)b.addEventListener("click",function(){var ids=player.currentDeck.map(function(c){return c.id;});if(new Set(ids).size===8){setDeck(ids,"profile-import");toPage("deck");}});
 }
 async function importBattles(file){
-try{var raw=await parseFile(file);if(!Array.isArray(raw)||raw.some(function(b){return !b||typeof b!=="object";})||raw.length>200)throw Error("این فایل قالب معتبر Battle Log ندارد یا خیلی بزرگ است.");battles=raw;battlesSource="file";mergeBattleCards(raw);renderBattles();renderCatalog();notify(raw.length+" نبرد از فایل به‌صورت محلی خوانده شد.");}
+try{var raw=await parseFile(file);if(!Array.isArray(raw)||raw.some(function(b){return !b||typeof b!=="object";})||raw.length>200)throw Error("این فایل قالب معتبر Battle Log ندارد یا خیلی بزرگ است.");battles=raw;battlesSource="file";mergeBattleCards(raw);renderBattles();renderOfflineCoach();renderCatalog();notify(raw.length+" نبرد از فایل به‌صورت محلی خوانده شد.");}
 catch(e){notify(e.message||"خواندن Battle Log ناموفق بود.");}finally{$("battlesFile").value="";}
 }
 function mergeBattleCards(raw){
@@ -302,6 +322,8 @@ $("checkTag").addEventListener("click",function(){var t=tagFormat($("playerTag")
 $("profileFile").addEventListener("change",function(e){if(e.target.files[0])importProfile(e.target.files[0]);});
 $("battlesFile").addEventListener("change",function(e){if(e.target.files[0])importBattles(e.target.files[0]);});
 $("battleFilter").addEventListener("change",renderBattles);
+$("playerTag").addEventListener("input",renderOfflineCoach);
+$("coachBattleScope").addEventListener("change",renderOfflineCoach);
 }
 async function init(){
 try{var responses=await Promise.all([fetch("/catalog.json",{cache:"no-store"}),fetch("/guides.json",{cache:"no-store"})]);if(!responses[0].ok||!responses[1].ok)throw Error("assets");var data=await responses[0].json(),coaching=await responses[1].json();if(!data||!Array.isArray(data.cards)||!data.predefined||!coaching||!coaching.guides)throw Error("catalog");catalog=data.cards;predefined=data.predefined;guides=coaching.guides;var prev=readDeck();deck=prev&&prev.every(function(id){return !!getCard(id);})?prev.slice():predefined.heavy.slice();deckSource=prev?"manual":"sample";setupEvents();renderAll();view(location.hash.slice(1)||"home");refreshLiveAvailability();}catch(e){document.querySelectorAll(".page").forEach(function(p){p.classList.remove("active");});$("page-home").classList.add("active");$("page-home").insertAdjacentHTML("afterbegin",'<div class="notice"><strong>خطای بارگذاری بانک کارت‌های نمونه؛ صفحه را تازه‌سازی کن.</strong></div>');}}
