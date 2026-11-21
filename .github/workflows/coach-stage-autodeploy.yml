@@ -1,0 +1,98 @@
+name: CRC coach staging deploy
+
+on:
+  push:
+    branches:
+      - feat/mvp-coach-offline
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: crc-coach-staging
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Verify sample-only frontend
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - name: Check source syntax
+        run: |
+          node --check site/app.js
+          node --check site/offline-coach.js
+          node --check site/battle-insights.js
+          node --check site/backend-client.js
+          node --check deploy/cloudflare/mvp-worker.js
+      - name: Require reproducible Worker
+        run: node deploy/cloudflare/build-site.mjs --check
+      - name: Run local-only regression tests
+        run: node --test site/mvp.test.mjs site/battle-insights.test.mjs site/offline-coach.test.mjs site/owned-options.test.mjs site/backend-client.test.mjs site/beta-session.test.mjs deploy/cloudflare/beta-edge.test.mjs
+      - name: Ensure live API is disabled in staging
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const fs=require('node:fs');
+          const src=fs.readFileSync('deploy/cloudflare/mvp-worker.js','utf8');
+          for(const marker of [
+            'LIVE_BACKEND_NOT_CONFIGURED',
+            'live_lookup_enabled:false',
+            'safe_public_exposure:false',
+            'mode:"sample-only"'
+          ]) {
+            if(!src.includes(marker)) throw new Error('Missing safe-stage marker: '+marker);
+          }
+          NODE
+
+  deploy:
+    name: Publish separate coach staging Worker
+    needs: verify
+    if: ${{ github.ref == 'refs/heads/feat/mvp-coach-offline' && vars.CRC_STAGE_AUTODEPLOY == 'enabled' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: crc-coach-stage
+    env:
+      CF_ACCOUNT_ID: ${{ vars.CRC_CLOUDFLARE_ACCOUNT_ID }}
+      CF_API_TOKEN: ${{ secrets.CRC_CLOUDFLARE_API_TOKEN }}
+      CF_SCRIPT: crc-coach-ci-stage-20261121
+    steps:
+      - uses: actions/checkout@v5
+      - name: Validate deployment target and credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$CF_ACCOUNT_ID" =~ ^[0-9a-f]{32}$ ]] || { echo "Missing or invalid CRC_CLOUDFLARE_ACCOUNT_ID variable"; exit 1; }
+          test -n "$CF_API_TOKEN" || { echo "Missing CRC_CLOUDFLARE_API_TOKEN secret"; exit 1; }
+          test "$CF_SCRIPT" = "crc-coach-ci-stage-20261121"
+      - name: Re-check source and bundle before upload
+        shell: bash
+        run: |
+          set -euo pipefail
+          node deploy/cloudflare/build-site.mjs --check
+          node --check deploy/cloudflare/mvp-worker.js
+      - name: Deploy sample-only Worker via Cloudflare API
+        shell: bash
+        run: |
+          set -euo pipefail
+          RESPONSE="$(mktemp)"
+          trap 'rm -f "$RESPONSE"' EXIT
+          curl --fail-with-body --silent --show-error --retry 2 \
+            --request PUT \
+            --header "Authorization: Bearer $CF_API_TOKEN" \
+            --header "Content-Type: application/javascript" \
+            --data-binary @deploy/cloudflare/mvp-worker.js \
+            --output "$RESPONSE" \
+            "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/workers/scripts/$CF_SCRIPT"
+          node -e 'const fs=require("fs"); const d=JSON.parse(fs.readFileSync(process.argv[1],"utf8")); if(d.success!==true) {console.error("Cloudflare deploy failed",d.errors);process.exit(1)} console.log("Staging Worker updated:",d.result?.id)' "$RESPONSE"
+      - name: Deployment summary
+        shell: bash
+        run: |
+          echo "Separate Cloudflare staging Worker updated: $CF_SCRIPT"
+          echo "Main Worker, Cloudflare Access gateway, FastAPI, and PostgreSQL were untouched."
