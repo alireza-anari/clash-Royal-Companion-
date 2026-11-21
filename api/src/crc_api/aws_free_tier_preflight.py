@@ -76,6 +76,12 @@ def validate(plan: Any) -> dict[str, Any]:
     # of silently changing the committed no-spend example.
     if type(plan) is not dict or plan != EXPECTED:
         raise UnsafeAWSPlan("Unknown or potentially billable infrastructure settings.")
+    # bool is a subclass of int in Python; explicitly forbid replacing a
+    # version/price with boolean JSON values that compare equal numerically.
+    if type(plan["schema_version"]) is not int:
+        raise UnsafeAWSPlan("Invalid schema type.")
+    if type(plan["network"]["public_ipv4_hourly_list_usd"]) is not float:
+        raise UnsafeAWSPlan("Invalid price type.")
     return plan
 
 
