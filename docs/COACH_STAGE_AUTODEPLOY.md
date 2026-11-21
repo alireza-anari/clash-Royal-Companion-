@@ -57,3 +57,10 @@ or personal battle logs in GitHub repository files or Actions logs.
 **Important**: Changing a GitHub Actions variable does not itself trigger a
 new push. After enabling the variables/secret, a new commit on the branch is
 needed for the first automatic publication.
+
+## Activation run
+
+The owner configured the Cloudflare token secret and both GitHub Actions variables
+on 2026-11-21. This documentation-only commit intentionally triggers the
+`feat/mvp-coach-offline` push workflow for its first opt-in deployment.
+Production Workers and the private backend are not targets of this pipeline.
