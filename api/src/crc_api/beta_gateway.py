@@ -12,7 +12,7 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass
 import os
 import re
-from urllib.parse import urlsplit
+from urllib.parse import urlsplit, parse_qs
 from uuid import uuid4
 from typing import Any, Callable
 
@@ -86,6 +86,12 @@ class BetaConfig:
                 raise ValueError("Invalid postgres DSN")
             if parsed.username is None or parsed.password is None:
                 raise ValueError("Postgres credentials missing")
+            # A private network does not automatically encrypt DB credentials.
+            # The beta connection must verify both the certificate chain and
+            # hostname. CI supplies a test-only pool factory instead.
+            params = parse_qs(parsed.query, keep_blank_values=True)
+            if params.get("sslmode") != ["verify-full"]:
+                raise ValueError("Verified TLS is required for beta PostgreSQL")
         except (ValueError, TypeError) as exc:
             raise UnsafeBetaConfiguration("Private beta database is not configured.") from exc
 
