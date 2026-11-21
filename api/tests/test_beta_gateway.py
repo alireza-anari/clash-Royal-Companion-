@@ -359,3 +359,56 @@ def test_beta_database_accepts_explicit_verify_full():
     settings = fake_settings()
     settings.validate()
     assert settings.live_lookup_enabled is True
+
+
+def test_authenticated_readiness_confirms_access_and_quota_without_supercell():
+    verifier, sign = credentials()
+    quota = MockQuota()
+    calls = []
+    app = build_app(verifier, quota, calls)
+    with TestClient(app, base_url="https://" + HOST) as client:
+        missing = client.get("/api/v1/health/ready")
+        assert missing.status_code == 401
+        ready = client.get("/api/v1/health/ready",
+                           headers={"Cf-Access-Jwt-Assertion": sign()})
+        assert ready.status_code == 200
+        result = ready.json()
+        assert result["status"] == "ready_for_authenticated_requests"
+        assert result["checks"] == {"access_jwt": "verified", "shared_quota": "reserved"}
+        assert result["live_lookup_enabled"] is True
+        assert result["supercell_connectivity_checked"] is False
+        assert result["full_production_readiness"] is False
+        assert ready.headers["Cache-Control"] == "no-store"
+    assert quota.calls == [SUBJECT]
+    assert calls == []
+
+
+def test_readiness_fails_closed_when_shared_quota_unavailable():
+    verifier, sign = credentials()
+    calls = []
+    quota = MockQuota(QuotaDenied("MEMBER_QUOTA_EXCEEDED", 17))
+    app = build_app(verifier, quota, calls)
+    with TestClient(app, base_url="https://" + HOST) as client:
+        res = client.get("/api/v1/health/ready",
+                         headers={"Cf-Access-Jwt-Assertion": sign()})
+        assert res.status_code == 429
+        assert res.headers["Retry-After"] == "17"
+    assert calls == []
+
+
+def test_disabled_beta_readiness_reports_disabled_without_upstream():
+    verifier, sign = credentials()
+    calls = []
+    settings = replace(fake_settings(), live_lookup_enabled=False)
+    app = create_beta_app(
+        config=settings, verifier=verifier, quota=MockQuota(),
+        supercell=SupercellClient(token="", transport=upstream(calls)),
+        pool_factory=fake_pool,
+    )
+    with TestClient(app, base_url="https://" + HOST) as client:
+        res = client.get("/api/v1/health/ready",
+                         headers={"Cf-Access-Jwt-Assertion": sign()})
+        assert res.status_code == 200
+        assert res.json()["live_lookup_enabled"] is False
+        assert res.json()["supercell_connectivity_checked"] is False
+    assert calls == []
