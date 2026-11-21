@@ -95,3 +95,22 @@ test('top-level reauthentication only runs on explicit signInAgain call',()=>{
  session.signInAgain();
  assert.equal(getReloadCount(),1);
 });
+
+
+test('protected readiness uses same-origin Access session and never calls arbitrary health URLs',async()=>{
+ const calls=[];
+ const {session}=context({fetchImpl:async(path,options)=>{
+   calls.push({path,options});
+   return new Response('{"status":"ready_for_authenticated_requests"}',{
+     headers:{"Content-Type":"application/json"}
+   });
+ }});
+ const r=await session.fetch('/api/v1/health/ready');
+ assert.equal(r.status,200);
+ assert.equal(calls.length,1);
+ assert.equal(calls[0].path,'/api/v1/health/ready');
+ assert.equal(calls[0].options.credentials,'same-origin');
+ assert.equal((await session.fetch('/api/v1/health/live')).status,403);
+ assert.equal((await session.fetch('/api/v1/health/ready?private=1')).status,403);
+ assert.equal(calls.length,1);
+});
