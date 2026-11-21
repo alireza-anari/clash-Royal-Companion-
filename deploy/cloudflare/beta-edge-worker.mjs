@@ -21,11 +21,21 @@ function json(status, code) {
       "Referrer-Policy":"no-referrer","X-Robots-Tag":"noindex, nofollow"}
   });
 }
-function privateHost(value){
+function privateHost(value,allowWorkersDev=false){
   if(typeof value!=="string")return null;
   const h=value.trim().toLowerCase();
-  return HOST.test(h)&&h.includes(".")&&!h.startsWith(".")&&!h.includes("..")
-    &&!h.endsWith(".workers.dev")?h:null;
+  if(!HOST.test(h)||!h.includes(".")||h.startsWith(".")||h.includes(".."))
+    return null;
+  // A protected production workers.dev hostname is supported by Access,
+  // allowing a private MVP without purchasing a domain. It is opt-in ONLY.
+  // Never reuse our public sample Worker's hostname.
+  if(h.endsWith(".workers.dev")){
+    if(!allowWorkersDev||! /^[a-z0-9-]+\.[a-z0-9-]+\.workers\.dev$/.test(h))
+      return null;
+    if(h==="crc-mvp-stage-20261120.alirezaanari117.workers.dev")
+      return null;
+  }
+  return h;
 }
 function apiRoute(url){
   // Authenticated operational probe, never an unauthenticated liveness route.
@@ -76,7 +86,7 @@ async function boundedJson(response){
 async function routeRequest(request,env){
   let url;
   try{url=new URL(request.url);}catch(e){return json(400,"INVALID_REQUEST");}
-  const expected=privateHost(env?.BETA_HOSTNAME);
+  const expected=privateHost(env?.BETA_HOSTNAME,env?.BETA_ALLOW_WORKERS_DEV==="true");
   if(env?.BETA_ENABLED!=="true"||!expected)return json(503,"BETA_NOT_CONFIGURED");
   if(url.protocol!=="https:"||url.hostname.toLowerCase()!==expected||url.port)
     return json(400,"UNTRUSTED_HOST");
