@@ -50,12 +50,17 @@ consent before the request. The source of any submitted aggregate is labeled
    `api/migrations/DRAFT_0002_ai_daily_budget.sql` on the **private** database.
    A missing quota table fails closed with `AI_BUDGET_UNAVAILABLE`.
 3. Create a limited OpenRouter API key at
-   https://openrouter.ai/settings/keys. Never send the key in chat, commit it,
-   put it in Cloudflare public Worker vars, or log it in GitHub Actions.
-4. Put the key in a server-only secret store / private environment with
-   restricted file and process access. Keep `CRC_BETA_AI_ENABLED=false` until
-   authentication, quotas, privacy policy, consent UI and provider behavior
-   have all been reviewed.
+   https://openrouter.ai/settings/keys and store it as a SecureString in
+   AWS SSM `/crc/mvp/openrouter/api-key` in `eu-north-1`.
+   Never send the key in chat, commit it, put it in a public Cloudflare
+   Worker variable, or log it in GitHub Actions.
+4. Give only the CRC EC2 instance role `ssm:GetParameter` on that
+   specific parameter (the AWS-managed `alias/aws/ssm` key needs no
+   extra customer KMS permission for this setup). The runtime process
+   requires an available AWS CLI and instance profile credentials.
+   Configure `CRC_OPENROUTER_SSM_PARAMETER` and leave
+   `CRC_BETA_AI_ENABLED=false` until authentication, quotas, privacy
+   policy, consent UI and provider behavior are all reviewed.
 5. Enable only for invited beta members. Validate an approved request
    with mock data first, then controlled live tests.
 6. Document a kill-switch: `CRC_BETA_AI_ENABLED=false` + restart isolated
