@@ -28,6 +28,9 @@ function privateHost(value){
     &&!h.endsWith(".workers.dev")?h:null;
 }
 function apiRoute(url){
+  // Authenticated operational probe, never an unauthenticated liveness route.
+  if(url.pathname==="/api/v1/health/ready"&&url.search==="")
+    return url.pathname;
   if(url.pathname==="/api/v1/capabilities"&&url.search==="")
     return url.pathname;
   if(url.pathname==="/api/v1/catalog/cards"&&url.search==="")
