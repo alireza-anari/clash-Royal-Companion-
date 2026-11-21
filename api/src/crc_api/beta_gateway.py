@@ -28,6 +28,7 @@ from .security.shared_quota import PostgresSharedQuota, QuotaDenied
 from .supercell import SupercellClient, SupercellError
 from .ai_coach import CoachRequest, CoachUnavailable, OpenRouterCoach
 from .ai_daily_budget import SharedAIDailyBudget, AIDailyBudgetExceeded
+from .ssm_secret import load_openrouter_key_from_ssm, SSMSecretUnavailable
 
 
 HOST = re.compile(r"^[a-z0-9](?:[a-z0-9.-]{0,251}[a-z0-9])?$")
@@ -122,9 +123,24 @@ def create_beta_app(
     budget = quota or PostgresSharedQuota(settings.quota_hmac_secret)
     # Even a configured API key cannot activate inference by itself.
     ai_switch = os.environ.get("CRC_BETA_AI_ENABLED", "false").strip().lower() == "true"
-    chat = ai_client if ai_client is not None else OpenRouterCoach(
-        api_key=os.environ.get("OPENROUTER_API_KEY", "")
-    )
+    # Never read Parameter Store at import time or when AI is disabled.
+    # Reject plaintext OPENROUTER_API_KEY environment secrets for this beta.
+    if ai_client is not None:  # Test-only dependency injection.
+        chat = ai_client
+    elif ai_switch:
+        try:
+            key = load_openrouter_key_from_ssm(
+                enabled=True,
+                parameter=os.environ.get("CRC_OPENROUTER_SSM_PARAMETER", ""),
+            )
+        except SSMSecretUnavailable:
+            # Do not chain AWS stderr, key contents, or response bodies.
+            raise UnsafeBetaConfiguration("AI credential could not be loaded.") from None
+        chat = OpenRouterCoach(api_key=key)
+        if not chat.configured:
+            raise UnsafeBetaConfiguration("AI credential could not be loaded.")
+    else:
+        chat = OpenRouterCoach(api_key="")
     daily_ai = ai_budget if ai_budget is not None else SharedAIDailyBudget(
         settings.quota_hmac_secret
     )
