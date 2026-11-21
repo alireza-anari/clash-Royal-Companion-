@@ -37,6 +37,8 @@ jobs:
       - run: python -m pytest
       - name: Verify release template is disabled (no deployment)
         run: python -m crc_api.release_preflight ../deploy/release/beta-manifest.example.json --mode require-disabled
+      - name: Verify infrastructure plan cannot create a paid resource
+        run: python -m crc_api.infra_preflight ../deploy/infra/digitalocean-beta-plan.example.json
 
   local-container:
     name: Isolated Docker build and smoke
