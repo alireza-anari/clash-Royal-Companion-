@@ -36,7 +36,7 @@ def fake_settings():
         hostname=HOST, team_domain=TEAM, audience=AUD,
         allowed_subjects=frozenset({SUBJECT}),
         quota_hmac_secret=QUOTA_SECRET,
-        database_dsn="postgresql://demo:local-test@postgres:5432/crc_test",
+        database_dsn="postgresql://demo:local-test@postgres:5432/crc_test?sslmode=verify-full",
         live_lookup_enabled=True,
     )
 
@@ -339,3 +339,23 @@ def test_live_lookup_switch_requires_exact_explicit_opt_in(monkeypatch):
         assert BetaConfig.from_environment().live_lookup_enabled is False
     monkeypatch.setenv("CRC_BETA_LIVE_LOOKUP_ENABLED", "true")
     assert BetaConfig.from_environment().live_lookup_enabled is True
+
+
+
+@pytest.mark.parametrize("suffix", [
+    "", "?sslmode=disable", "?sslmode=require", "?sslmode=verify-ca",
+    "?sslmode=verify-full&sslmode=disable",
+])
+def test_beta_database_requires_hostname_verified_tls(suffix):
+    invalid = replace(
+        fake_settings(),
+        database_dsn="postgresql://demo:local-test@db.example:5432/crc_test" + suffix,
+    )
+    with pytest.raises(UnsafeBetaConfiguration, match="database is not configured"):
+        invalid.validate()
+
+
+def test_beta_database_accepts_explicit_verify_full():
+    settings = fake_settings()
+    settings.validate()
+    assert settings.live_lookup_enabled is True
