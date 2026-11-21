@@ -26,6 +26,8 @@ from .security.cloudflare_access import AccessDenied, AccessVerifier
 from .security.private_beta import PrivateBetaAdmission
 from .security.shared_quota import PostgresSharedQuota, QuotaDenied
 from .supercell import SupercellClient, SupercellError
+from .ai_coach import CoachRequest, CoachUnavailable, OpenRouterCoach
+from .ai_daily_budget import SharedAIDailyBudget, AIDailyBudgetExceeded
 
 
 HOST = re.compile(r"^[a-z0-9](?:[a-z0-9.-]{0,251}[a-z0-9])?$")
@@ -103,6 +105,8 @@ def create_beta_app(
     quota: PostgresSharedQuota | None = None,
     supercell: SupercellClient | None = None,
     pool_factory: Callable[[str], Any] | None = None,
+    ai_client: OpenRouterCoach | None = None,
+    ai_budget: SharedAIDailyBudget | None = None,
 ) -> FastAPI:
     """Separate --factory ASGI target, never imported by local crc_api.main.
 
@@ -116,6 +120,15 @@ def create_beta_app(
         raise UnsafeBetaConfiguration("Private beta Supercell provider is not configured.")
     access = verifier or AccessVerifier(settings.team_domain, settings.audience, settings.allowed_subjects)
     budget = quota or PostgresSharedQuota(settings.quota_hmac_secret)
+    # Even a configured API key cannot activate inference by itself.
+    ai_switch = os.environ.get("CRC_BETA_AI_ENABLED", "false").strip().lower() == "true"
+    chat = ai_client if ai_client is not None else OpenRouterCoach(
+        api_key=os.environ.get("OPENROUTER_API_KEY", "")
+    )
+    daily_ai = ai_budget if ai_budget is not None else SharedAIDailyBudget(
+        settings.quota_hmac_secret
+    )
+    ai_active = ai_switch and chat.configured
 
     if pool_factory is None:
         async def default_pool(dsn: str):
@@ -147,6 +160,8 @@ def create_beta_app(
     )
     app.state.supercell = api
     app.state.admission = PrivateBetaAdmission(access, budget)
+    app.state.ai_chat = chat
+    app.state.ai_daily_budget = daily_ai
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=[settings.hostname])
 
     def error(status: int, code: str, rid: str, retry: int | None = None):
@@ -229,7 +244,8 @@ def create_beta_app(
     def capabilities():
         return {"schema_version": "1.0", "live_lookup_enabled": settings.live_lookup_enabled,
                 "provider": "supercell", "player_tag_verifies_ownership": False,
-                "battle_log_full_history": False, "safe_public_exposure": False}
+                "battle_log_full_history": False, "safe_public_exposure": False,
+                "ai_coach_enabled": ai_active, "ai_external_data_requires_consent": True}
 
     @app.get("/api/v1/health/ready")
     def protected_readiness(request: Request):
@@ -281,6 +297,46 @@ def create_beta_app(
             "battles": battles, "coverage": {"returned_count": len(battles), "full_history": False},
             "partial": partial, "battles_error_code": battle_code,
             "source": source, "battle_source": battle_source,
+        }
+
+    @app.post("/api/v1/coach/chat")
+    async def protected_ai_chat(payload: CoachRequest, request: Request):
+        """Never exposed on the public sample-only Worker.
+
+        Signed Cloudflare Access, invited subject, shared minute quota, strict
+        same-origin policy and private Host are all checked by middleware first.
+        AI additionally requires the explicit owner switch, a server-only API
+        key, explicit request consent, and a persistent UTC daily budget.
+        The only accepted evidence is bounded, anonymous aggregate numbers.
+        """
+        rid = request.state.request_id
+        if not ai_active:
+            return error(503, "AI_COACH_DISABLED", rid)
+        if not payload.consent_to_external_ai:
+            return error(403, "AI_CONSENT_REQUIRED", rid)
+        try:
+            async with request.app.state.pool.acquire() as connection:
+                await request.app.state.ai_daily_budget.reserve(
+                    connection, request.state.verified_subject
+                )
+        except AIDailyBudgetExceeded as exc:
+            return error(429, "AI_DAILY_BUDGET_EXCEEDED", rid, exc.retry_after_seconds)
+        except Exception:
+            # A missing/unmigrated quota table must never allow provider calls.
+            return error(503, "AI_BUDGET_UNAVAILABLE", rid)
+        try:
+            result = await request.app.state.ai_chat.answer(payload)
+        except CoachUnavailable as exc:
+            status = 429 if exc.code == "AI_PROVIDER_RATE_LIMIT" else (
+                403 if exc.code == "AI_CONSENT_REQUIRED" else 503
+            )
+            return error(status, exc.code, rid)
+        return {
+            "request_id": rid,
+            **result,
+            "external_inference": True,
+            "input_provenance": "user-submitted unverified aggregates",
+            "replay_analyzed": False,
         }
 
     return app
