@@ -5,7 +5,7 @@
 ## Two completely separate modes
 
 - `crc_api.main:app` is the existing local development application. It still refuses remote/production runtime modes, remote socket peers and nonlocal CORS. Do not weaken it.
-- `crc_api.beta_gateway:create_beta_app` is a separate app factory. It is never imported/mounted by the local app. It has no default app instance. It fails on missing configuration, missing provider secret, unavailable database pool and invalid Access policy.
+- `crc_api.beta_gateway:create_beta_app` is a separate app factory. It is never imported/mounted by the local app. It has no default app instance. It fails on missing configuration, unavailable database pool and invalid Access policy. The provider secret is mandatory only when the separate live-lookup switch is explicitly enabled.
 
 The private beta app exposes only:
 - `GET /api/v1/capabilities`: authenticated, non-secret state, still advertises `safe_public_exposure:false`.
@@ -33,7 +33,8 @@ The quota design has a fixed 60-second UTC window; it is not a sliding window or
 - `CRC_BETA_AUDIENCE`: Cloudflare Access application's Audience (AUD) tag.
 - `CRC_BETA_ALLOWED_SUBJECTS`: comma-separated stable Access subject IDs for the approved testers, not Player Tags or email claims.
 - `CRC_BETA_QUOTA_HMAC_HEX`: securely generated 32-byte-or-longer hex secret; separate from Access JWT and Supercell secrets.
-- `CRC_BETA_POSTGRES_DSN`: private PostgreSQL connection string. Must be protected by your secrets manager and private network. Production DB TLS requirements are **not enforced in this prototype**, so do not deploy without review.
+- `CRC_BETA_POSTGRES_DSN`: private PostgreSQL connection string. Must be protected by your secrets manager and private network. The beta config parser now requires `sslmode=verify-full`; the certificate authority and hostname must be correctly configured and checked in actual deployment.
+- `CRC_BETA_LIVE_LOOKUP_ENABLED`: explicitly `true` to enable catalog and player lookups; defaults to **false**. With this flag off, capabilities reports disabled and the API never calls Supercell.
 - `SUPERCELL_API_KEY`: official server-only key registered to the host's fixed outbound IPv4.
 
 Example package install for isolated verification: `python -m pip install -e '.[security,test]'`. There is deliberately **no publicly runnable production command in this document**, because the private-origin isolation, lifecycle and host networking have not been provisioned or reviewed.
@@ -58,3 +59,7 @@ Example package install for isolated verification: `python -m pip install -e '.[
 ## Owner workflow and invariants
 
 No deployment or cost incurred. No Supercell secret or real tester identity committed. Cloudflare existing site stays sample-only. Draft PR #2 is not merged to main. This milestone validates the application security flow **in isolated automated tests**, not actual Cloudflare Access app or real fixed-IP connectivity.
+
+## Updated release gate (SP-BETA-04)
+
+This earlier contract is superseded for activation by `docs/PRIVATE_BETA_RELEASE_GATE_SP_BETA_04.md`: the live lookup flag is independently default-off and the draft shared quota table has a bounded but **not yet scheduled** cleanup function. No live infrastructure is implied.
