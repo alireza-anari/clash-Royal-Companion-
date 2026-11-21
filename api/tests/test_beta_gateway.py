@@ -521,3 +521,52 @@ def test_ai_is_disabled_and_budget_failure_fails_closed(monkeypatch):
         assert r.json()["error"]["code"] == "AI_BUDGET_UNAVAILABLE"
         assert "private-postgres" not in r.text
     assert ai.calls == 0
+
+
+def test_beta_openrouter_ssm_loading_requires_explicit_switch(monkeypatch):
+    """No AWS SSM reads until opt-in; enabled path gets only approved parameter."""
+    import crc_api.beta_gateway as module
+    from crc_api.ssm_secret import PARAMETER_NAME
+    calls = []
+    def fake_ssm(*, enabled, parameter):
+        calls.append((enabled, parameter))
+        return "sk-or-v1-" + "a" * 48
+
+    monkeypatch.setattr(module, "load_openrouter_key_from_ssm", fake_ssm, raising=False)
+    monkeypatch.setenv("CRC_OPENROUTER_SSM_PARAMETER", PARAMETER_NAME)
+    monkeypatch.setenv("OPENROUTER_API_KEY", "THIS_ENV_KEY_SHOULD_BE_IGNORED")
+    monkeypatch.setenv("CRC_BETA_AI_ENABLED", "false")
+    settings = fake_settings()
+    verifier, _sign = credentials()
+    kwargs = dict(
+        config=settings, verifier=verifier, quota=MockQuota(),
+        supercell=SupercellClient(token="mock-supercell-key", transport=upstream([])),
+        pool_factory=fake_pool,
+    )
+    disabled = create_beta_app(**kwargs)
+    assert disabled.state.ai_chat.configured is False
+    assert calls == []
+    monkeypatch.setenv("CRC_BETA_AI_ENABLED", "true")
+    enabled = create_beta_app(**kwargs)
+    assert enabled.state.ai_chat.configured is True
+    assert calls == [(True, PARAMETER_NAME)]
+
+
+def test_ai_ssm_config_failure_never_starts_enabled_beta(monkeypatch):
+    from crc_api.ssm_secret import PARAMETER_NAME, SSMSecretUnavailable
+    import crc_api.beta_gateway as module
+
+    monkeypatch.setenv("CRC_BETA_AI_ENABLED", "true")
+    monkeypatch.setenv("CRC_OPENROUTER_SSM_PARAMETER", PARAMETER_NAME)
+
+    def fail(*, enabled, parameter):
+        raise SSMSecretUnavailable()
+
+    monkeypatch.setattr(module, "load_openrouter_key_from_ssm", fail, raising=False)
+    verifier, _sign = credentials()
+    with pytest.raises(UnsafeBetaConfiguration, match="AI credential"):
+        create_beta_app(
+            config=fake_settings(), verifier=verifier, quota=MockQuota(),
+            supercell=SupercellClient(token="mock-supercell-key", transport=upstream([])),
+            pool_factory=fake_pool,
+        )
