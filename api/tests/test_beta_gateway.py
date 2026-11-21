@@ -270,7 +270,17 @@ def test_real_postgres_rejects_third_request_at_shared_member_quota():
     import asyncpg
     verifier, sign = credentials()
     calls = []
-    quota = PostgresSharedQuota(QUOTA_SECRET, per_member=2, global_budget=3)
+    # Freeze one UTC quota bucket across all HTTP calls. Otherwise a CI run
+    # crossing the wall-clock minute boundary can legitimately admit the third
+    # request into a new bucket, causing a flaky false failure.
+    from datetime import datetime, timezone
+    class FixedBucketQuota(PostgresSharedQuota):
+        async def reserve(self, connection, verified_subject, *, now=None):
+            return await super().reserve(
+                connection, verified_subject,
+                now=datetime(2026, 11, 20, 14, 15, 25, tzinfo=timezone.utc),
+            )
+    quota = FixedBucketQuota(QUOTA_SECRET, per_member=2, global_budget=3)
 
     async def postgres_pool(_):
         pool = await asyncpg.create_pool(TEST_DSN, min_size=1, max_size=3)
