@@ -37,7 +37,7 @@ test('transport only permits approved same-origin read-only API paths',async()=>
  }}).session;
  for(const path of [
    'https://evil.example', '//evil.example/api/v1/capabilities',
-   '/api/v1/health/ready','/api/v1/players/%23ABC/cards',
+   '/api/v1/health/live','/api/v1/players/%23ABC/cards',
    '/api/v1/players/%23ABC/snapshot?limit=999',
    '/api/v1/capabilities?proxy=http://evil.example',
    '/api/v1/capabilities#fragment',
