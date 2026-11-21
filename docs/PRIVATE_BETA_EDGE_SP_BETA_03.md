@@ -37,6 +37,21 @@ Official Supercell API from owner-authorized fixed outbound IPv4
 - `deploy/cloudflare/beta-edge.test.mjs` and `site/beta-session.test.mjs`: check path allowlist, method restrictions, header forwarding, origin/Host denial, oversized JSON, no-store, missing binding, cookie-mode fetch and explicit re-login.
 - `site/sw.js` is **not registered in the beta browser mode**; the beta edge returns 410 for `/sw.js`. Deploy on a new beta-only hostname that has never had a public PWA service worker registered.
 
+## No-domain MVP option (reviewed November 2026, NOT enabled)
+
+Cloudflare's current official Workers docs allow protecting a distinct production `workers.dev` hostname with Access. This avoids buying a custom domain solely for the short MVP test phase. **The existing public sample hostname is never reused.**
+
+- Choose a **new, separate** beta Worker and its exact `<beta-worker>.<account>.workers.dev` production hostname.
+- Apply the Cloudflare Access policy to the **entire Worker**, including its production `workers.dev` and any enabled preview URLs, with only approved invited testers. Confirm Access's signed `Cf-Access-Jwt-Assertion` is forwarded to the Worker and independently verified in the backend before any Supercell call.
+- Set `BETA_HOSTNAME` to that exact hostname and `BETA_ALLOW_WORKERS_DEV=true` to allow it. Both settings are **source configuration only**; they do not authenticate anyone or automatically create Access.
+- Keep `BETA_ENABLED=false` until private VPC Service, origin JWT verification, quota DB and rollback tests are ready. Worker rejects invalid/unconfigured hostnames and the public `crc-mvp-stage-20261120.alirezaanari117.workers.dev` name even with the opt-in flag.
+- Without `BETA_ALLOW_WORKERS_DEV=true`, `workers.dev` still fails closed. Custom domains remain supported for a later successful production launch.
+- Neither the separate AWS host nor the protected Worker has been deployed; do not treat an opted-in `workers.dev` hostname as safe unless a real Cloudflare Access policy protects it.
+
+Sources:
+- https://developers.cloudflare.com/workers/configuration/cloudflare-access/
+- https://developers.cloudflare.com/workers/configuration/routing/workers-dev/
+
 ## Path and privilege controls
 
 The only allowed backend paths are:
@@ -57,6 +72,7 @@ After approved provisioning, bind one specific **VPC Service** to the Worker:
 - Binding name: `ASSETS`, directory: `site/`, and `assets.run_worker_first: true`
 - Environment variable `BETA_ENABLED: "true"` (enable only after controls are verified)
 - Environment variable `BETA_HOSTNAME`: exact new, Access-protected beta hostname (e.g. `beta.example.com`)
+- Optional `BETA_ALLOW_WORKERS_DEV`: exact string `true` ONLY for a separate, Access-protected production `<beta-worker>.<account>.workers.dev` hostname (never the public sample hostname)
 - Worker entrypoint: `deploy/cloudflare/beta-edge-worker.mjs`
 
 Do not create generic VPC Network access when a single VPC Service will suffice. Do not expose the origin host/port publicly. The Worker uses `http://<configured-beta-hostname>/...` solely to construct the fixed Host and path; VPC **Service** bindings route to their configured service ID's actual private host and port, not to the hostname as an arbitrary Internet destination. Verify this behavior against the current API during integration.
