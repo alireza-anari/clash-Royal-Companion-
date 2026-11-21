@@ -44,6 +44,22 @@ jobs:
       - name: Validate optional $50 budget runway without provisioning
         run: python -m crc_api.aws_credit_scenario ../deploy/infra/aws-mvp-credit-scenario.example.json
 
+
+  cloudformation-review:
+    name: AWS EC2 template static lint (never deploy)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install AWS CloudFormation schema linter (no AWS credentials)
+        run: python -m pip install 'cfn-lint>=1,<2'
+      - name: Validate private EC2 draft without any AWS API call
+        run: cfn-lint deploy/infra/aws-ec2-private-beta.review.json
+
   local-container:
     name: Isolated Docker build and smoke
     runs-on: ubuntu-latest
