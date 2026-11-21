@@ -231,6 +231,24 @@ def create_beta_app(
                 "provider": "supercell", "player_tag_verifies_ownership": False,
                 "battle_log_full_history": False, "safe_public_exposure": False}
 
+    @app.get("/api/v1/health/ready")
+    def protected_readiness(request: Request):
+        """Authenticated diagnostic, not a public infrastructure liveness probe.
+
+        Authentication and a PostgreSQL quota reservation have succeeded before
+        this handler executes. Never request Supercell from a health probe.
+        """
+        return {
+            "status": "ready_for_authenticated_requests",
+            "checks": {
+                "access_jwt": "verified",
+                "shared_quota": "reserved",
+            },
+            "live_lookup_enabled": settings.live_lookup_enabled,
+            "supercell_connectivity_checked": False,
+            "full_production_readiness": False,
+        }
+
     @app.get("/api/v1/catalog/cards")
     async def cards(request: Request):
         if not settings.live_lookup_enabled:
