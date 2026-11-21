@@ -324,6 +324,25 @@ $("battlesFile").addEventListener("change",function(e){if(e.target.files[0])impo
 $("battleFilter").addEventListener("change",renderBattles);
 $("playerTag").addEventListener("input",renderOfflineCoach);
 $("coachBattleScope").addEventListener("change",renderOfflineCoach);
+$("copyCoachEvidence").addEventListener("click",async function(){
+  var engine=window.CRCOfflineCoach;
+  var data=engine&&engine.evidence(
+    battles,
+    (player&&player.tag)||$("playerTag").value,
+    $("coachBattleScope").value,
+    deck
+  );
+  if(!data){
+    notify("برای تهیه خلاصه آماری، Battle Log و Player Tag معتبر لازم است.");
+    return;
+  }
+  try{
+    await navigator.clipboard.writeText(JSON.stringify(data,null,2));
+    notify("خلاصه آماری کپی شد؛ اطلاعات به سرور ارسال نشد.");
+  }catch(e){
+    notify("مرورگر اجازه کپی در کلیپ‌بورد را نداد.");
+  }
+});
 }
 async function init(){
 try{var responses=await Promise.all([fetch("/catalog.json",{cache:"no-store"}),fetch("/guides.json",{cache:"no-store"})]);if(!responses[0].ok||!responses[1].ok)throw Error("assets");var data=await responses[0].json(),coaching=await responses[1].json();if(!data||!Array.isArray(data.cards)||!data.predefined||!coaching||!coaching.guides)throw Error("catalog");catalog=data.cards;predefined=data.predefined;guides=coaching.guides;var prev=readDeck();deck=prev&&prev.every(function(id){return !!getCard(id);})?prev.slice():predefined.heavy.slice();deckSource=prev?"manual":"sample";setupEvents();renderAll();view(location.hash.slice(1)||"home");refreshLiveAvailability();}catch(e){document.querySelectorAll(".page").forEach(function(p){p.classList.remove("active");});$("page-home").classList.add("active");$("page-home").insertAdjacentHTML("afterbegin",'<div class="notice"><strong>خطای بارگذاری بانک کارت‌های نمونه؛ صفحه را تازه‌سازی کن.</strong></div>');}}
