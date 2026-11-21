@@ -384,3 +384,127 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
     transition-duration:.01ms!important;
   }
 }
+
+
+/* Guided offline coach chat — Persian RTL, accessible and mobile first. */
+.visually-hidden{
+  position:absolute!important;width:1px!important;height:1px!important;
+  padding:0!important;margin:-1px!important;overflow:hidden!important;
+  clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important;
+}
+.coach-chat{
+  margin:22px 0 26px;
+  border:1px solid rgba(114,222,213,.3);
+  border-radius:28px;
+  padding:24px;
+  background:
+    radial-gradient(480px 280px at 5% 0%,rgba(61,159,169,.15),transparent 80%),
+    linear-gradient(150deg,rgba(25,47,67,.97),rgba(11,28,44,.98));
+  box-shadow:0 18px 45px rgba(2,11,24,.2),inset 0 1px rgba(255,255,255,.04);
+}
+.coach-chat-header{
+  display:flex;align-items:flex-start;justify-content:space-between;gap:15px;
+  margin-bottom:16px;
+}
+.coach-chat-header h2{margin:0 0 4px;font-size:23px}
+.coach-chat-header p{margin:0;color:#b9cfdf;font-size:12.5px;line-height:1.9;max-width:680px}
+.coach-chat-mode{
+  border:1px solid rgba(117,225,184,.27);
+  background:rgba(42,134,101,.12);
+  color:#b6f4d7;padding:7px 11px;border-radius:99px;
+  font-size:11px;font-weight:850;white-space:nowrap;
+}
+.coach-chat-mode span{color:#68dba7}
+.coach-chat-messages{
+  max-height:365px;min-height:195px;overflow-y:auto;
+  scrollbar-width:thin;scrollbar-color:#40677c transparent;
+  padding:16px 15px;display:flex;flex-direction:column;gap:12px;
+  background:rgba(4,17,31,.66);
+  border:1px solid rgba(160,194,225,.14);
+  border-radius:19px;
+}
+.coach-chat-message{
+  width:fit-content;max-width:min(87%,640px);
+  border:1px solid rgba(158,192,223,.2);
+  border-radius:17px 17px 5px 17px;
+  background:linear-gradient(150deg,rgba(33,57,78,.9),rgba(24,44,64,.94));
+  padding:12px 15px;
+  color:#e8f4fd;
+  overflow-wrap:anywhere;
+}
+.coach-chat-message.is-user{
+  align-self:flex-start;
+  border-radius:17px 17px 17px 5px;
+  background:linear-gradient(145deg,rgba(55,102,115,.64),rgba(31,71,89,.8));
+  border-color:rgba(112,213,205,.3);
+}
+.coach-chat-message.is-coach{align-self:flex-end}
+.coach-chat-speaker{
+  display:block;font-size:10.5px;color:#9be5db;
+  font-weight:850;margin-bottom:5px;
+}
+.coach-chat-message.is-user .coach-chat-speaker{color:#ffe2ab}
+.coach-chat-message p{
+  font-size:13px;line-height:2.05;
+  margin:0;color:#eef7fe;white-space:pre-wrap;
+}
+.coach-chat-evidence{
+  display:block;color:#a4bbcc;
+  font-size:10px;margin-top:8px;
+  border-top:1px solid rgba(155,192,216,.12);padding-top:7px;
+  line-height:1.8;
+}
+.coach-chat-suggestions{
+  display:flex;align-items:center;flex-wrap:wrap;gap:9px;
+  padding:14px 0 12px;
+}
+.coach-chat-prompt{
+  border-radius:99px;padding:8px 12px;
+  min-height:42px;
+  font-size:12px;font-weight:800;
+  color:#d0eeec;border:1px solid rgba(111,200,200,.32);
+  background:rgba(52,108,120,.18);
+  transition:background .18s,border-color .18s,transform .18s;
+}
+.coach-chat-prompt:hover{
+  background:rgba(68,152,160,.26);
+  border-color:rgba(147,229,219,.6);
+  transform:translateY(-1px);
+}
+.coach-chat-form{
+  display:flex;align-items:stretch;gap:10px;
+}
+.coach-chat-form .text-field{
+  flex:1;min-width:0;min-height:48px;
+  border-radius:14px;
+}
+.coach-chat-form .btn{flex:none;min-height:48px;min-width:95px}
+.coach-chat-footer{
+  display:flex;align-items:center;justify-content:space-between;gap:14px;
+  padding-top:15px;
+}
+.coach-chat-footer p{
+  font-size:11px;line-height:1.8;
+  margin:0;color:#a9bfd0;
+}
+.coach-chat-footer .btn{
+  min-height:40px;font-size:11px;
+  padding:8px 13px;white-space:nowrap;
+}
+@media(max-width:650px){
+  .coach-chat{padding:17px 13px;border-radius:22px;margin:15px 0 22px}
+  .coach-chat-header{flex-direction:column;gap:10px}
+  .coach-chat-header h2{font-size:21px}
+  .coach-chat-mode{font-size:10px;padding:5px 10px}
+  .coach-chat-messages{min-height:190px;max-height:340px;padding:12px 9px}
+  .coach-chat-message{max-width:96%;padding:11px 12px}
+  .coach-chat-message p{font-size:12.5px}
+  .coach-chat-suggestions{gap:7px}
+  .coach-chat-prompt{font-size:11px;padding:7px 10px}
+  .coach-chat-form .btn{min-width:78px;padding:9px 11px;font-size:12px}
+  .coach-chat-footer{align-items:flex-start;flex-direction:column}
+  .coach-chat-footer .btn{align-self:flex-end}
+}
+@media(prefers-reduced-motion:reduce){
+  .coach-chat-prompt{transition:none!important}
+}
