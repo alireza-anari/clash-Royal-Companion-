@@ -58,7 +58,9 @@ jobs:
       - name: Install AWS CloudFormation schema linter (no AWS credentials)
         run: python -m pip install 'cfn-lint>=1,<2'
       - name: Validate private EC2 draft without any AWS API call
-        run: cfn-lint deploy/infra/aws-ec2-private-beta.review.json
+        run: |
+          cfn-lint deploy/infra/aws-ec2-private-beta.review.json
+          cfn-lint deploy/infra/aws-github-oidc-readonly.bootstrap.json
 
   local-container:
     name: Isolated Docker build and smoke
