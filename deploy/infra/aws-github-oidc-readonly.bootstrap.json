@@ -1,0 +1,201 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "CRC AWS OIDC bootstrap only: GitHub feat/backend-bootstrap -> short-lived, strictly read-only Frankfurt EC2 inventory. No EC2/EIP/EBS or app deployment.",
+  "Parameters": {
+    "ProviderMode": {
+      "Type": "String",
+      "Default": "CREATE",
+      "AllowedValues": [
+        "CREATE",
+        "EXISTING"
+      ],
+      "Description": "Use EXISTING if GitHub OIDC provider already exists in this AWS account. Never create a duplicate."
+    },
+    "ExistingProviderArn": {
+      "Type": "String",
+      "Default": "NONE",
+      "AllowedPattern": "^(NONE|arn:aws:iam::[0-9]{12}:oidc-provider/token[.]actions[.]githubusercontent[.]com)$",
+      "Description": "Required only if ProviderMode=EXISTING; ARN of the existing trusted GitHub OIDC provider."
+    }
+  },
+  "Rules": {
+    "ExistingProviderRequiresArn": {
+      "RuleCondition": {
+        "Fn::Equals": [
+          {
+            "Ref": "ProviderMode"
+          },
+          "EXISTING"
+        ]
+      },
+      "Assertions": [
+        {
+          "Assert": {
+            "Fn::Not": [
+              {
+                "Fn::Equals": [
+                  {
+                    "Ref": "ExistingProviderArn"
+                  },
+                  "NONE"
+                ]
+              }
+            ]
+          },
+          "AssertDescription": "ExistingProviderArn must contain the existing GitHub provider ARN when ProviderMode is EXISTING."
+        }
+      ]
+    },
+    "NewProviderRequiresNoArn": {
+      "RuleCondition": {
+        "Fn::Equals": [
+          {
+            "Ref": "ProviderMode"
+          },
+          "CREATE"
+        ]
+      },
+      "Assertions": [
+        {
+          "Assert": {
+            "Fn::Equals": [
+              {
+                "Ref": "ExistingProviderArn"
+              },
+              "NONE"
+            ]
+          },
+          "AssertDescription": "Leave ExistingProviderArn as NONE when creating a new provider."
+        }
+      ]
+    }
+  },
+  "Conditions": {
+    "CreateNewProvider": {
+      "Fn::Equals": [
+        {
+          "Ref": "ProviderMode"
+        },
+        "CREATE"
+      ]
+    }
+  },
+  "Resources": {
+    "GitHubOidcProvider": {
+      "Type": "AWS::IAM::OIDCProvider",
+      "Condition": "CreateNewProvider",
+      "Properties": {
+        "Url": "https://token.actions.githubusercontent.com",
+        "ClientIdList": [
+          "sts.amazonaws.com"
+        ],
+        "Tags": [
+          {
+            "Key": "Project",
+            "Value": "CRC-private-beta"
+          }
+        ]
+      }
+    },
+    "GitHubReadOnlyRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "Description": "CRC GitHub Actions OIDC: short-lived read-only EC2 inventory in eu-central-1, restricted to feat/backend-bootstrap",
+        "MaxSessionDuration": 3600,
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Federated": {
+                  "Fn::If": [
+                    "CreateNewProvider",
+                    {
+                      "Ref": "GitHubOidcProvider"
+                    },
+                    {
+                      "Ref": "ExistingProviderArn"
+                    }
+                  ]
+                }
+              },
+              "Action": "sts:AssumeRoleWithWebIdentity",
+              "Condition": {
+                "StringEquals": {
+                  "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
+                  "token.actions.githubusercontent.com:sub": "repo:alireza-anari/clash-Royal-Companion-:ref:refs/heads/feat/backend-bootstrap"
+                }
+              }
+            }
+          ]
+        },
+        "Policies": [
+          {
+            "PolicyName": "CrcReadOnlyFrankfurtInventory",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Sid": "FrankfurtEc2InventoryOnly",
+                  "Effect": "Allow",
+                  "Action": [
+                    "ec2:DescribeInstances",
+                    "ec2:DescribeVpcs",
+                    "ec2:DescribeSubnets",
+                    "ec2:DescribeSecurityGroups",
+                    "ec2:DescribeAddresses",
+                    "ec2:DescribeVolumes",
+                    "ec2:DescribeRouteTables",
+                    "ec2:DescribeInternetGateways"
+                  ],
+                  "Resource": "*",
+                  "Condition": {
+                    "StringEquals": {
+                      "aws:RequestedRegion": "eu-central-1"
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        ],
+        "Tags": [
+          {
+            "Key": "Project",
+            "Value": "CRC-private-beta"
+          },
+          {
+            "Key": "Access",
+            "Value": "GitHub-OIDC-readonly"
+          }
+        ]
+      }
+    }
+  },
+  "Outputs": {
+    "ReadOnlyRoleArn": {
+      "Description": "Set this ARN as GitHub repository Actions variable AWS_CRC_OIDC_ROLE_ARN, NOT as an access key.",
+      "Value": {
+        "Fn::GetAtt": [
+          "GitHubReadOnlyRole",
+          "Arn"
+        ]
+      }
+    },
+    "GithubProviderArn": {
+      "Description": "OIDC provider ARN (new or existing). Do not remove any shared existing provider on teardown.",
+      "Value": {
+        "Fn::If": [
+          "CreateNewProvider",
+          {
+            "Ref": "GitHubOidcProvider"
+          },
+          {
+            "Ref": "ExistingProviderArn"
+          }
+        ]
+      }
+    }
+  }
+}
