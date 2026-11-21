@@ -44,6 +44,7 @@ def test_requests_are_only_approved_free_models_and_bounded_evidence():
         seen.append(body)
         assert body["model"] == PRIMARY_MODEL
         assert body["max_tokens"] <= 450
+        assert body["provider"] == {"data_collection": "deny"}
         assert len(body["messages"]) == 2
         assert "#SECRET" not in str(body)
         assert "battleLog" not in str(body)
@@ -58,6 +59,7 @@ def test_requests_are_only_approved_free_models_and_bounded_evidence():
     assert result["model"] == PRIMARY_MODEL
     assert "۳٫۲۵" in result["answer"]
     assert result["evidence_status"] == "client_submitted_unverified"
+    assert seen[0]["provider"] == {"data_collection": "deny"}
     assert len(seen) == 1
 
 

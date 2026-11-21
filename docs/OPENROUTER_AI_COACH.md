@@ -12,7 +12,9 @@ or new cloud resource is performed by these source files.
 - HTTP endpoint: `https://openrouter.ai/api/v1/chat/completions`
 - Maximum generated tokens per call: 400
 - No retry of HTTP 429 (free account quota); no paid-model fallback
-- Both free model IDs must be rechecked before eventual activation.
+- Every request sets OpenRouter `provider.data_collection=deny`; endpoints that collect/train on request data are excluded. If no eligible endpoint is available, the request fails closed rather than weakening the privacy rule.
+- This is a provider-routing control, not a guarantee that the user should submit personal information; consent and data minimization still apply.
+- Both free model IDs and their eligible providers must be rechecked before eventual activation.
 
 ## Private API contract
 

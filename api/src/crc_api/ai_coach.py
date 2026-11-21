@@ -118,6 +118,10 @@ class OpenRouterCoach:
                         ],
                         "max_tokens": OUTPUT_TOKENS,
                         "temperature": 0.25,
+                        # Privacy-first routing: exclude endpoints that collect
+                        # or train on request data. If no eligible free provider
+                        # exists, fail closed instead of relaxing this policy.
+                        "provider": {"data_collection": "deny"},
                     }
                     try:
                         response = await client.post(OPENROUTER_URL, json=body, headers=headers)
