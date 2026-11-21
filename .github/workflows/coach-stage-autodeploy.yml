@@ -33,7 +33,7 @@ jobs:
       - name: Require reproducible Worker
         run: node deploy/cloudflare/build-site.mjs --check
       - name: Run local-only regression tests
-        run: node --test site/mvp.test.mjs site/battle-insights.test.mjs site/offline-coach.test.mjs site/owned-options.test.mjs site/backend-client.test.mjs site/beta-session.test.mjs deploy/cloudflare/beta-edge.test.mjs
+        run: node --test site/mvp.test.mjs site/battle-insights.test.mjs site/offline-coach.test.mjs site/design.test.mjs site/owned-options.test.mjs site/backend-client.test.mjs site/beta-session.test.mjs deploy/cloudflare/beta-edge.test.mjs
       - name: Ensure live API is disabled in staging
         shell: bash
         run: |
