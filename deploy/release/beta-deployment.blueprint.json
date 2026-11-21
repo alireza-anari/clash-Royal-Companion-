@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "status": "NOT_CONFIGURED_NOT_DEPLOYABLE",
+  "purpose": "private-beta-only",
+  "cloudflare": {
+    "worker_entrypoint": "deploy/cloudflare/beta-edge-worker.mjs",
+    "custom_hostname": null,
+    "workers_dev_enabled": false,
+    "preview_urls_enabled": false,
+    "access_policy_covers_every_route": false,
+    "static_assets_binding": {
+      "name": "ASSETS",
+      "directory": "site",
+      "worker_first": true
+    },
+    "vpc_service_binding": {
+      "name": "PRIVATE_API",
+      "service_id": null,
+      "scope": "one approved private origin only"
+    },
+    "edge_enabled": false
+  },
+  "backend": {
+    "app_factory": "crc_api.beta_gateway:create_beta_app",
+    "repository_branch": "feat/backend-bootstrap",
+    "origin_isolated": false,
+    "outbound_static_ipv4": null,
+    "runtime_gate_set": false,
+    "live_lookup_enabled": false,
+    "credentials_sources": "operator-approved private secret manager only",
+    "required_private_env_names": [
+      "CRC_BETA_POSTGRES_DSN",
+      "CRC_BETA_QUOTA_HMAC_HEX",
+      "CRC_BETA_AUDIENCE",
+      "CRC_BETA_TEAM_DOMAIN",
+      "CRC_BETA_ALLOWED_SUBJECTS",
+      "SUPERCELL_API_KEY"
+    ]
+  },
+  "database": {
+    "migration_path": "api/migrations/DRAFT_0001_gateway_quota.sql",
+    "production_migration_approved": false,
+    "tls_mode": "verify-full",
+    "least_privilege_role_configured": false,
+    "cleanup_job_installed": false
+  },
+  "operations": {
+    "immutable_releases_only": true,
+    "health_path": "/api/v1/health/ready",
+    "health_requires_signed_access": true,
+    "rollback_plan_path": "docs/PRIVATE_BETA_DEPLOYMENT_SP_BETA_05.md",
+    "owner_approved": false,
+    "monitoring_installed": false
+  }
+}
