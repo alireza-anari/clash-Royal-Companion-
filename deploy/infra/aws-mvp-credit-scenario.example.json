@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "purpose": "aws-mvp-credit-planning-only",
+  "credit": {
+    "amount_usd_reported": 50,
+    "verified_in_aws_billing": false,
+    "account_age_months_approx": [
+      1,
+      2
+    ],
+    "plan_type": "unverified",
+    "expiry": "unknown"
+  },
+  "candidate": {
+    "region": "eu-central-1",
+    "instance_type": "t3.small",
+    "ram_gib": 2,
+    "instance_hourly_usd": 0.024,
+    "public_ipv4_hourly_usd": 0.005,
+    "storage_gib": 20,
+    "storage_assumed_usd_per_gib_month": 0.1,
+    "monthly_hours": 730
+  },
+  "contingency": {
+    "credit_reserve_usd": 10,
+    "exclude_from_estimate": [
+      "taxes",
+      "network_egress",
+      "backup_snapshots",
+      "extra_CPU_credits",
+      "cloud_monitoring",
+      "plan_ineligible_usage"
+    ]
+  },
+  "permissions": {
+    "provisioning_allowed": false,
+    "paid_plan_upgrade_allowed": false,
+    "owner_approved_recurring_spend": false,
+    "backend_live_enabled": false,
+    "edge_live_enabled": false
+  },
+  "observations": {
+    "compute_rate_source": "https://cloud-credits.org/prices/ec2/t3-small/eu-central-1",
+    "ipv4_rate_source": "https://aws.amazon.com/vpc/pricing/",
+    "storage_rate": "conservative_assumption_not_quoted_frankfurt_rate",
+    "credit_balance": "user_report_only_not_verified"
+  },
+  "resource_creation_occurred": false
+}
