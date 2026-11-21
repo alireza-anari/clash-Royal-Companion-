@@ -21,7 +21,11 @@ It requires existing signed Cloudflare Access JWT, allowed invite subject,
 exact Host/Origin checks and shared PostgreSQL request quota, plus:
 
 1. `CRC_BETA_AI_ENABLED=true` (defaults to false)
-2. `OPENROUTER_API_KEY` nonempty and loaded as an EC2-only secret
+2. `CRC_OPENROUTER_SSM_PARAMETER=/crc/mvp/openrouter/api-key` points to the
+   exact eu-north-1 SecureString. The EC2 instance role must have permission
+   to read/decrypt it via `ssm:GetParameter`. The backend uses AWS CLI
+   to fetch it only when AI is enabled, captures the output in memory and never
+   writes a plaintext secret file.
 3. JSON `consent_to_external_ai: true` (explicit user action; not inferred)
 4. Strictly validated question (3–280 chars) and optional aggregate-only
    `deck`/`battles` values (unknown JSON fields are rejected)
