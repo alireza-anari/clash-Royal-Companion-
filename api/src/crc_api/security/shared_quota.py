@@ -1,7 +1,7 @@
 """Shared fixed-window admission budget for a FUTURE private beta.
 
-Caller MUST supply a verified Cloudflare Access subject ID. This module is not
-wired to HTTP routes and does not create a database or open external ports.
+Caller MUST supply a verified Cloudflare Access subject ID. Used only by the
+private beta gateway, not local API. Does not create a database or public ports.
 """
 from __future__ import annotations
 
