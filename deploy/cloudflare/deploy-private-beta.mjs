@@ -5,7 +5,6 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 export const SCRIPT_NAME = "crc-private-beta-gateway";
 export const PRIVATE_BETA_HOST = "crc-private-beta-gateway.alirezaanari117.workers.dev";
-export const PRIVATE_API_SERVICE_ID = "01a202d5-1889-72d3-9a12-4a2838612589";
 export const ASSET_PATHS = [
   "index.html",
   "styles.css",
@@ -47,7 +46,6 @@ export function buildWorkerMetadata(assetJwt) {
     throw new Error("Cloudflare asset completion token is missing.");
   const bindings = [
     { name: "ASSETS", type: "assets" },
-    { name: "PRIVATE_API", type: "vpc_service", service_id: PRIVATE_API_SERVICE_ID },
     { name: "BETA_ENABLED", type: "plain_text", text: "false" },
     { name: "BETA_HOSTNAME", type: "plain_text", text: PRIVATE_BETA_HOST },
     { name: "BETA_AUTH_ISSUER", type: "plain_text", text: `https://${PRIVATE_BETA_HOST}` },
@@ -164,8 +162,7 @@ export async function runPrivateBetaDeployment(env = process.env) {
   );
   const bindings = Array.isArray(settings?.bindings) ? settings.bindings : [];
   const names = bindings.map((binding) => binding.name);
-  if (!names.includes("ASSETS") ||
-      bindings.find((binding) => binding.name === "PRIVATE_API")?.service_id !== PRIVATE_API_SERVICE_ID ||
+  if (!names.includes("ASSETS") || names.includes("PRIVATE_API") ||
       bindings.find((binding) => binding.name === "BETA_ENABLED")?.text !== "false") {
     throw new Error("Deployed private beta Worker bindings failed the disabled-state check.");
   }
@@ -182,7 +179,6 @@ export async function runPrivateBetaDeployment(env = process.env) {
     deployed_disabled: true,
     assets: entries.length,
     bindings: names,
-    private_api_service_id: PRIVATE_API_SERVICE_ID,
     response_status: response.status,
     response_code: body.error.code,
   };
