@@ -105,14 +105,20 @@ async function uploadAssets(account, token, entries) {
       { method: "POST", headers: { Authorization: `Bearer ${session.jwt}` }, body: form },
     );
     const payload = await response.json().catch(() => null);
-    if (!response.ok || !payload || payload.success !== true || typeof payload.result?.jwt !== "string") {
+    if (!response.ok || !payload || payload.success !== true) {
       const codes = Array.isArray(payload?.errors)
         ? payload.errors.map((e) => String(e.code || "CF_ERROR")).join(",")
         : "ASSET_UPLOAD_FAILED";
       throw new Error(`Cloudflare asset upload failed (${response.status}; ${codes}).`);
     }
-    completionJwt = payload.result.jwt;
+    if (typeof payload.result?.jwt === "string") {
+      completionJwt = payload.result.jwt;
+    } else if (response.status !== 202) {
+      throw new Error(`Cloudflare asset upload did not return a completion token (${response.status}).`);
+    }
   }
+  if (typeof completionJwt !== "string" || completionJwt.length < 16)
+    throw new Error("Cloudflare asset upload did not complete every manifest bucket.");
   return completionJwt;
 }
 
