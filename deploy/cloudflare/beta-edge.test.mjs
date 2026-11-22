@@ -270,7 +270,13 @@ test('distinct workers.dev beta hostname is explicit opt-in and public staging i
  assert.equal(privateHost('my.workers.dev',true),null);
  assert.equal(privateHost('crc-mvp-stage-20261120.alirezaanari117.workers.dev',true),null);
  const config=sandbox({BETA_HOSTNAME:host,BETA_AUTH_ISSUER:'https://'+host,BETA_ALLOW_WORKERS_DEV:'true'});
- const request=new Request('https://'+host+'/api/v1/capabilities',{headers:SESSION_HEADER});
+ const hostSession=signJwt(SESSION_KEY,{
+  iss:'https://'+host,aud:'crc-beta-session',sub:SUBJECT,iat:now,exp:now+8*60*60,
+  jti:'host-session-token-identifier'
+ });
+ const request=new Request('https://'+host+'/api/v1/capabilities',{
+  headers:{Cookie:'__Host-crc_beta_session='+hostSession}
+ });
  const response=await routeRequest(request,config.env);
  assert.equal(response.status,200);
  assert.equal(config.outbound.length,1);
