@@ -70,6 +70,6 @@ def test_issuer_and_key_configuration_are_pinned():
     with pytest.raises(ValueError):
         WorkerAssertionVerifier("http://beta.example.test", AUDIENCE, frozenset({SUBJECT}), SECRET)
     with pytest.raises(ValueError):
-        WorkerAssertionVerifier("https://evil.example", AUDIENCE, frozenset({SUBJECT}), SECRET)
+        WorkerAssertionVerifier("https://evil.example/path", AUDIENCE, frozenset({SUBJECT}), SECRET)
     with pytest.raises(ValueError):
         WorkerAssertionVerifier(ISSUER, AUDIENCE, frozenset({SUBJECT}), b"short")
