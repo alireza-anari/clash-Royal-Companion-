@@ -18,8 +18,8 @@ The third switch must be exactly the lowercase string `true`. `1`, `TRUE`, `yes`
 
 **Release sequence to consider (not executed):**
 
-1. Provision approved invite-code authentication, private VPC Service, fixed-egress VM, PostgreSQL, DNS and secrets infrastructure only after owner authorization; leave both worker and live API disabled.
-2. Validate real Worker assertion forwarding, authenticated host, gateway quotas, PostgreSQL certificate verification and private-origin isolation. The protected beta can be brought up with `CRC_BETA_LIVE_LOOKUP_ENABLED=false`; this cannot make Supercell calls.
+1. Provision approved invite-code authentication, private VPC Service, fixed-egress VM, PostgreSQL, a dedicated workers.dev hostname and secrets infrastructure only after owner authorization; leave both worker and live API disabled.
+2. Validate real Worker assertion forwarding, authenticated host, gateway quotas, PostgreSQL certificate verification and private-origin isolation. The invite-protected beta can be brought up with `CRC_BETA_LIVE_LOOKUP_ENABLED=false`; this cannot make Supercell calls.
 3. Register and validate the VM's real outbound IPv4 for the official Supercell API key. Validate quota budget and emergency disable procedures.
 4. Only with all gates passed and explicit owner approval, change `CRC_BETA_LIVE_LOOKUP_ENABLED=true` on the **backend only**, and then enable the separate beta Worker. The public Cloudflare sample site must stay separate.
 5. Complete real browser, revocation and live-key smoke checks before inviting real testers.
@@ -40,7 +40,7 @@ To deploy with the BetaConfig environment parser, PostgreSQL DSN **must** specif
 
 ## Hard blockers left
 
-- No approved host or fixed outbound IPv4; no production Access app/policy, VPC Service/Tunnel or private PostgreSQL instance exists.
+- No approved host or fixed outbound IPv4; no production invite-code/session secrets, VPC Service/Tunnel or private PostgreSQL instance exists.
 - No production quota cleanup job or real DB TLS certificate setup exists.
 - API schema and live Sup­ercell responses need contract checks with a genuine authorized upstream.
 - Worker invite/session revocation and HMAC assertion end-to-end tests, browser manual acceptance, account privacy review and owner approvals are pending.

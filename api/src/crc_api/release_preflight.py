@@ -13,15 +13,15 @@ import re
 from typing import Any
 
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 PROOFS = (
     "owner_approved",
     "spending_approved",
     "fixed_egress_ipv4_confirmed",
     "supercell_key_ip_allowlist_confirmed",
     "private_origin_isolated",
-    "access_protects_all_beta_routes",
-    "access_jwt_end_to_end_verified",
+    "invite_session_gates_all_beta_routes",
+    "worker_assertion_end_to_end_verified",
     "postgres_tls_verify_full_confirmed",
     "postgres_quota_migration_reviewed",
     "quota_retention_job_installed",
@@ -95,8 +95,8 @@ def rollback_plan() -> tuple[str, ...]:
         "or remove its private beta route. Do NOT modify the public sample Worker.",
         "2. Backend: set CRC_BETA_LIVE_LOOKUP_ENABLED=false and restart/redeploy "
         "the private beta process. Confirm capability remains disabled.",
-        "3. Access: temporarily disable invitations or the beta application "
-        "if the incident involves session compromise or identity leakage.",
+        "3. Identity: revoke compromised invite codes, rotate the Worker session/assertion HMAC keys, "
+        "and expire all active sessions if identity material is exposed.",
         "4. Verify fail-closed 503 at the beta edge, zero new Supercell "
         "upstream calls, and continued sample-only public staging.",
         "5. Preserve safe non-sensitive incident records. Do not roll back "

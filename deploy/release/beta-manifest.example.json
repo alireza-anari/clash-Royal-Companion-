@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "target": "private-beta",
   "backend_commit": "",
   "frontend_commit": "",
@@ -13,8 +13,8 @@
     "fixed_egress_ipv4_confirmed": false,
     "supercell_key_ip_allowlist_confirmed": false,
     "private_origin_isolated": false,
-    "access_protects_all_beta_routes": false,
-    "access_jwt_end_to_end_verified": false,
+    "invite_session_gates_all_beta_routes": false,
+    "worker_assertion_end_to_end_verified": false,
     "postgres_tls_verify_full_confirmed": false,
     "postgres_quota_migration_reviewed": false,
     "quota_retention_job_installed": false,

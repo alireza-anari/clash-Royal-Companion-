@@ -46,7 +46,7 @@ def test_turning_on_any_switch_fails_disabled_guard(safe_manifest, field, tmp_pa
 
 
 @pytest.mark.parametrize("mutation", [
-    lambda d: d.update(schema_version=2),
+    lambda d: d.update(schema_version=3),
     lambda d: d.update(target="production"),
     lambda d: d["controls"].update(edge_enabled="false"),
     lambda d: d["proofs"].update(owner_approved=1),

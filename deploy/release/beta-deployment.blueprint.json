@@ -1,13 +1,12 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "status": "NOT_CONFIGURED_NOT_DEPLOYABLE",
   "purpose": "private-beta-only",
   "cloudflare": {
     "worker_entrypoint": "deploy/cloudflare/beta-edge-worker.mjs",
     "custom_hostname": null,
-    "workers_dev_enabled": false,
+    "workers_dev_enabled": true,
     "preview_urls_enabled": false,
-    "access_policy_covers_every_route": false,
     "static_assets_binding": {
       "name": "ASSETS",
       "directory": "site",
@@ -18,7 +17,9 @@
       "service_id": null,
       "scope": "one approved private origin only"
     },
-    "edge_enabled": false
+    "edge_enabled": false,
+    "invite_session_gate_covers_every_route": false,
+    "auth_method": "per-user invite code + HttpOnly session cookie + short-lived Worker HMAC assertion"
   },
   "backend": {
     "app_factory": "crc_api.beta_gateway:create_beta_app",
@@ -29,11 +30,13 @@
     "live_lookup_enabled": false,
     "credentials_sources": "operator-approved private secret manager only",
     "required_private_env_names": [
+      "CRC_BETA_HOST",
+      "CRC_BETA_AUTH_ISSUER",
+      "CRC_BETA_AUTH_AUDIENCE",
+      "CRC_BETA_ALLOWED_SUBJECTS",
+      "CRC_BETA_WORKER_ASSERTION_HMAC_HEX",
       "CRC_BETA_POSTGRES_DSN",
       "CRC_BETA_QUOTA_HMAC_HEX",
-      "CRC_BETA_AUDIENCE",
-      "CRC_BETA_TEAM_DOMAIN",
-      "CRC_BETA_ALLOWED_SUBJECTS",
       "SUPERCELL_API_KEY"
     ]
   },
@@ -47,9 +50,9 @@
   "operations": {
     "immutable_releases_only": true,
     "health_path": "/api/v1/health/ready",
-    "health_requires_signed_access": true,
     "rollback_plan_path": "docs/PRIVATE_BETA_DEPLOYMENT_SP_BETA_05.md",
     "owner_approved": false,
-    "monitoring_installed": false
+    "monitoring_installed": false,
+    "health_requires_signed_worker_assertion": true
   }
 }
