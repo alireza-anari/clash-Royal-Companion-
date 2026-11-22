@@ -1,5 +1,5 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "status": "NOT_CONFIGURED_NOT_DEPLOYABLE",
   "purpose": "private-beta-only",
   "cloudflare": {
@@ -33,7 +33,18 @@
       "BETA_INVITE_CODES_JSON",
       "BETA_SESSION_HMAC_HEX",
       "BETA_ASSERTION_HMAC_HEX"
-    ]
+    ],
+    "worker_deployed": true,
+    "worker_enabled": false,
+    "ai_chat_enabled": false,
+    "assets_binding": "ASSETS",
+    "vpc_binding": "PRIVATE_API",
+    "vpc_service_name": "crc-private-beta-api",
+    "vpc_service_id": "01a202d5-1889-72d3-9a12-4a2838612589",
+    "vpc_service_host": "127.0.0.1",
+    "vpc_service_http_port": 8000,
+    "vpc_tunnel_id": "45520fe5-2670-417e-8f8e-932c60821aa6",
+    "tunnel_connected": false
   },
   "backend": {
     "app_factory": "crc_api.beta_gateway:create_beta_app",
@@ -52,7 +63,11 @@
       "CRC_BETA_POSTGRES_DSN",
       "CRC_BETA_QUOTA_HMAC_HEX",
       "SUPERCELL_API_KEY"
-    ]
+    ],
+    "private_beta_service_installed": false,
+    "runtime_gate_enabled": false,
+    "worker_assertion_secrets_configured": false,
+    "invite_secrets_configured": false
   },
   "database": {
     "migration_path": "api/migrations/DRAFT_0001_gateway_quota.sql",
