@@ -5,6 +5,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 export const SCRIPT_NAME = "crc-private-beta-gateway";
 export const PRIVATE_BETA_HOST = "crc-private-beta-gateway.alirezaanari117.workers.dev";
+export const PRIVATE_API_SERVICE_ID = "01a202d5-1889-72d3-9a12-4a2838612589";
 export const ASSET_PATHS = [
   "index.html",
   "styles.css",
@@ -58,6 +59,7 @@ export function buildWorkerMetadata(assetJwt) {
     compatibility_date: "2026-11-22",
     usage_model: "standard",
     bindings,
+    keep_bindings: ["vpc_service"],
     assets: {
       jwt: assetJwt,
       config: { html_handling: "none", not_found_handling: "404-page" },
@@ -162,7 +164,8 @@ export async function runPrivateBetaDeployment(env = process.env) {
   );
   const bindings = Array.isArray(settings?.bindings) ? settings.bindings : [];
   const names = bindings.map((binding) => binding.name);
-  if (!names.includes("ASSETS") || names.includes("PRIVATE_API") ||
+  if (!names.includes("ASSETS") ||
+      bindings.find((binding) => binding.name === "PRIVATE_API")?.service_id !== PRIVATE_API_SERVICE_ID ||
       bindings.find((binding) => binding.name === "BETA_ENABLED")?.text !== "false") {
     throw new Error("Deployed private beta Worker bindings failed the disabled-state check.");
   }
