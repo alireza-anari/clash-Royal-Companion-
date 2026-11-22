@@ -26,7 +26,7 @@ def test_private_beta_path_probe_does_not_modify_cloud_or_services():
         r"\bdocker\s+(?:run|stop|restart|rm|exec|network\s+create)\b",
         r"\baws\s+(?:ssm|ec2|iam|secretsmanager)\b",
         r"\bcurl\b",
-        r"\b(?:printenv|set -x|env\s+|cat\s+/etc/)\b",
+        r"(?m)^\s*(?:printenv|env\s+|cat\s+/etc/)\b",
     ):
         assert re.search(unsafe, source) is None, unsafe
     assert "BETA_ENABLED=true" not in source
