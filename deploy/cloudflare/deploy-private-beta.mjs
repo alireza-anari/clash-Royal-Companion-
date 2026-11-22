@@ -129,8 +129,8 @@ async function deploy(account, token, workerSource, assetJwt) {
 }
 
 export async function runPrivateBetaDeployment(env = process.env) {
-  const account = env.CRC_CLOUDFLARE_ACCOUNT_ID || "";
-  const token = env.CRC_CLOUDFLARE_API_TOKEN || "";
+  const account = env.CRC_CLOUDFLARE_ACCOUNT_ID || env.CF_ACCOUNT_ID || "";
+  const token = env.CRC_CLOUDFLARE_API_TOKEN || env.CF_API_TOKEN || "";
   if (!/^[a-f0-9]{32}$/.test(account) || token.length < 20)
     throw new Error("Cloudflare deployment credentials are unavailable.");
 
