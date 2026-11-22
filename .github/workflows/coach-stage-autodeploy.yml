@@ -31,6 +31,8 @@ jobs:
           node --check site/battle-insights.js
           node --check site/backend-client.js
           node --check deploy/cloudflare/mvp-worker.js
+          node --check deploy/cloudflare/beta-edge-worker.mjs
+          node --check deploy/cloudflare/deploy-private-beta.mjs
       - name: Require reproducible Worker
         run: node deploy/cloudflare/build-site.mjs --check
       - name: Run local-only regression tests
@@ -96,4 +98,10 @@ jobs:
         shell: bash
         run: |
           echo "Separate Cloudflare staging Worker updated: $CF_SCRIPT"
-          echo "Main Worker, Cloudflare Access gateway, FastAPI, and PostgreSQL were untouched."
+          echo "Main Worker, FastAPI, and PostgreSQL were untouched."
+      - name: Deploy distinct private beta Worker with all activation switches off
+        shell: bash
+        run: |
+          set -euo pipefail
+          node deploy/cloudflare/deploy-private-beta.mjs
+          echo "Private beta edge deployed with BETA_ENABLED=false, BETA_AI_CHAT_ENABLED=false, and no PRIVATE_API binding."

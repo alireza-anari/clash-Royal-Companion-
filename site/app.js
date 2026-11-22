@@ -278,14 +278,14 @@ async function refreshLiveAvailability(){
   if(cap.live_lookup_enabled){
     betaLoginVisible(false);
     btn.disabled=false;btn.textContent="دریافت اطلاعات با Player Tag";
-    status.textContent=window.CRCBetaSession?"بتای خصوصی آماده است؛ ورود از طریق Cloudflare Access انجام شده و Player Tag اثبات مالکیت نیست.":"Backend آمادگی دریافت داده عمومی را اعلام کرده است. مالکیت حساب تأیید نمی‌شود.";
+    status.textContent=window.CRCBetaSession?"بتای خصوصی آماده است؛ ورود با کد دعوت انجام شده و Player Tag اثبات مالکیت نیست.":"Backend آمادگی دریافت داده عمومی را اعلام کرده است. مالکیت حساب تأیید نمی‌شود.";
   }else{
     btn.disabled=true;btn.textContent="دریافت مستقیم از Supercell (غیرفعال)";
-    var needsLogin=!!(window.CRCBetaSession&&["ACCESS_LOGIN_REQUIRED","ACCESS_TOKEN_MISSING","ACCESS_TOKEN_INVALID","HTTP_401","HTTP_403"].includes(cap.reason));
+    var needsLogin=!!(window.CRCBetaSession&&["INVITE_SESSION_REQUIRED","WORKER_ASSERTION_MISSING","WORKER_ASSERTION_INVALID","HTTP_401","HTTP_403"].includes(cap.reason));
     betaLoginVisible(needsLogin);
     var rateLimited=!!(window.CRCBetaSession&&["MEMBER_QUOTA_EXCEEDED","GLOBAL_QUOTA_EXCEEDED","HTTP_429"].includes(cap.reason));
-    var notInvited=!!(window.CRCBetaSession&&cap.reason==="ACCESS_NOT_INVITED");
-    status.textContent=needsLogin?"نشست Cloudflare Access معتبر نیست یا منقضی شده؛ با دکمه ورود دوباره اقدام کن.":rateLimited?"سهمیه موقت درخواست‌های بتا پر شده است؛ از ارسال مکرر درخواست خودداری کن.":notInvited?"این حساب برای بتای خصوصی دعوت نشده است.":"Backend زنده در این محیط فعال نیست؛ واردکردن فایل JSON همچنان در دسترس است.";
+    var notInvited=!!(window.CRCBetaSession&&cap.reason==="WORKER_ASSERTION_INVALID");
+    status.textContent=needsLogin?"نشست بتای خصوصی منقضی یا نامعتبر است؛ با کد دعوت دوباره وارد شو.":rateLimited?"سهمیه موقت درخواست‌های بتا پر شده است؛ از ارسال مکرر درخواست خودداری کن.":notInvited?"این حساب برای بتای خصوصی دعوت نشده است.":"Backend زنده در این محیط فعال نیست؛ واردکردن فایل JSON همچنان در دسترس است.";
   }
 }
 async function loadProfileLive(){
@@ -310,7 +310,7 @@ async function loadProfileLive(){
   }catch(e){
     status.textContent=(e&&e.message)||"اتصال به Backend ناموفق بود.";
     var loginNeeded=!!(window.CRCBetaSession&&e&&
-      ["ACCESS_LOGIN_REQUIRED","ACCESS_TOKEN_MISSING","ACCESS_TOKEN_INVALID","HTTP_401","HTTP_403"].includes(e.code));
+      ["INVITE_SESSION_REQUIRED","WORKER_ASSERTION_MISSING","WORKER_ASSERTION_INVALID","HTTP_401","HTTP_403"].includes(e.code));
     betaLoginVisible(loginNeeded);
   }
   finally{refreshLiveAvailability();}
