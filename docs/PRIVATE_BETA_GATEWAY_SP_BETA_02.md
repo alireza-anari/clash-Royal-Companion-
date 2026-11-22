@@ -1,65 +1,98 @@
-# SP-BETA-02 — Protected FastAPI beta entrypoint (integration candidate)
+# SP-BETA-02 — no-card invite-only private beta gateway
 
-**Status:** implemented as a *separate* FastAPI application in `api/src/crc_api/beta_gateway.py`, with mocked and ephemeral-PostgreSQL integration tests. **Not deployed. No change to the existing Cloudflare staging site.** Do not merge or provision paid infrastructure without owner approval.
+**Status (22 November 2026): the separate Cloudflare edge Worker and its 14 static assets are deployed, but the Worker is deliberately disabled. The backend beta service, tunnel connection, invite secrets and HMAC key injection are not ready. No live Supercell lookup or AI request is enabled.**
 
-## Two completely separate modes
+Cloudflare Zero Trust / Access is not used in this no-card design. Workers VPC is currently in public beta and is free on Workers plans; no checkout or payment card is required for this path.
 
-- `crc_api.main:app` is the existing local development application. It still refuses remote/production runtime modes, remote socket peers and nonlocal CORS. Do not weaken it.
-- `crc_api.beta_gateway:create_beta_app` is a separate app factory. It is never imported/mounted by the local app. It has no default app instance. It fails on missing configuration, unavailable database pool and invalid Access policy. The provider secret is mandatory only when the separate live-lookup switch is explicitly enabled.
+## Two separate backend applications
 
-The private beta app exposes only:
-- `GET /api/v1/capabilities`: authenticated, non-secret state, still advertises `safe_public_exposure:false`.
-- `GET /api/v1/catalog/cards`: authenticated, read-only, official catalog via server-side key.
-- `GET /api/v1/players/{tag}/snapshot?limit=25`: authenticated, fixed snapshot DTO, at most one profile and one Battle Log upstream lookup. Battle Log failures produce a truthful partial result. A Player Tag is not ownership verification.
+- `crc_api.main:app` is the existing local development application. It remains local-only and is not the private beta API.
+- `crc_api.beta_gateway:create_beta_app` is a separate ASGI factory. It fails closed without the explicit runtime gate, exact host, invite-subject allowlist, Worker HMAC assertion key, quota key, verified-TLS PostgreSQL DSN and database availability.
 
-**No public health endpoint**, no CORS middleware, no authentication bypass for unknown paths and no supercell key or JWT in response bodies. The app requires an exact configured hostname.
+Do not mount the beta app into the local app. Do not enable it until the release gate is complete.
 
-## Request sequence, as implemented
+## Request sequence
 
-1. Check exact protected Host and any Origin (must match `https://<protected-host>`). This is only a browser defense-in-depth check, never authentication.
-2. Require `Cf-Access-Jwt-Assertion` header. Reject missing JWT with HTTP 401.
-3. Verify **RS256 signature and `iss/aud/sub/iat/exp`**, using pinned Cloudflare Access team JWKS, and check an explicit approved subject allowlist. Reject invalid JWT with 403, unreachable JWKS with 503.
-4. Obtain an asyncpg connection. Reserve shared per-member/global counters **in a single transaction**. Refuse exceeded quotas with 429 and `Retry-After`; database outage fails closed with 503.
-5. Only then dispatch to the read-only Supercell endpoints.
-6. Return `Cache-Control: no-store`, `X-Request-ID`, security headers and sanitized errors. No auth or provider secrets logged or echoed.
+1. An unauthenticated browser is redirected to `/login`. The login page is served from the Worker static-assets binding.
+2. `POST /api/v1/auth/login` accepts only same-origin JSON containing an invite code. The Worker SHA-256 hashes the code and compares it with the hash-to-opaque-subject mapping in `BETA_INVITE_CODES_JSON`. Raw invite codes are never stored in the Worker configuration or repository.
+3. Successful login sets a host-only `__Host-crc_beta_session` cookie with `Secure; HttpOnly; SameSite=Strict; Path=/; Max-Age=28800`. JavaScript cannot read the cookie or either HMAC key.
+4. Every beta asset and API route requires a valid session cookie. API routes are strictly allowlisted. Preview URLs are disabled; the public sample Worker is a different script and hostname.
+5. The Worker signs a short-lived HS256 assertion in `X-CRC-Worker-Assertion`, with pinned issuer, audience, opaque subject, issued/expiry timestamps and random `jti`. The assertion expires after at most 60 seconds.
+6. The backend independently verifies that signature and exact issuer/audience, checks expiry, `jti` format and the explicit invited-subject allowlist, then reserves per-member and global PostgreSQL quota.
+7. Only after successful identity and quota checks may the backend call the official Supercell API. The live-lookup switch remains default-off. The online coach is separately disabled and requires per-message consent.
 
-The quota design has a fixed 60-second UTC window; it is not a sliding window or the official Supercell quota. Application access and database network policies must also prevent direct unauthorized requests.
+The Player Tag is not proof of account ownership. No JWT, API key, invite code, database password or HMAC key is returned to the browser or logged.
 
-## Environment checklist (examples ONLY; do NOT commit real values)
+## Exact edge routes
 
-- `CRC_BETA_RUNTIME_GATE`: exact explicit beta enable flag. It is **not a secret** and not a substitute for owner approval. Keep unset until approved.
-- `CRC_BETA_HOST`: exact protected hostname, e.g. `beta.example.com`. Must match incoming Host.
-- `CRC_BETA_TEAM_DOMAIN`: your actual `team.cloudflareaccess.com` tenant hostname, never an arbitrary JWKS URL.
-- `CRC_BETA_AUDIENCE`: Cloudflare Access application's Audience (AUD) tag.
-- `CRC_BETA_ALLOWED_SUBJECTS`: comma-separated stable Access subject IDs for the approved testers, not Player Tags or email claims.
-- `CRC_BETA_QUOTA_HMAC_HEX`: securely generated 32-byte-or-longer hex secret; separate from Access JWT and Supercell secrets.
-- `CRC_BETA_POSTGRES_DSN`: private PostgreSQL connection string. Must be protected by your secrets manager and private network. The beta config parser now requires `sslmode=verify-full`; the certificate authority and hostname must be correctly configured and checked in actual deployment.
-- `CRC_BETA_LIVE_LOOKUP_ENABLED`: explicitly `true` to enable catalog and player lookups; defaults to **false**. With this flag off, capabilities reports disabled and the API never calls Supercell.
-- `SUPERCELL_API_KEY`: official server-only key registered to the host's fixed outbound IPv4.
+- `GET /login` and `GET /beta-login.js`: unauthenticated login resources only.
+- `POST /api/v1/auth/login`: same-origin invite-code exchange.
+- `GET /api/v1/auth/session`: authenticated session status.
+- `POST /api/v1/auth/logout`: same-origin cookie expiry.
+- `GET /api/v1/health/ready`, `/api/v1/capabilities`, `/api/v1/catalog/cards`, and `/api/v1/players/{tag}/snapshot?limit=1..25`: authenticated allowlisted API.
+- `POST /api/v1/coach/chat`: authenticated, separately disabled by default, and requires explicit consent to external inference.
+- Unknown paths, other methods, cross-origin requests, redirects, oversized bodies and non-JSON origin responses fail closed.
 
-Example package install for isolated verification: `python -m pip install -e '.[security,test]'`. There is deliberately **no publicly runnable production command in this document**, because the private-origin isolation, lifecycle and host networking have not been provisioned or reviewed.
+## Current Cloudflare resources — verified
 
-## GitHub Actions / tests
+- Worker script: `crc-private-beta-gateway`.
+- Hostname: `crc-private-beta-gateway.alirezaanari117.workers.dev`.
+- Preview URLs: disabled.
+- Static assets: 14 files attached through the `ASSETS` binding.
+- `BETA_ENABLED=false` and `BETA_AI_CHAT_ENABLED=false`.
+- The `PRIVATE_API` binding points to VPC Service `crc-private-beta-api`, service ID `01a202d5-1889-72d3-9a12-4a2838612589`.
+- The VPC Service targets `127.0.0.1:8000` through Tunnel ID `45520fe5-2670-417e-8f8e-932c60821aa6`.
+- The Worker returns HTTP 503 with `BETA_NOT_CONFIGURED` while disabled. This is the expected fail-closed state, not a successful backend health check.
 
-- `api/tests/test_beta_gateway.py`: signed Access JWTs with mocked JWKS, forged headers and wrong Origin/Host, missing token, resource access, quota denial, DB failure, snapshot DTO and no unverified upstream calls.
-- Disposable PostgreSQL 17 test uses real asyncpg connections and transactional quotas. No user accounts, player data or real provider credentials.
-- The existing `api/tests/test_cloudflare_access.py` and `test_shared_quota.py` cover claims, key rotation, rollback and concurrent quota behavior.
-- Existing local Docker build smoke remains independent and network-isolated.
+The Cloudflare Tunnel currently has no active connector. The last verified EC2 Docker configuration used the `crc-edge-egress` bridge network; that does not make the host's `127.0.0.1:8000` reachable from inside the container. Before the VPC route can work, the connector must be recreated with host networking (or another explicitly reviewed path that can reach the loopback-only service).
 
-## Unfinished before beta activation
+## Current backend and secret blockers
 
-1. Obtain the owner's **explicit** approval for paid fixed-IPv4 hosting and any billing.
-2. Provision **private-origin isolation** (e.g. reviewed Cloudflare Tunnel/private network or mTLS) and stable outbound IPv4. Don't expose a beta backend socket directly to the Internet.
-3. Create real Cloudflare Access application and test invitations, expiry/revocation, header propagation, trusted host and TLS, and secret handling. No Access app has yet been created.
-4. Add PostgreSQL role/permissions, pool TLS and retention policy, automated bucket cleanup, backup/restore and monitoring. Current quota table migration is still draft and has never been applied to production.
-5. Verify browser session integration. Current public staging JavaScript uses `credentials:'omit'`, and must be separately adapted for a same-origin Access-protected beta with a CSRF-reviewed design. Do not put Access tokens or internal keys into browser JavaScript.
-6. Deploy and complete real network, unauthorized-origin, authentication and Supercell allowlisted-IP smoke tests before enabling live lookup.
-7. Review Supercell Fan Content and API terms, expert coaching rules and mobile acceptance after MVP feature completion.
+- The separate `crc-private-beta.service` was reported as not installed at the last EC2 readiness check.
+- The existing `crc-local-api.service` is a local-only application and is not the beta gateway. It uses port 8000, so it cannot coexist with the beta service on the same address/port. Stop/replace it only as part of the reviewed SSM deployment.
+- No Worker invite-code/session/assertion secrets have been configured by the deployment pipeline. Required Worker secrets are `BETA_INVITE_CODES_JSON`, `BETA_SESSION_HMAC_HEX` and `BETA_ASSERTION_HMAC_HEX`.
+- The backend needs the matching `CRC_BETA_WORKER_ASSERTION_HMAC_HEX`, separate `CRC_BETA_QUOTA_HMAC_HEX`, `CRC_BETA_ALLOWED_SUBJECTS`, exact issuer/audience/host and verified-TLS PostgreSQL DSN, all injected from protected infrastructure rather than GitHub.
+- `CRC_BETA_RUNTIME_GATE` must remain unset until the owner explicitly approves activation.
+- `CRC_BETA_LIVE_LOOKUP_ENABLED=false` and `BETA_AI_CHAT_ENABLED=false` remain mandatory until the full release gate passes.
+- GitHub AWS OIDC and backend SSM workflows are currently skipped because their required AWS role repository variables are not configured. The EC2 code-pull timer only synchronizes source; it does not install or restart services.
 
-## Owner workflow and invariants
+## Required private environment
 
-No deployment or cost incurred. No Supercell secret or real tester identity committed. Cloudflare existing site stays sample-only. Draft PR #2 is not merged to main. This milestone validates the application security flow **in isolated automated tests**, not actual Cloudflare Access app or real fixed-IP connectivity.
+Worker plain-text variables (not secrets):
+- `BETA_ENABLED=false`
+- `BETA_HOSTNAME=crc-private-beta-gateway.alirezaanari117.workers.dev`
+- `BETA_AUTH_ISSUER=https://crc-private-beta-gateway.alirezaanari117.workers.dev`
+- `BETA_AUTH_AUDIENCE=crc-private-beta-api`
+- `BETA_ALLOW_WORKERS_DEV=true`
+- `BETA_AI_CHAT_ENABLED=false`
 
-## Updated release gate (SP-BETA-04)
+Worker Secrets:
+- `BETA_INVITE_CODES_JSON`: JSON map from SHA-256 hex invite-code hashes to opaque subject IDs.
+- `BETA_SESSION_HMAC_HEX`: random 32-byte key, session signing only.
+- `BETA_ASSERTION_HMAC_HEX`: different random 32-byte key, Worker-to-backend assertions only.
 
-This earlier contract is superseded for activation by `docs/PRIVATE_BETA_RELEASE_GATE_SP_BETA_04.md`: the live lookup flag is independently default-off and the draft shared quota table has a bounded but **not yet scheduled** cleanup function. No live infrastructure is implied.
+Backend private environment:
+- `CRC_BETA_RUNTIME_GATE`: exact explicit owner-approval marker; keep unset until release approval.
+- `CRC_BETA_HOST`, `CRC_BETA_AUTH_ISSUER`, `CRC_BETA_AUTH_AUDIENCE`, `CRC_BETA_ALLOWED_SUBJECTS`.
+- `CRC_BETA_WORKER_ASSERTION_HMAC_HEX`: same bytes as Worker assertion secret, injected from AWS SSM.
+- `CRC_BETA_QUOTA_HMAC_HEX`: separate random key, injected from AWS SSM.
+- `CRC_BETA_POSTGRES_DSN`: private DSN with `sslmode=verify-full` and the installed CA/hostname.
+- `CRC_BETA_LIVE_LOOKUP_ENABLED=false`.
+- `CRC_BETA_AI_ENABLED=false` until separately approved; OpenRouter key remains in SSM and is read only when AI is enabled.
+
+Never commit or paste raw invite codes, keys, DSNs, player data or AWS credentials into GitHub or this chat. Rotating the session HMAC key expires existing browser sessions. Removing an invite hash revokes future logins for that code.
+
+## Verification
+
+- Backend CI: 219 tests passed on the latest verified backend test run.
+- Frontend/edge CI: 84 tests passed on the latest verified frontend test run.
+- Private Worker deploy workflow verifies the distinct script, static assets, fail-closed response and disabled switches. It does not start the AWS backend, reconnect the Tunnel, read SSM secrets or enable live lookup.
+- No real invite login, private VPC request, backend HMAC chain, Supercell request or AI request has been performed.
+
+## Security invariants
+
+- Public sample staging remains independent and sample-only.
+- No public backend socket or direct PostgreSQL port is exposed.
+- No Cloudflare Access checkout, payment card, paid plan or permanent AWS key is required for the current design.
+- Worker off-switch and backend live-lookup off-switch remain independent.
+- A successful CI run is not authorization to enable the beta.
