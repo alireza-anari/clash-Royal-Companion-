@@ -10,103 +10,90 @@ const source=fs.readFileSync(filename,'utf8');
 const base='https://beta.crc.example';
 
 function context({enabled=true,fetchImpl=async()=>new Response('{}',{headers:{'Content-Type':'application/json'}})}={}){
- let reloaded=0;
- const location={origin:base,reload(){reloaded++;}};
- const root={
-   document:{querySelector:()=>enabled?{}:null},
-   location,
-   fetch:fetchImpl,
-   Response,
-   URL,
- };
+ let navigations=[];
+ const location={origin:base,assign(path){navigations.push(path);}};
+ const root={document:{querySelector:()=>enabled?{}:null},location,fetch:fetchImpl,Response,URL};
  const globals={window:root,globalThis:root,URL,Response,console};
  vm.runInNewContext(source,globals);
- return {session:root.CRCBetaSession,getReloadCount:()=>reloaded};
+ return {session:root.CRCBetaSession,getNavigations:()=>navigations};
 }
 
 test('beta helper stays completely inert on normal public staging',()=>{
- const r=context({enabled:false});
- assert.equal(r.session,undefined);
+ assert.equal(context({enabled:false}).session,undefined);
 });
 
-test('transport only permits approved same-origin read-only API paths',async()=>{
+test('transport permits only approved same-origin beta API paths',async()=>{
  const calls=[];
- const s=context({fetchImpl:async(path,options)=>{
-   calls.push({path,options});
-   return new Response('{"schema_version":"1.0"}',{headers:{'Content-Type':'application/json'}});
+ const session=context({fetchImpl:async(path,options)=>{
+  calls.push({path,options});
+  return new Response('{"schema_version":"1.0"}',{headers:{'Content-Type':'application/json'}});
  }}).session;
  for(const path of [
-   'https://evil.example', '//evil.example/api/v1/capabilities',
-   '/api/v1/health/live','/api/v1/players/%23ABC/cards',
-   '/api/v1/players/%23ABC/snapshot?limit=999',
-   '/api/v1/capabilities?proxy=http://evil.example',
-   '/api/v1/capabilities#fragment',
+  'https://evil.example','//evil.example/api/v1/capabilities',
+  '/api/v1/health/live','/api/v1/players/%23ABC/cards',
+  '/api/v1/players/%23ABC/snapshot?limit=999',
+  '/api/v1/capabilities?proxy=http://evil.example','/api/v1/capabilities#fragment'
  ]){
-   const r=await s.fetch(path);
-   assert.equal(r.status,403,path);
+  const response=await session.fetch(path);
+  assert.equal(response.status,403,path);
  }
  assert.equal(calls.length,0);
- const r=await s.fetch('/api/v1/players/%23ABC123/snapshot?limit=25',{method:'GET'});
- assert.equal(r.status,200);
+ const response=await session.fetch('/api/v1/players/%23ABC123/snapshot?limit=25');
+ assert.equal(response.status,200);
  assert.equal(calls.length,1);
  assert.equal(calls[0].path,'/api/v1/players/%23ABC123/snapshot?limit=25');
 });
 
-test('uses browser-managed same-origin cookies, never puts a JWT into headers',async()=>{
+test('browser uses same-origin HttpOnly cookie automatically and never forwards caller credentials',async()=>{
  const calls=[];
- const s=context({fetchImpl:async(path,options)=>{
-   calls.push(options);
-   return new Response('{"live_lookup_enabled":true}',{headers:{'Content-Type':'application/json'}});
+ const session=context({fetchImpl:async(path,options)=>{
+  calls.push({path,options});
+  return new Response('{"live_lookup_enabled":true}',{headers:{'Content-Type':'application/json'}});
  }}).session;
- await s.fetch('/api/v1/capabilities',{credentials:'omit',headers:{Authorization:'Bearer malicious'}});
+ await session.fetch('/api/v1/capabilities',{credentials:'omit',headers:{Authorization:'Bearer malicious'}});
  assert.equal(calls.length,1);
- assert.equal(calls[0].credentials,'same-origin');
- assert.equal(calls[0].redirect,'manual');
- assert.equal(calls[0].cache,'no-store');
- assert.equal(calls[0].headers.Authorization,undefined);
- assert.equal(calls[0].headers['Cf-Access-Jwt-Assertion'],undefined);
- assert.equal(calls[0].headers.Accept,'application/json');
+ assert.equal(calls[0].options.credentials,'same-origin');
+ assert.equal(calls[0].options.redirect,'manual');
+ assert.equal(calls[0].options.cache,'no-store');
+ assert.equal(calls[0].options.headers.Authorization,undefined);
+ assert.equal(calls[0].options.headers['X-CRC-Worker-Assertion'],undefined);
+ assert.equal(calls[0].options.headers.Accept,'application/json');
 });
 
-test('redirects and HTML login are converted into explicit auth-needed errors',async()=>{
- const redirected=context({fetchImpl:async()=>({type:'opaqueredirect',status:0})}).session;
- const r1=await redirected.fetch('/api/v1/capabilities');
- assert.equal(r1.status,401);
- assert.equal((await r1.json()).error.code,'ACCESS_LOGIN_REQUIRED');
- const html=context({fetchImpl:async()=>new Response('<html>Login</html>',{
-   status:200,headers:{'Content-Type':'text/html'}
- })}).session;
- const r2=await html.fetch('/api/v1/capabilities');
- assert.equal(r2.status,401);
- assert.equal((await r2.json()).error.code,'ACCESS_LOGIN_REQUIRED');
-});
-
-test('network failures are sanitized and do not trigger automatic login redirects',async()=>{
- const {session,getReloadCount}=context({fetchImpl:async()=>{throw Error('private browser diagnostic')}});
- const r=await session.fetch('/api/v1/capabilities');
- assert.equal(r.status,503);
- assert.equal((await r.json()).error.code,'BETA_NETWORK_UNAVAILABLE');
- assert.equal(getReloadCount(),0);
-});
-
-test('top-level reauthentication only runs on explicit signInAgain call',()=>{
- const {session,getReloadCount}=context();
- assert.equal(getReloadCount(),0);
+test('explicit sign-in navigation happens only after a user action',()=>{
+ const {session,getNavigations}=context();
+ assert.equal(getNavigations().length,0);
  session.signInAgain();
- assert.equal(getReloadCount(),1);
+ assert.deepEqual(getNavigations(),['/login']);
 });
 
+test('network failures are sanitized without exposing private diagnostics',async()=>{
+ const session=context({fetchImpl:async()=>{throw Error('private browser diagnostic');}}).session;
+ const response=await session.fetch('/api/v1/capabilities');
+ assert.equal(response.status,503);
+ assert.equal((await response.json()).error.code,'BETA_NETWORK_UNAVAILABLE');
+});
 
-test('protected readiness uses same-origin Access session and never calls arbitrary health URLs',async()=>{
+test('sign out calls the same-origin logout route and then navigates to login',async()=>{
+ const calls=[];
+ const {session,getNavigations}=context({fetchImpl:async(path,options)=>{
+  calls.push({path,options});return new Response('{"authenticated":false}');
+ }});
+ await session.signOut();
+ assert.equal(calls[0].path,'/api/v1/auth/logout');
+ assert.equal(calls[0].options.method,'POST');
+ assert.equal(calls[0].options.credentials,'same-origin');
+ assert.deepEqual(getNavigations(),['/login']);
+});
+
+test('protected readiness uses same-origin session and never calls arbitrary health URLs',async()=>{
  const calls=[];
  const {session}=context({fetchImpl:async(path,options)=>{
-   calls.push({path,options});
-   return new Response('{"status":"ready_for_authenticated_requests"}',{
-     headers:{"Content-Type":"application/json"}
-   });
+  calls.push({path,options});
+  return new Response('{"status":"ready_for_authenticated_requests"}',{headers:{'Content-Type':'application/json'}});
  }});
- const r=await session.fetch('/api/v1/health/ready');
- assert.equal(r.status,200);
+ const response=await session.fetch('/api/v1/health/ready');
+ assert.equal(response.status,200);
  assert.equal(calls.length,1);
  assert.equal(calls[0].path,'/api/v1/health/ready');
  assert.equal(calls[0].options.credentials,'same-origin');
@@ -117,7 +104,9 @@ test('protected readiness uses same-origin Access session and never calls arbitr
 
 test('coach POST is exact and consent-bound',async()=>{
  const calls=[];
- const {session}=context({fetchImpl:async(path,options)=>{calls.push({path,options});return new Response('{}',{headers:{'Content-Type':'application/json'}});}});
+ const {session}=context({fetchImpl:async(path,options)=>{
+  calls.push({path,options});return new Response('{}',{headers:{'Content-Type':'application/json'}});
+ }});
  const body=JSON.stringify({question:'test',consent_to_external_ai:true});
  assert.equal((await session.fetch('/api/v1/capabilities',{method:'POST',body})).status,403);
  assert.equal((await session.fetch('/api/v1/coach/chat',{method:'POST',body:'{}'})).status,403);
