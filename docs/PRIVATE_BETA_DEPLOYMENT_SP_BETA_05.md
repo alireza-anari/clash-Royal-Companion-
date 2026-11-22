@@ -7,7 +7,7 @@
 - `api/src/crc_api/release_preflight.py`: offline, read-only release assessor and printable rollback plan. It cannot connect to Cloudflare, turn on Supercell, deploy a Worker, or buy a server.
 - `deploy/release/beta-manifest.example.json`: example with **both switches OFF**, no credentials, blank immutable commit IDs, and all evidence fields false.
 - `deploy/release/beta-deployment.blueprint.json`: non-deployable binding and environment contract for distinct beta Worker, private VPC Service and Backend. Deliberately has no domain, service ID, keys or approval.
-- `GET /api/v1/health/ready` in the separate `crc_api.beta_gateway` app: an **authenticated** diagnostic. It uses the normal Cloudflare Access JWT and shared PostgreSQL quota admission. A successful response confirms those components succeeded for this request. It **does not** contact Supercell or prove the network/VM is production-ready.
+- `GET /api/v1/health/ready` in the separate `crc_api.beta_gateway` app: an **authenticated** diagnostic. It uses the normal Cloudflare Worker auth JWT and shared PostgreSQL quota admission. A successful response confirms those components succeeded for this request. It **does not** contact Supercell or prove the network/VM is production-ready.
 - Frontend PR #4 allows **only** this additional protected health path through the private VPC Service Worker and same-origin Access session. The public sample Worker is unchanged.
 - GitHub Actions checks that the committed release template is disabled and runs the new tests. No workflow has permissions or credentials to deploy a beta environment.
 
@@ -17,11 +17,11 @@ Record real backend and frontend **40-character commit SHAs** in a separate oper
 
 1. Product owner has reviewed the monthly bill, chosen a fixed-egress host, and approved recurring charges.
 2. Real outbound IPv4 is guaranteed and correctly allowlisted in the private Supercell developer API key.
-3. Cloudflare Access application protects **every route** on a distinct beta hostname, including assets, health and alternate/preview routes. Workers.dev/preview bypasses must be disabled or equally protected.
+3. The private Worker validates invite codes, serves only an HttpOnly session cookie, and signs short-lived backend assertions. Every asset and API route is session-gated; alternate/preview routes are disabled or equally protected.
 4. Cloudflare VPC Service is pinned to **one** private origin behind a reviewed Tunnel, not a general public proxy; backend has no open public ingress.
-5. The beta backend validates Cloudflare Access JWT signature, issuer, AUD, expiry and invite allowlist independently.
+5. The beta backend independently validates the Worker HMAC assertion, exact issuer, audience, expiry, jti and invite-subject allowlist.
 6. PostgreSQL has least-privilege credentials, `sslmode=verify-full` with working CA/hostname verification, migration review, enforced quota, and a **running** retention cleanup job.
-7. Browser Access session, expiry and re-login have been checked against the real beta hostname without exposing tokens in JavaScript.
+7. Invite-code browser session, cookie flags, expiry, logout and re-login have been checked against the real beta hostname without exposing tokens in JavaScript.
 8. Monitoring, alerting, emergency stop and disaster recovery have been reviewed. Test failures in PostgreSQL/JWKS/private VPC with no Supercell calls.
 9. Privacy and Supercell Fan Content/API terms review is complete. Final manual mobile acceptance happens only after MVP feature completion, per owner preference.
 
@@ -49,8 +49,8 @@ The committed example must remain all-disabled forever. Store any actual operato
 
 ## 3. Proposed deployment order — NOT EXECUTED
 
-1. Obtain owner approval for hosting and spend. Provision the fixed-egress VM, private PostgreSQL and Cloudflare Access + VPC Service. Review the current Cloudflare support/plan availability before any purchases.
-2. Bind the separate private beta Worker source `deploy/cloudflare/beta-edge-worker.mjs` to **ASSETS** and **PRIVATE_API** only after Cloudflare Access guards the entire beta domain. Keep its `BETA_ENABLED=false`.
+1. Obtain owner approval for hosting and spend. Provision the fixed-egress VM, private PostgreSQL and Worker invite authentication + VPC Service. Review the current Cloudflare support/plan availability before any purchases.
+2. Bind the separate private beta Worker source `deploy/cloudflare/beta-edge-worker.mjs` to **ASSETS** and **PRIVATE_API** only after Cloudflare Access (not used in the no-card path) guards the entire beta domain. Keep its `BETA_ENABLED=false`.
 3. Prepare `crc_api.beta_gateway:create_beta_app` with secrets injected only through approved private secret infrastructure. Keep `CRC_BETA_LIVE_LOOKUP_ENABLED=false`. Build from pinned commits; avoid using mutable `latest` images.
 4. Apply reviewed PostgreSQL migration, schema permissions, TLS and a monitored quota-cleanup schedule. Keep origin inaccessible from the Internet. Complete private-origin and JWT chain tests.
 5. Validate the protected `GET /api/v1/health/ready`: expect `status=ready_for_authenticated_requests`, `checks.access_jwt=verified`, `checks.shared_quota=reserved`, `supercell_connectivity_checked=false`, and `live_lookup_enabled=false`. Unauthorized clients must fail. Its 200 status is not an independent container health or upstream probe.
@@ -66,11 +66,11 @@ The current local Dockerfile is intentionally not a public beta container; do no
 
 **Secondary stop:** set `CRC_BETA_LIVE_LOOKUP_ENABLED=false` on the backend and **restart/redeploy** that process. This independently prevents new official Player Snapshot/card requests even if a beta Worker route were still present. Confirm `/api/v1/capabilities` reports disabled under signed Access.
 
-**Identity incident:** suspend invites or the beta Access application and revoke compromised sessions/tokens through the provider's supported controls. Do not expose the backend to permit access during troubleshooting.
+**Identity incident:** suspend invites or the beta invite-code session gate and revoke compromised sessions/tokens through the provider's supported controls. Do not expose the backend to permit access during troubleshooting.
 
 **Verify containment:** unauthorized and authenticated beta requests cannot reach Supercell; the Worker returns a disabled response; confirm telemetry shows no new outbound requests; the sample-only Stage still works. Record incident time, active commit/version IDs and non-sensitive logs.
 
-**Reverting code:** Cloudflare's documented Workers rollback creates a **new deployment** assigning the selected prior version 100% traffic. That does not revert PostgreSQL state, external keys, Access membership, VPC configuration, or a Supercell IP allowlist. Never assume rollback to an older Worker automatically re-establishes security or disables beta access. Prefer the off-switches first, then a reviewed pinned previous version if needed.
+**Reverting code:** Cloudflare's documented Workers rollback creates a **new deployment** assigning the selected prior version 100% traffic. That does not revert PostgreSQL state, external keys, invite membership, VPC configuration, or a Supercell IP allowlist. Never assume rollback to an older Worker automatically re-establishes security or disables beta access. Prefer the off-switches first, then a reviewed pinned previous version if needed.
 
 **Data rollback:** do not auto-revert quota database migrations. Review PostgreSQL schema and retention separately; counters may be needed for security auditing and provider protection. Maintain separate backup/restore and migration-forward procedures.
 
@@ -85,10 +85,24 @@ The current local Dockerfile is intentionally not a public beta container; do no
 
 ## 6. Current blockers
 
-No paid fixed-egress VM, real private origin, actual Cloudflare Access app/policy, beta Worker deployment, persistent PostgreSQL, TLS CA trust setup, provider key, configured cleanup scheduler or real beta browser session exists yet. Cross-branch end-to-end integration is still required. **CI success alone is not authorization to deploy.**
+No paid fixed-egress VM, real private origin, actual Cloudflare invite-code session gate, beta Worker deployment, persistent PostgreSQL, TLS CA trust setup, provider key, configured cleanup scheduler or real beta browser session exists yet. Cross-branch end-to-end integration is still required. **CI success alone is not authorization to deploy.**
 
 ## References
 
 - Cloudflare Workers rollback: https://developers.cloudflare.com/workers/versions-and-deployments/rollbacks/
 - Cloudflare VPC Service bindings: https://developers.cloudflare.com/workers-vpc/configuration/vpc-services/
 - Cloudflare Access JWT validation: https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/authorization-cookie/validating-json/
+
+
+## No-card authentication replacement (source only)
+
+Cloudflare Access onboarding can request payment details even on its $0 plan. The MVP no-card path therefore uses an invite-code session at the edge instead of Access:
+
+- Store only SHA-256 invite-code hashes mapped to opaque subject IDs in a Worker Secret; never commit invite codes.
+- On successful login, set a Secure, HttpOnly, SameSite=Strict, host-only cookie. JavaScript never reads the cookie or any signing key.
+- The Worker validates the cookie on every beta asset/API request and signs a 60-second HS256 assertion for the backend.
+- The backend verifies the signature, exact HTTPS issuer, audience, expiry, jti and per-user allowlist before PostgreSQL quota reservation or any upstream request.
+- Keep separate random HMAC keys for browser sessions and Worker-to-backend assertions. The latter is mirrored from Cloudflare Worker Secrets to AWS SSM; it is never stored in GitHub.
+- Workers VPC/Tunnel remains the private network path. It is independent of Cloudflare Access and is available during its open beta on Workers Free.
+
+This is a small private-beta admission mechanism, not a replacement for a full consumer identity system. Invite rotation/revocation and session expiry remain required operational controls.

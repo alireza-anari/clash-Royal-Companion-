@@ -2,9 +2,10 @@
 
 Design:
 - Explicit opt-in for the separate factory; existing crc_api.main remains local-only.
-- Signed Cloudflare Access JWT -> PostgreSQL quota -> Supercell in that order.
+- Short-lived signed Worker assertion -> PostgreSQL quota -> Supercell in that order.
+- The edge mints assertions after validating one-time invite codes and its HttpOnly session.
 - Same-origin frontend and privately network-isolated backend required at deployment.
-- Never trust forwarded identity headers, Host for authentication, or raw player tags.
+- Never trust browser-supplied identity, forwarded headers, Host for authentication, or raw player tags.
 """
 from __future__ import annotations
 
@@ -22,7 +23,7 @@ from fastapi.responses import JSONResponse
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from .domain import card_summary, normalize_battle, normalize_profile, normalize_tag
-from .security.cloudflare_access import AccessDenied, AccessVerifier
+from .security.worker_assertion import WorkerAssertionDenied, WorkerAssertionVerifier
 from .security.private_beta import PrivateBetaAdmission
 from .security.shared_quota import PostgresSharedQuota, QuotaDenied
 from .supercell import SupercellClient, SupercellError
@@ -42,10 +43,11 @@ class UnsafeBetaConfiguration(RuntimeError):
 @dataclass(frozen=True)
 class BetaConfig:
     hostname: str
-    team_domain: str
+    auth_issuer: str
     audience: str
     allowed_subjects: frozenset[str]
     quota_hmac_secret: bytes
+    worker_assertion_secret: bytes
     database_dsn: str
     enabled: bool = True
     live_lookup_enabled: bool = False
@@ -56,18 +58,21 @@ class BetaConfig:
         if os.environ.get("CRC_BETA_RUNTIME_GATE", "") != SECRET_MARKER:
             raise UnsafeBetaConfiguration("Private beta runtime has not been approved for activation.")
         host = os.environ.get("CRC_BETA_HOST", "").strip().lower()
-        team = os.environ.get("CRC_BETA_TEAM_DOMAIN", "").strip().lower()
-        audience = os.environ.get("CRC_BETA_AUDIENCE", "").strip()
+        issuer = os.environ.get("CRC_BETA_AUTH_ISSUER", "").strip().lower()
+        audience = os.environ.get("CRC_BETA_AUTH_AUDIENCE", "").strip()
         subjects = frozenset(s.strip() for s in
                              os.environ.get("CRC_BETA_ALLOWED_SUBJECTS", "").split(",") if s.strip())
         dsn = os.environ.get("CRC_BETA_POSTGRES_DSN", "")
         secret = os.environ.get("CRC_BETA_QUOTA_HMAC_HEX", "")
+        assertion_secret = os.environ.get("CRC_BETA_WORKER_ASSERTION_HMAC_HEX", "")
         try:
             secret_bytes = bytes.fromhex(secret)
+            assertion_bytes = bytes.fromhex(assertion_secret)
         except ValueError as exc:
-            raise UnsafeBetaConfiguration("Invalid beta quota key configuration.") from exc
+            raise UnsafeBetaConfiguration("Invalid beta signing key configuration.") from exc
         live = os.environ.get("CRC_BETA_LIVE_LOOKUP_ENABLED", "false") == "true"
-        config = cls(host, team, audience, subjects, secret_bytes, dsn, live_lookup_enabled=live)
+        config = cls(host, issuer, audience, subjects, secret_bytes, assertion_bytes, dsn,
+                     live_lookup_enabled=live)
         config.validate()
         return config
 
@@ -79,10 +84,17 @@ class BetaConfig:
         if (self.hostname.startswith(".") or ".." in self.hostname or
                 self.hostname in ("localhost", "127.0.0.1", "0.0.0.0", "testserver")):
             raise UnsafeBetaConfiguration("Private beta hostname is not valid.")
-        if not self.team_domain or not self.audience or not self.allowed_subjects:
-            raise UnsafeBetaConfiguration("Cloudflare Access beta policy is incomplete.")
+        issuer = urlsplit(self.auth_issuer)
+        if (issuer.scheme != "https" or issuer.hostname != self.hostname or
+                issuer.username is not None or issuer.password is not None or
+                issuer.path not in ("", "/") or issuer.query or issuer.fragment):
+            raise UnsafeBetaConfiguration("Worker assertion issuer must match the exact HTTPS beta host.")
+        if not self.audience or not self.allowed_subjects:
+            raise UnsafeBetaConfiguration("Private beta invite policy is incomplete.")
         if len(self.quota_hmac_secret) < 32:
             raise UnsafeBetaConfiguration("Private beta quota key is not configured.")
+        if len(self.worker_assertion_secret) < 32:
+            raise UnsafeBetaConfiguration("Worker assertion signing key is not configured.")
         try:
             parsed = urlsplit(self.database_dsn)
             if parsed.scheme not in ("postgres", "postgresql") or not parsed.hostname:
@@ -102,7 +114,7 @@ class BetaConfig:
 def create_beta_app(
     *,
     config: BetaConfig | None = None,
-    verifier: AccessVerifier | None = None,
+    verifier: WorkerAssertionVerifier | None = None,
     quota: PostgresSharedQuota | None = None,
     supercell: SupercellClient | None = None,
     pool_factory: Callable[[str], Any] | None = None,
@@ -119,7 +131,7 @@ def create_beta_app(
     api = supercell if supercell is not None else SupercellClient()
     if settings.live_lookup_enabled and not api.configured:
         raise UnsafeBetaConfiguration("Private beta Supercell provider is not configured.")
-    access = verifier or AccessVerifier(settings.team_domain, settings.audience, settings.allowed_subjects)
+    access = verifier or WorkerAssertionVerifier(settings.auth_issuer, settings.audience, settings.allowed_subjects, settings.worker_assertion_secret)
     budget = quota or PostgresSharedQuota(settings.quota_hmac_secret)
     # Even a configured API key cannot activate inference by itself.
     ai_switch = os.environ.get("CRC_BETA_AI_ENABLED", "false").strip().lower() == "true"
@@ -204,13 +216,13 @@ def create_beta_app(
         )
         origin = request.headers.get("origin")
         origin_ok = origin is None or origin == "https://" + settings.hostname
-        assertion = request.headers.get("Cf-Access-Jwt-Assertion", "")
+        assertion = request.headers.get("X-CRC-Worker-Assertion", "")
         if not host_ok:
             response = error(400, "UNTRUSTED_HOST", rid)
         elif not origin_ok:
             response = error(403, "CROSS_ORIGIN_DENIED", rid)
         elif not assertion:
-            response = error(401, "ACCESS_TOKEN_MISSING", rid)
+            response = error(401, "WORKER_ASSERTION_MISSING", rid)
         else:
             try:
                 pool = request.app.state.pool
@@ -218,9 +230,8 @@ def create_beta_app(
                     admission = await request.app.state.admission.admit(assertion, connection)
                 request.state.verified_subject = admission["subject"]
                 response = await call_next(request)
-            except AccessDenied as exc:
-                status = 503 if exc.code == "ACCESS_KEYS_UNAVAILABLE" else 403
-                response = error(status, exc.code, rid)
+            except WorkerAssertionDenied as exc:
+                response = error(403, exc.code, rid)
             except QuotaDenied as exc:
                 response = error(429, exc.code, rid, exc.retry_after_seconds)
             except Exception:
@@ -273,7 +284,7 @@ def create_beta_app(
         return {
             "status": "ready_for_authenticated_requests",
             "checks": {
-                "access_jwt": "verified",
+                "worker_assertion": "verified",
                 "shared_quota": "reserved",
             },
             "live_lookup_enabled": settings.live_lookup_enabled,
@@ -319,7 +330,7 @@ def create_beta_app(
     async def protected_ai_chat(payload: CoachRequest, request: Request):
         """Never exposed on the public sample-only Worker.
 
-        Signed Cloudflare Access, invited subject, shared minute quota, strict
+        Signed Worker assertion, invited subject, shared minute quota, strict
         same-origin policy and private Host are all checked by middleware first.
         AI additionally requires the explicit owner switch, a server-only API
         key, explicit request consent, and a persistent UTC daily budget.

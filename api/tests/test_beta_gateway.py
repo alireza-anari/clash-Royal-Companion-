@@ -1,6 +1,6 @@
-"""E2E-like private beta gateway tests: signed JWT + quota + mocked Supercell.
+"""E2E-like private beta gateway tests: signed Worker assertion + quota + mocked Supercell.
 
-No network requests to real Supercell, no live Access app, no real credentials.
+No network requests to real Supercell, no live identity provider, no real credentials.
 """
 from __future__ import annotations
 
@@ -13,29 +13,30 @@ from urllib.parse import unquote
 import httpx
 import jwt
 import pytest
-from cryptography.hazmat.primitives.asymmetric import rsa
 from fastapi.testclient import TestClient
 
 from crc_api.beta_gateway import BetaConfig, UnsafeBetaConfiguration, create_beta_app
-from crc_api.security.cloudflare_access import AccessVerifier
+from crc_api.security.worker_assertion import WorkerAssertionVerifier
 from crc_api.security.shared_quota import PostgresSharedQuota, QuotaDenied
 from crc_api.supercell import SupercellClient
 
 
-TEAM = "crc-beta-test.cloudflareaccess.com"
+ISSUER = "https://" + HOST
 HOST = "beta.comp.example"
 AUD = "local-beta-app-audience"
 SUBJECT = "invited-opaque-subject"
 TEST_DSN = os.environ.get("CRC_TEST_POSTGRES_DSN")
 QUOTA_SECRET = b"test-only-integration-quota-secret-123456789"
+WORKER_SECRET = b"test-only-worker-assertion-secret-123456789"
 CARD_IDS = [26000010, 26000014, 26000021, 27000000, 26000038, 26000030, 28000000, 28000011]
 
 
 def fake_settings():
     return BetaConfig(
-        hostname=HOST, team_domain=TEAM, audience=AUD,
+        hostname=HOST, auth_issuer=ISSUER, audience=AUD,
         allowed_subjects=frozenset({SUBJECT}),
         quota_hmac_secret=QUOTA_SECRET,
+        worker_assertion_secret=WORKER_SECRET,
         database_dsn="postgresql://demo:local-test@postgres:5432/crc_test?sslmode=verify-full",
         live_lookup_enabled=True,
     )
@@ -76,26 +77,16 @@ class MockQuota:
 
 
 def credentials():
-    private = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-    key = json.loads(jwt.algorithms.RSAAlgorithm.to_jwk(private.public_key()))
-    key.update({"kid": "gateway-test-key", "use": "sig", "alg": "RS256"})
     now = int(time.time())
 
     def token(**changes):
-        claims = {"iss": "https://" + TEAM, "aud": AUD, "sub": SUBJECT,
-                  "iat": now, "exp": now + 300}
+        claims = {"iss": ISSUER, "aud": AUD, "sub": SUBJECT,
+                  "iat": now, "exp": now + 60, "jti": "test-token-identifier-1234"}
         claims.update(changes)
-        return jwt.encode(claims, private, algorithm="RS256",
-                          headers={"kid": "gateway-test-key"})
+        return jwt.encode(claims, WORKER_SECRET, algorithm="HS256")
 
-    def certs(request):
-        assert request.url.host == TEAM
-        assert request.url.path == "/cdn-cgi/access/certs"
-        return httpx.Response(200, json={"keys": [key]})
-
-    verifier = AccessVerifier(
-        TEAM, AUD, frozenset({SUBJECT}),
-        transport=httpx.MockTransport(certs),
+    verifier = WorkerAssertionVerifier(
+        ISSUER, AUD, frozenset({SUBJECT}), WORKER_SECRET,
     )
     return verifier, token
 
@@ -144,7 +135,7 @@ def build_app(verifier, quota, calls, pool_factory=fake_pool):
 
 def request(client, token):
     return client.get("/api/v1/players/%23TEST123/snapshot?limit=25",
-                      headers={"Cf-Access-Jwt-Assertion": token})
+                      headers={"X-CRC-Worker-Assertion": token})
 
 
 def test_separate_beta_requires_explicit_configuration_and_real_provider(monkeypatch):
@@ -160,7 +151,7 @@ def test_separate_beta_requires_explicit_configuration_and_real_provider(monkeyp
         create_app(SupercellClient(token="mock-supercell-key"))
 
 
-def test_missing_invalid_or_uninvited_jwt_never_calls_upstream_or_quota():
+def test_missing_invalid_or_uninvited_worker_assertion_never_calls_upstream_or_quota():
     verifier, sign = credentials()
     quota = MockQuota()
     calls = []
@@ -183,7 +174,7 @@ def test_host_origin_and_spoofed_headers_do_not_bypass_authentication():
     app = build_app(verifier, quota, calls)
     with TestClient(app, base_url="https://" + HOST) as client:
         for headers, code in [
-            ({"Host": "attacker.example", "Cf-Access-Jwt-Assertion": sign()}, 400),
+            ({"Host": "attacker.example", "Cf-Worker auth-Jwt-Assertion": sign()}, 400),
             ({"Origin": "https://evil.example", "Cf-Access-Jwt-Assertion": sign()}, 403),
             ({"Cf-Access-Authenticated-User-Email": "allowed@example.com"}, 401),
             ({"X-Forwarded-For": "127.0.0.1"}, 401),
@@ -193,7 +184,7 @@ def test_host_origin_and_spoofed_headers_do_not_bypass_authentication():
     assert not calls and not quota.calls
 
 
-def test_valid_access_token_is_reserved_before_supercell_and_returns_snapshot():
+def test_valid_worker_assertion_is_reserved_before_supercell_and_returns_snapshot():
     verifier, sign = credentials()
     quota = MockQuota()
     calls = []
@@ -307,7 +298,7 @@ def test_real_postgres_rejects_third_request_at_shared_member_quota():
 
 
 
-def test_live_lookup_remains_disabled_with_access_and_database_ready():
+def test_live_lookup_remains_disabled_with_worker_auth_and_database_ready():
     verifier, sign = credentials()
     calls = []
     quota = MockQuota()
@@ -337,11 +328,12 @@ def test_live_lookup_switch_requires_exact_explicit_opt_in(monkeypatch):
     config = fake_settings()
     monkeypatch.setenv("CRC_BETA_RUNTIME_GATE", "private-beta-explicit-owner-approval")
     monkeypatch.setenv("CRC_BETA_HOST", HOST)
-    monkeypatch.setenv("CRC_BETA_TEAM_DOMAIN", TEAM)
-    monkeypatch.setenv("CRC_BETA_AUDIENCE", AUD)
+    monkeypatch.setenv("CRC_BETA_AUTH_ISSUER", ISSUER)
+    monkeypatch.setenv("CRC_BETA_AUTH_AUDIENCE", AUD)
     monkeypatch.setenv("CRC_BETA_ALLOWED_SUBJECTS", SUBJECT)
     monkeypatch.setenv("CRC_BETA_POSTGRES_DSN", config.database_dsn)
     monkeypatch.setenv("CRC_BETA_QUOTA_HMAC_HEX", QUOTA_SECRET.hex())
+    monkeypatch.setenv("CRC_BETA_WORKER_ASSERTION_HMAC_HEX", WORKER_SECRET.hex())
     monkeypatch.delenv("CRC_BETA_LIVE_LOOKUP_ENABLED", raising=False)
     assert BetaConfig.from_environment().live_lookup_enabled is False
     for value in ("TRUE", "1", "yes", "enabled"):
@@ -371,7 +363,7 @@ def test_beta_database_accepts_explicit_verify_full():
     assert settings.live_lookup_enabled is True
 
 
-def test_authenticated_readiness_confirms_access_and_quota_without_supercell():
+def test_authenticated_readiness_confirms_worker_assertion_and_quota_without_supercell():
     verifier, sign = credentials()
     quota = MockQuota()
     calls = []
@@ -384,7 +376,7 @@ def test_authenticated_readiness_confirms_access_and_quota_without_supercell():
         assert ready.status_code == 200
         result = ready.json()
         assert result["status"] == "ready_for_authenticated_requests"
-        assert result["checks"] == {"access_jwt": "verified", "shared_quota": "reserved"}
+        assert result["checks"] == {"worker_assertion": "verified", "shared_quota": "reserved"}
         assert result["live_lookup_enabled"] is True
         assert result["supercell_connectivity_checked"] is False
         assert result["full_production_readiness"] is False
@@ -425,7 +417,7 @@ def test_disabled_beta_readiness_reports_disabled_without_upstream():
 
 
 def test_private_ai_chat_opt_in_and_daily_budget(monkeypatch):
-    """No prompt may reach provider without Access, consent and daily budget."""
+    """No prompt may reach provider without a verified invite session, consent and daily budget."""
     from crc_api.ai_daily_budget import AIDailyBudgetExceeded
 
     class MockAI:

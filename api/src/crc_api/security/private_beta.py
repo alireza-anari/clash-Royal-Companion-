@@ -8,18 +8,22 @@ from __future__ import annotations
 
 from typing import Any
 
-from .cloudflare_access import AccessVerifier
+from typing import Protocol
+
+
+class SubjectVerifier(Protocol):
+    async def verify(self, assertion: str) -> str: ...
 from .shared_quota import PostgresSharedQuota
 
 
 class PrivateBetaAdmission:
-    def __init__(self, verifier: AccessVerifier, quota: PostgresSharedQuota):
+    def __init__(self, verifier: SubjectVerifier, quota: PostgresSharedQuota):
         self.verifier = verifier
         self.quota = quota
 
     async def admit(self, assertion: str, connection: Any) -> dict[str, Any]:
-        # Identity must originate from verified signed JWT; never from a
-        # browser-supplied email, Player Tag, X-Forwarded-For or access header alone.
+        # Identity must originate from a verified Worker-signed assertion; never from a
+        # browser-supplied email, Player Tag, X-Forwarded-For or identity header alone.
         subject = await self.verifier.verify(assertion)
         reservation = await self.quota.reserve(connection, subject)
         return {"subject": subject, "quota": reservation}
