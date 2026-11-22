@@ -104,4 +104,4 @@ jobs:
         run: |
           set -euo pipefail
           node deploy/cloudflare/deploy-private-beta.mjs
-          echo "Private beta edge deployed with BETA_ENABLED=false, BETA_AI_CHAT_ENABLED=false, and no PRIVATE_API binding."
+          echo "Private beta edge deployed with BETA_ENABLED=false and BETA_AI_CHAT_ENABLED=false; the private VPC service binding is preserved but cannot receive traffic while disabled."
