@@ -123,7 +123,8 @@ Worker variables/secrets:
 Backend private environment:
 
 - `CRC_BETA_HOST`, `CRC_BETA_AUTH_ISSUER`, `CRC_BETA_AUTH_AUDIENCE`, and `CRC_BETA_ALLOWED_SUBJECTS` must match the Worker host, audience, and opaque subject IDs.
-- `CRC_BETA_WORKER_ASSERTION_HMAC_HEX` must equal the Worker assertion key and is loaded from AWS SSM; never store it in GitHub or the repository.
+- `CRC_BETA_WORKER_ASSERTION_HMAC_HEX` must equal the Worker assertion key and must be injected into the backend process from a protected secret store (AWS SSM Parameter Store is the planned source). The SSM-to-process injection is still a deployment task; never store it in GitHub or the repository.
+- `CRC_BETA_QUOTA_HMAC_HEX` is also a backend secret and must be injected from the same protected secret store.
 - Keep `CRC_BETA_LIVE_LOOKUP_ENABLED=false` until the Supercell egress IP, provider key, quota, database, and privacy checks are complete.
 
 Generate invite codes and HMAC keys locally with a cryptographically secure random generator; never paste raw codes or keys into this chat. Invite codes remain valid until removed from the Worker secret. Existing sessions last at most eight hours; rotating the session HMAC key invalidates all active sessions. This is a limited private-beta gate, not consumer-grade account recovery or email verification.
