@@ -131,7 +131,7 @@ def create_beta_app(
     api = supercell if supercell is not None else SupercellClient()
     if settings.live_lookup_enabled and not api.configured:
         raise UnsafeBetaConfiguration("Private beta Supercell provider is not configured.")
-    access = verifier or WorkerAssertionVerifier(settings.auth_issuer, settings.audience, settings.allowed_subjects, settings.worker_assertion_secret)
+    identity = verifier or WorkerAssertionVerifier(settings.auth_issuer, settings.audience, settings.allowed_subjects, settings.worker_assertion_secret)
     budget = quota or PostgresSharedQuota(settings.quota_hmac_secret)
     # Even a configured API key cannot activate inference by itself.
     ai_switch = os.environ.get("CRC_BETA_AI_ENABLED", "false").strip().lower() == "true"
@@ -187,7 +187,7 @@ def create_beta_app(
         version="0.1.0-beta", lifespan=lifespan,
     )
     app.state.supercell = api
-    app.state.admission = PrivateBetaAdmission(access, budget)
+    app.state.admission = PrivateBetaAdmission(identity, budget)
     app.state.ai_chat = chat
     app.state.ai_daily_budget = daily_ai
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=[settings.hostname])

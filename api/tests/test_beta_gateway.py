@@ -21,8 +21,8 @@ from crc_api.security.shared_quota import PostgresSharedQuota, QuotaDenied
 from crc_api.supercell import SupercellClient
 
 
-ISSUER = "https://" + HOST
 HOST = "beta.comp.example"
+ISSUER = "https://" + HOST
 AUD = "local-beta-app-audience"
 SUBJECT = "invited-opaque-subject"
 TEST_DSN = os.environ.get("CRC_TEST_POSTGRES_DSN")
@@ -175,7 +175,7 @@ def test_host_origin_and_spoofed_headers_do_not_bypass_authentication():
     with TestClient(app, base_url="https://" + HOST) as client:
         for headers, code in [
             ({"Host": "attacker.example", "Cf-Worker auth-Jwt-Assertion": sign()}, 400),
-            ({"Origin": "https://evil.example", "Cf-Access-Jwt-Assertion": sign()}, 403),
+            ({"Origin": "https://evil.example", "X-CRC-Worker-Assertion": sign()}, 403),
             ({"Cf-Access-Authenticated-User-Email": "allowed@example.com"}, 401),
             ({"X-Forwarded-For": "127.0.0.1"}, 401),
         ]:
@@ -250,7 +250,7 @@ def test_status_and_unknown_paths_require_identity():
         for path in ["/api/v1/capabilities", "/api/v1/catalog/cards", "/docs", "/nothing"]:
             assert client.get(path).status_code == 401
         enabled = client.get("/api/v1/capabilities",
-                             headers={"Cf-Access-Jwt-Assertion": sign()})
+                             headers={"X-CRC-Worker-Assertion": sign()})
         assert enabled.status_code == 200
         assert enabled.json()["live_lookup_enabled"] is True
     assert not calls
@@ -287,10 +287,10 @@ def test_real_postgres_rejects_third_request_at_shared_member_quota():
         token = sign()
         for _ in range(2):
             r = client.get("/api/v1/capabilities",
-                           headers={"Cf-Access-Jwt-Assertion": token})
+                           headers={"X-CRC-Worker-Assertion": token})
             assert r.status_code == 200, r.text
         blocked = client.get("/api/v1/catalog/cards",
-                             headers={"Cf-Access-Jwt-Assertion": token})
+                             headers={"X-CRC-Worker-Assertion": token})
         assert blocked.status_code == 429
         assert blocked.json()["error"]["code"] == "MEMBER_QUOTA_EXCEEDED"
         assert int(blocked.headers["Retry-After"]) >= 1
@@ -311,7 +311,7 @@ def test_live_lookup_remains_disabled_with_worker_auth_and_database_ready():
         pool_factory=fake_pool,
     )
     with TestClient(app, base_url="https://" + HOST) as client:
-        headers = {"Cf-Access-Jwt-Assertion": sign()}
+        headers = {"X-CRC-Worker-Assertion": sign()}
         c = client.get("/api/v1/capabilities", headers=headers)
         assert c.status_code == 200
         assert c.json()["live_lookup_enabled"] is False
@@ -372,7 +372,7 @@ def test_authenticated_readiness_confirms_worker_assertion_and_quota_without_sup
         missing = client.get("/api/v1/health/ready")
         assert missing.status_code == 401
         ready = client.get("/api/v1/health/ready",
-                           headers={"Cf-Access-Jwt-Assertion": sign()})
+                           headers={"X-CRC-Worker-Assertion": sign()})
         assert ready.status_code == 200
         result = ready.json()
         assert result["status"] == "ready_for_authenticated_requests"
@@ -392,7 +392,7 @@ def test_readiness_fails_closed_when_shared_quota_unavailable():
     app = build_app(verifier, quota, calls)
     with TestClient(app, base_url="https://" + HOST) as client:
         res = client.get("/api/v1/health/ready",
-                         headers={"Cf-Access-Jwt-Assertion": sign()})
+                         headers={"X-CRC-Worker-Assertion": sign()})
         assert res.status_code == 429
         assert res.headers["Retry-After"] == "17"
     assert calls == []
@@ -409,7 +409,7 @@ def test_disabled_beta_readiness_reports_disabled_without_upstream():
     )
     with TestClient(app, base_url="https://" + HOST) as client:
         res = client.get("/api/v1/health/ready",
-                         headers={"Cf-Access-Jwt-Assertion": sign()})
+                         headers={"X-CRC-Worker-Assertion": sign()})
         assert res.status_code == 200
         assert res.json()["live_lookup_enabled"] is False
         assert res.json()["supercell_connectivity_checked"] is False
@@ -452,7 +452,7 @@ def test_private_ai_chat_opt_in_and_daily_budget(monkeypatch):
                "question": "اکسیر دک من چقدر است؟",
                "deck": {"average_elixir": 3.1}}
     with TestClient(app, base_url="https://" + HOST) as client:
-        headers = {"Cf-Access-Jwt-Assertion": sign()}
+        headers = {"X-CRC-Worker-Assertion": sign()}
         assert client.post("/api/v1/coach/chat", json=payload).status_code == 401
         assert client.post("/api/v1/coach/chat", headers=headers,
                            json={**payload, "consent_to_external_ai": False}).status_code == 403
@@ -500,15 +500,15 @@ def test_ai_is_disabled_and_budget_failure_fails_closed(monkeypatch):
     monkeypatch.delenv("CRC_BETA_AI_ENABLED", raising=False)
     with TestClient(create_beta_app(**kwargs), base_url="https://" + HOST) as client:
         r = client.post("/api/v1/coach/chat",
-                        headers={"Cf-Access-Jwt-Assertion": sign()}, json=payload)
+                        headers={"X-CRC-Worker-Assertion": sign()}, json=payload)
         assert r.status_code == 503
         assert r.json()["error"]["code"] == "AI_COACH_DISABLED"
         assert client.get("/api/v1/capabilities",
-                          headers={"Cf-Access-Jwt-Assertion": sign()}).json()["ai_coach_enabled"] is False
+                          headers={"X-CRC-Worker-Assertion": sign()}).json()["ai_coach_enabled"] is False
     monkeypatch.setenv("CRC_BETA_AI_ENABLED", "true")
     with TestClient(create_beta_app(**kwargs), base_url="https://" + HOST) as client:
         r = client.post("/api/v1/coach/chat",
-                        headers={"Cf-Access-Jwt-Assertion": sign()}, json=payload)
+                        headers={"X-CRC-Worker-Assertion": sign()}, json=payload)
         assert r.status_code == 503
         assert r.json()["error"]["code"] == "AI_BUDGET_UNAVAILABLE"
         assert "private-postgres" not in r.text

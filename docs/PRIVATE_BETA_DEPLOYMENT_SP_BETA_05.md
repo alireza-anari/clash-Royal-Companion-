@@ -8,7 +8,7 @@
 - `deploy/release/beta-manifest.example.json`: example with **both switches OFF**, no credentials, blank immutable commit IDs, and all evidence fields false.
 - `deploy/release/beta-deployment.blueprint.json`: non-deployable binding and environment contract for distinct beta Worker, private VPC Service and Backend. Deliberately has no domain, service ID, keys or approval.
 - `GET /api/v1/health/ready` in the separate `crc_api.beta_gateway` app: an **authenticated** diagnostic. It uses the normal Cloudflare Worker auth JWT and shared PostgreSQL quota admission. A successful response confirms those components succeeded for this request. It **does not** contact Supercell or prove the network/VM is production-ready.
-- Frontend PR #4 allows **only** this additional protected health path through the private VPC Service Worker and same-origin Access session. The public sample Worker is unchanged.
+- Frontend PR #4 allows **only** this additional protected health path through the private VPC Service Worker and same-origin invite session. The public sample Worker is unchanged.
 - GitHub Actions checks that the committed release template is disabled and runs the new tests. No workflow has permissions or credentials to deploy a beta environment.
 
 ## 1. Before authorizing any real infrastructure
@@ -50,10 +50,10 @@ The committed example must remain all-disabled forever. Store any actual operato
 ## 3. Proposed deployment order — NOT EXECUTED
 
 1. Obtain owner approval for hosting and spend. Provision the fixed-egress VM, private PostgreSQL and Worker invite authentication + VPC Service. Review the current Cloudflare support/plan availability before any purchases.
-2. Bind the separate private beta Worker source `deploy/cloudflare/beta-edge-worker.mjs` to **ASSETS** and **PRIVATE_API** only after Cloudflare Access (not used in the no-card path) guards the entire beta domain. Keep its `BETA_ENABLED=false`.
+2. Bind the separate private beta Worker source `deploy/cloudflare/beta-edge-worker.mjs` to **ASSETS** and **PRIVATE_API** only after the invite-code session gate guards the entire beta domain. Keep its `BETA_ENABLED=false`.
 3. Prepare `crc_api.beta_gateway:create_beta_app` with secrets injected only through approved private secret infrastructure. Keep `CRC_BETA_LIVE_LOOKUP_ENABLED=false`. Build from pinned commits; avoid using mutable `latest` images.
 4. Apply reviewed PostgreSQL migration, schema permissions, TLS and a monitored quota-cleanup schedule. Keep origin inaccessible from the Internet. Complete private-origin and JWT chain tests.
-5. Validate the protected `GET /api/v1/health/ready`: expect `status=ready_for_authenticated_requests`, `checks.access_jwt=verified`, `checks.shared_quota=reserved`, `supercell_connectivity_checked=false`, and `live_lookup_enabled=false`. Unauthorized clients must fail. Its 200 status is not an independent container health or upstream probe.
+5. Validate the protected `GET /api/v1/health/ready`: expect `status=ready_for_authenticated_requests`, `checks.worker_assertion=verified`, `checks.shared_quota=reserved`, `supercell_connectivity_checked=false`, and `live_lookup_enabled=false`. Unauthorized clients must fail. Its 200 status is not an independent container health or upstream probe.
 6. Confirm the real egress IPv4 with the official key's IP allowance, budget, rate limits, alerting, and off-switch drills. Real credential smoke tests must happen only on the authorized VM and must never log the key.
 7. With a reviewed rollout and owner approval, flip the **backend** live switch and restart/redeploy the private process; verify it is still private. Then flip the **beta Worker** switch and publish **only the distinct beta domain**. Check that public sample stage remains independent and unchanged.
 8. Release gradually to invited testers, observe quota errors and provider health, and maintain a rollback decision window. Do not claim the user-facing MVP has completed acceptance testing.
@@ -64,9 +64,9 @@ The current local Dockerfile is intentionally not a public beta container; do no
 
 **Primary fast stop:** set the separate beta Worker's `BETA_ENABLED=false` and deploy the off-version, or immediately disable its protected route in the control plane as appropriate. This blocks **all beta requests**; it must not modify the public sample Worker. Cloudflare configuration changes and deployments take effect after control-plane propagation—do not promise zero delay.
 
-**Secondary stop:** set `CRC_BETA_LIVE_LOOKUP_ENABLED=false` on the backend and **restart/redeploy** that process. This independently prevents new official Player Snapshot/card requests even if a beta Worker route were still present. Confirm `/api/v1/capabilities` reports disabled under signed Access.
+**Secondary stop:** set `CRC_BETA_LIVE_LOOKUP_ENABLED=false` on the backend and **restart/redeploy** that process. This independently prevents new official Player Snapshot/card requests even if a beta Worker route were still present. Confirm `/api/v1/capabilities` reports disabled under signed Worker.
 
-**Identity incident:** suspend invites or the beta invite-code session gate and revoke compromised sessions/tokens through the provider's supported controls. Do not expose the backend to permit access during troubleshooting.
+**Identity incident:** suspend invites or the beta invite-code session gate and revoke compromised invite codes and rotate the Worker session/assertion keys. Do not expose the backend to permit access during troubleshooting.
 
 **Verify containment:** unauthorized and authenticated beta requests cannot reach Supercell; the Worker returns a disabled response; confirm telemetry shows no new outbound requests; the sample-only Stage still works. Record incident time, active commit/version IDs and non-sensitive logs.
 
@@ -74,13 +74,13 @@ The current local Dockerfile is intentionally not a public beta container; do no
 
 **Data rollback:** do not auto-revert quota database migrations. Review PostgreSQL schema and retention separately; counters may be needed for security auditing and provider protection. Maintain separate backup/restore and migration-forward procedures.
 
-**Recovery:** reactivation requires explicit owner sign-off, new preflight, verification of Access and private origin, full automated tests and real protected smoke. Re-enable the backend and Worker in that order only after review.
+**Recovery:** reactivation requires explicit owner sign-off, new preflight, verification of invite authentication and private origin, full automated tests and real protected smoke. Re-enable the backend and Worker in that order only after review.
 
 ## 5. Monitoring probes (planned, not installed)
 
 - Authenticated `GET /api/v1/health/ready` is useful for an operator's private readiness diagnostic, but it consumes a **member and global quota unit** and must not run at high frequency.
 - Separate internal container liveness may later be provided over a **non-public localhost/Unix socket**; this is **not** implemented. Do not add a public unauthenticated health bypass merely to make a load balancer green.
-- Observe successful Access decisions, 401/403/429/503 rates, PostgreSQL reservation latency, zero unexpected Supercell calls in off state, and cache freshness. Never log JWT, API keys, personal player JSON, or quota HMAC secrets.
+- Observe successful invite/session decisions, 401/403/429/503 rates, PostgreSQL reservation latency, zero unexpected Supercell calls in off state, and cache freshness. Never log JWT, API keys, personal player JSON, or quota HMAC secrets.
 - A protected health response does not prove Supercell availability; a live provider probe is a distinct, explicitly authorized, budgeted operation.
 
 ## 6. Current blockers
