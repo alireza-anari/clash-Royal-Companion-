@@ -1,6 +1,6 @@
 # SP-BETA-08 — GitHub → AWS OIDC without permanent access keys
 
-**Status (2026-11-21): CODE + STATIC CI ONLY. AWS trust is NOT CONNECTED until the owner installs the IAM bootstrap stack and registers its output as a GitHub repository variable.**
+**Status (22 November 2026): AWS OIDC trust is not connected. The existing EC2 host is user-managed; GitHub OIDC and SSM automation remain skipped until the owner installs the IAM bootstrap role and adds its ARN as a repository variable.**
 
 Purpose: Replace the paid TinyFish browser workflow with native GitHub Actions → AWS short-lived OIDC sessions, initially **read-only**. This avoids putting an AWS password, IAM user access key, secret key, or MFA code in GitHub or in this conversation.
 
@@ -57,8 +57,8 @@ The GitHub UI's **Run workflow** button for `workflow_dispatch` normally require
 ## Current boundaries
 
 - IAM identity bridge: not installed in AWS, so **OIDC is not yet live**.
-- No connected AWS API or signed-in billing browser is available to ChatGPT. Owner must do the **one-time** AWS console IAM bootstrap and GitHub variable entry.
-- No AWS EC2/EIP, EBS, private PostgreSQL, Cloudflare Access/private Worker or live Supercell services have been launched.
+- No signed-in AWS Console session or direct AWS account connector is available in this project. The owner must complete the one-time IAM OIDC bootstrap and GitHub variable entry before AWS actions can run.
+- The owner already has an EC2 host and PostgreSQL container. A separate Cloudflare private beta Worker and VPC Service are deployed but disabled; the Tunnel is down. The OIDC workflow has not launched or modified AWS resources.
 - This role only establishes **read-only AWS visibility**. A later EC2 deployment requires a **different** role with minimal explicit infrastructure permissions, owner approval for spending AWS credits, cost estimate and rollback/teardown tests. Never expand this read-only role to `AdministratorAccess`.
 - Public sample-only Cloudflare staging is separate and unchanged. Draft PR #2 remains unmerged.
 - OIDC trust and policy must be audited again if the repo/branch name changes.
