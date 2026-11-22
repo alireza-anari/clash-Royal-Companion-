@@ -19,7 +19,21 @@
     },
     "edge_enabled": false,
     "invite_session_gate_covers_every_route": false,
-    "auth_method": "per-user invite code + HttpOnly session cookie + short-lived Worker HMAC assertion"
+    "auth_method": "per-user invite code + HttpOnly session cookie + short-lived Worker HMAC assertion",
+    "worker_hostname": "crc-private-beta-gateway.alirezaanari117.workers.dev",
+    "worker_script": "crc-private-beta-gateway",
+    "required_worker_variables": [
+      "BETA_HOSTNAME",
+      "BETA_AUTH_ISSUER",
+      "BETA_AUTH_AUDIENCE",
+      "BETA_ALLOW_WORKERS_DEV",
+      "BETA_ENABLED"
+    ],
+    "required_worker_secrets": [
+      "BETA_INVITE_CODES_JSON",
+      "BETA_SESSION_HMAC_HEX",
+      "BETA_ASSERTION_HMAC_HEX"
+    ]
   },
   "backend": {
     "app_factory": "crc_api.beta_gateway:create_beta_app",

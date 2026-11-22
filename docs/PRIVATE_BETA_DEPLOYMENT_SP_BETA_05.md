@@ -96,7 +96,7 @@ No approved fixed-egress VM, real private origin, production invite/session secr
 
 ## No-card authentication replacement (source only)
 
-Cloudflare Access onboarding can request payment details even on its $0 plan. The MVP no-card path therefore uses an invite-code session at the edge instead of Access:
+Cloudflare Zero Trust Free onboarding may request payment details even though the plan itself is $0; this project does not need that checkout. The MVP no-card path therefore uses an invite-code session at the edge instead of Access:
 
 - Store only SHA-256 invite-code hashes mapped to opaque subject IDs in a Worker Secret; never commit invite codes.
 - On successful login, set a Secure, HttpOnly, SameSite=Strict, host-only cookie. JavaScript never reads the cookie or any signing key.
@@ -106,3 +106,24 @@ Cloudflare Access onboarding can request payment details even on its $0 plan. Th
 - Workers VPC/Tunnel remains the private network path. It is independent of Cloudflare Access and is available during its open beta on Workers Free.
 
 This is a small private-beta admission mechanism, not a replacement for a full consumer identity system. Invite rotation/revocation and session expiry remain required operational controls.
+
+
+## No-card beta configuration contract
+
+The private Worker is intended for the dedicated hostname `crc-private-beta-gateway.alirezaanari117.workers.dev`; it is not the public sample Worker. Set the exact `BETA_HOSTNAME` and `BETA_AUTH_ISSUER=https://<that-hostname>`. Keep preview URLs disabled and set `BETA_ALLOW_WORKERS_DEV=true` only for this dedicated Worker.
+
+Worker variables/secrets:
+
+- `BETA_ENABLED=false` until the backend and VPC path pass the release gate.
+- `BETA_AUTH_AUDIENCE=crc-private-beta-api`.
+- Secret `BETA_INVITE_CODES_JSON`: JSON object mapping SHA-256 hex digests of invite codes to opaque subject IDs (for example `tester_001`). Do not store raw codes here or in GitHub.
+- Secret `BETA_SESSION_HMAC_HEX`: a random 32-byte key used only to sign HttpOnly browser sessions.
+- Secret `BETA_ASSERTION_HMAC_HEX`: a different random 32-byte key used only to sign Worker-to-backend assertions.
+
+Backend private environment:
+
+- `CRC_BETA_HOST`, `CRC_BETA_AUTH_ISSUER`, `CRC_BETA_AUTH_AUDIENCE`, and `CRC_BETA_ALLOWED_SUBJECTS` must match the Worker host, audience, and opaque subject IDs.
+- `CRC_BETA_WORKER_ASSERTION_HMAC_HEX` must equal the Worker assertion key and is loaded from AWS SSM; never store it in GitHub or the repository.
+- Keep `CRC_BETA_LIVE_LOOKUP_ENABLED=false` until the Supercell egress IP, provider key, quota, database, and privacy checks are complete.
+
+Generate invite codes and HMAC keys locally with a cryptographically secure random generator; never paste raw codes or keys into this chat. Invite codes remain valid until removed from the Worker secret. Existing sessions last at most eight hours; rotating the session HMAC key invalidates all active sessions. This is a limited private-beta gate, not consumer-grade account recovery or email verification.
