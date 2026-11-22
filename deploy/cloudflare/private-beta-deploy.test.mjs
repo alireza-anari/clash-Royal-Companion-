@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   ASSET_PATHS,
   PRIVATE_BETA_HOST,
+  PRIVATE_API_SERVICE_ID,
   SCRIPT_NAME,
   buildAssetManifest,
   buildWorkerMetadata,
@@ -37,7 +38,8 @@ test("private beta upload always keeps both activation switches off", () => {
   assert.equal(bindings.BETA_HOSTNAME.text, PRIVATE_BETA_HOST);
   assert.equal(bindings.BETA_ALLOW_WORKERS_DEV.text, "true");
   assert.ok(bindings.ASSETS);
-  assert.equal(bindings.PRIVATE_API, undefined);
+  assert.equal(bindings.PRIVATE_API.type, "vpc_service");
+  assert.equal(bindings.PRIVATE_API.service_id, PRIVATE_API_SERVICE_ID);
   assert.equal(bindings.BETA_SESSION_HMAC_HEX, undefined);
   assert.equal(bindings.BETA_ASSERTION_HMAC_HEX, undefined);
   assert.equal(metadata.assets.config.not_found_handling, "404-page");
