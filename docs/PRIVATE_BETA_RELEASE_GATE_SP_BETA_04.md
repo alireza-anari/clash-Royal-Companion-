@@ -1,6 +1,6 @@
 # SP-BETA-04 — Two-switch beta release gate and quota retention
 
-**2026-11-21. Source-level readiness only. No live infrastructure deployed.**
+**Verified status (22 November 2026): PostgreSQL TLS, quota migration, grants, backup and hourly cleanup were configured on the existing EC2 host. The private Worker and VPC Service are deployed but disabled; the Tunnel is down and the dedicated beta backend service and invite/HMAC secrets are not ready.**
 
 ## Why this exists
 
@@ -18,7 +18,7 @@ The third switch must be exactly the lowercase string `true`. `1`, `TRUE`, `yes`
 
 **Release sequence to consider (not executed):**
 
-1. Provision approved invite-code authentication, private VPC Service, fixed-egress VM, PostgreSQL, a dedicated workers.dev hostname and secrets infrastructure only after owner authorization; leave both worker and live API disabled.
+1. Finish the existing EC2 host cutover, connect the Tunnel and install the dedicated beta service; the private Worker and VPC Service already exist but remain disabled.
 2. Validate real Worker assertion forwarding, authenticated host, gateway quotas, PostgreSQL certificate verification and private-origin isolation. The invite-protected beta can be brought up with `CRC_BETA_LIVE_LOOKUP_ENABLED=false`; this cannot make Supercell calls.
 3. Register and validate the VM's real outbound IPv4 for the official Supercell API key. Validate quota budget and emergency disable procedures.
 4. Only with all gates passed and explicit owner approval, change `CRC_BETA_LIVE_LOOKUP_ENABLED=true` on the **backend only**, and then enable the separate beta Worker. The public Cloudflare sample site must stay separate.
@@ -40,10 +40,10 @@ To deploy with the BetaConfig environment parser, PostgreSQL DSN **must** specif
 
 ## Hard blockers left
 
-- No approved host or fixed outbound IPv4; no production invite-code/session secrets, VPC Service/Tunnel or private PostgreSQL instance exists.
-- No production quota cleanup job or real DB TLS certificate setup exists.
+- The existing EC2 host and PostgreSQL are configured, but a stable outbound IPv4 has not been independently verified. The VPC Service exists, but the Tunnel is down. No production invite-code/session secrets or backend HMAC SSM injection exists.
+- PostgreSQL TLS was verified with sslmode=verify-full and a cleanup timer was installed; re-verify these controls during the beta service cutover.
 - API schema and live Sup­ercell responses need contract checks with a genuine authorized upstream.
-- Worker invite/session revocation and HMAC assertion end-to-end tests, browser manual acceptance, account privacy review and owner approvals are pending.
+- Invite/session secrets, HMAC assertion end-to-end tests, browser manual acceptance, AWS OIDC/SSM access, account privacy review and owner approvals are pending.
 - `main` and existing sample-only Cloudflare staging remain untouched.
 
 **Do not infer that successful isolated CI tests mean the project is deployed or ready for real user accounts.**
