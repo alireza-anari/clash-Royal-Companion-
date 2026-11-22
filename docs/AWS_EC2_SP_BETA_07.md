@@ -1,6 +1,6 @@
 # SP-BETA-07 — AWS Free Plan EC2: reviewable infrastructure, zero actual deployment
 
-**Current status (21 November 2026): source/template + CI only.** The owner reports AWS **Free Plan**, about **US$50 credits**, and **156 days** left at that date. This is not a verified AWS billing statement. Do **NOT** launch anything until the owner authorizes consumption of credits, AWS details are checked, and the private edge is ready.
+**Current status (22 November 2026): an existing EC2 instance is already in use by the owner.** The owner reports AWS Free Plan and about US$50 in credits, but this is not independently verified. Do not launch a second instance or upgrade the account.
 
 ## What is implemented
 
@@ -15,7 +15,7 @@
 - one EIP, assigned only to this instance, to establish a stable IPv4 for a future official Supercell key allowlist;
 - **every resource conditional** on `OwnerApprovedForCredits=YES`; the parameter defaults to `NO`. CloudFormation still requires account credentials and a **human-initiated** stack deployment. No GitHub workflow has AWS deployment credentials.
 
-**The template intentionally does not install FastAPI, PostgreSQL, cloudflared, set up a database certificate, store keys, create an Access policy, or enable live lookup.** These require separate operational reviews and resources. It is not a ready-to-run consumer service. The previous localhost-only `deploy/infra/crc-private-beta.service.example` must not be activated until its environment, PostgreSQL verified TLS and private ingress are ready.
+**The review template intentionally does not install FastAPI, PostgreSQL, cloudflared, set up a database certificate, store keys, configure invite/HMAC secrets, or enable live lookup.** These require separate operational reviews and resources. It is not a ready-to-run consumer service. The previous localhost-only `deploy/infra/crc-private-beta.service.example` must not be activated until its environment, PostgreSQL verified TLS and private ingress are ready.
 
 ## Manual checklist BEFORE authorizing any CloudFormation stack
 
@@ -36,17 +36,19 @@
 2. Check SSM Session Manager access **without** opening SSH or changing the SG; ensure instance uses IMDSv2.
 3. Install the signed/backend build from immutable commit, with runtime user `crc-beta` (not root), systemd binding `127.0.0.1:8000`, and secrets only in `/etc/crc-beta/app.env` with root-only permissions. Do not place credentials in UserData, public S3 or GitHub.
 4. Configure private PostgreSQL with verified TLS (`sslmode=verify-full`), least privilege, quota migration, retention cleanup job, backups and a memory budget appropriate to 2 GiB. This is not accomplished by creating EC2.
-5. Establish outbound-only `cloudflared`, a **single pinned Workers VPC Service** and a separate Access-protected beta Worker. No direct public ingress. All API routes still verify signed Cloudflare Access JWT in Python.
+5. Establish outbound-only `cloudflared`, the existing pinned Workers VPC Service and the separate invite-code beta Worker. No direct public ingress. The Worker signs short-lived HMAC assertions and Python independently verifies them.
 6. Keep `CRC_BETA_LIVE_LOOKUP_ENABLED=false` and Worker `BETA_ENABLED=false` until real protected smoke and rollback drills pass; then obtain another authorization for live lookup. Public sample Stage never inherits any beta binding.
 7. Verify budget alerts and owner access to monitoring; export data well before Free Plan expiration.
 
 ## MVP without buying a domain
 
-Cloudflare official docs allow **hostname-based Access protection on a Worker production `workers.dev` URL**. See <https://developers.cloudflare.com/workers/configuration/cloudflare-access/> and <https://developers.cloudflare.com/workers/configuration/routing/workers-dev/>.
+The private beta Worker is already deployed at crc-private-beta-gateway.alirezaanari117.workers.dev with previews disabled. It has 14 static assets, BETA_ENABLED=false, BETA_AI_CHAT_ENABLED=false and a PRIVATE_API binding to VPC Service crc-private-beta-api. The service targets 127.0.0.1:8000 through the crc-aws-private Tunnel.
 
-The separate beta Worker on frontend PR #4 can use a unique `<beta-worker>.<account>.workers.dev` hostname **only if** `BETA_ALLOW_WORKERS_DEV=true` and `BETA_HOSTNAME` exactly matches that hostname; `BETA_ENABLED` must be separately enabled after the Access policy and private VPC origin are configured. The public sample Worker hostname `crc-mvp-stage-20261120.alirezaanari117.workers.dev` is explicitly forbidden for beta.
+Cloudflare currently reports the Tunnel down with zero active connections. The prior cloudflared container used a Docker bridge network, which cannot reach the host's loopback address. The connector must be recreated with host networking or another reviewed route before the VPC Service can reach the host.
 
-Access must protect **all** beta paths (static and API), including production/preview URL alternatives. Backend still independently validates the signed Access JWT; do not substitute a header presence check for authentication. Confirm login, token propagation, and VPC private endpoint **with a real browser** after the app is fully implemented and approved. A public `workers.dev` beta URL without Access is not secure.
+The no-card authentication path uses invite-code hashes, an HttpOnly session cookie and a short-lived HMAC assertion. Cloudflare Access/Zero Trust is not part of this design. The public sample Worker remains separate and must never be used as the beta hostname.
+
+The local-only FastAPI service currently owns 127.0.0.1:8000. The dedicated crc-private-beta.service was not installed at the last readiness check. Do not enable the Worker until the beta service replaces the local service on that port, the tunnel is connected and the backend secrets are injected.
 
 ## How to stop, recover, and pay nothing extra
 
