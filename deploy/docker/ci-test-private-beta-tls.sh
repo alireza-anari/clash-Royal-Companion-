@@ -144,4 +144,39 @@ async def check():
 asyncio.run(check())
 print("BETA_ASYNCPG_VERIFY_FULL=success_with_disposable_CI_CA")
 '
+# Exercise the new production file-only password handoff path with a TEST-ONLY
+# credential. The real secret source and AWS host are never read by CI.
+printf 'disposable-ci-password\n' > "$scratch/ci-app-password"
+sudo chown 10001:10001 "$scratch/ci-app-password"
+chmod 0400 "$scratch/ci-app-password"
+docker run --rm --pull never \
+  --network "$network" --read-only --user 10001:10001 \
+  --cap-drop ALL --security-opt no-new-privileges \
+  --mount "type=bind,src=$scratch/ca.crt,dst=/run/crc-beta/db-ca/ca.crt,readonly" \
+  --mount "type=bind,src=$scratch/ci-app-password,dst=/run/crc-beta/creds/crc-app.password,readonly" \
+  --env CRC_BETA_POSTGRES_DB=crc_tls_test \
+  --entrypoint python crc-private-beta-ci-tls -c '
+import asyncio
+import os
+from cryptography import x509
+from cryptography.hazmat.primitives import hashes
+from pathlib import Path
+import asyncpg
+from crc_api.beta_db_secret import credential_dsn
+import crc_api.beta_db_tls as tls
+
+cert = x509.load_pem_x509_certificate(Path(tls.BETA_CA_PATH).read_bytes())
+tls.REVIEWED_CA_SHA256 = cert.fingerprint(hashes.SHA256()).hex()  # CI ONLY
+
+async def check():
+    dsn = credential_dsn(os.environ["CRC_BETA_POSTGRES_DB"])
+    conn = await asyncpg.connect(dsn=dsn, ssl=tls.verified_beta_ssl_context(dsn), timeout=6)
+    try:
+        assert await conn.fetchval("SELECT ssl FROM pg_stat_ssl WHERE pid=pg_backend_pid()") is True
+    finally:
+        await conn.close()
+asyncio.run(check())
+print("BETA_FILE_SECRET_ASYNCPG_VERIFY_FULL=success_with_disposable_CI_credential")
+'
+
 echo "All disposable private beta TLS checks passed, no production infrastructure contacted."
