@@ -44,10 +44,10 @@ openssl req -x509 -newkey rsa:2048 -nodes -days 2 -sha256 \
 # mounted into that ephemeral container. Never mount the disposable CA key.
 pg_uid="$(docker run --rm --entrypoint id postgres:17 -u postgres)"
 pg_gid="$(docker run --rm --entrypoint id postgres:17 -g postgres)"
-sudo chown "$pg_uid:$pg_gid" "$scratch/server.key"
 chmod 0600 "$scratch/server.key"
 chmod 0755 "$scratch"
 chmod 0644 "$scratch/server.crt" "$scratch/ca.crt" "$scratch/unrelated-ca.crt"
+sudo chown "$pg_uid:$pg_gid" "$scratch/server.key"
 
 docker network create --internal "$network" >/dev/null
 docker run --detach --name "$postgres" \
