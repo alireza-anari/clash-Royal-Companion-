@@ -254,3 +254,25 @@ The operator performed one optional `--verify` attempt and received `CRC_APP_AUT
 The review-only probe now improves the **no-password** `--check` output: `CRC_APP_PASSWORD_CONFIGURED`, `CRC_APP_ROLE_LOGIN`, and `CRC_APP_DB_CONNECT` are safe boolean checks from the configured database; no hashes, role details or database records are printed. `--verify` now classifies a failed attempt as `password_rejected`, `certificate_rejected`, `network_or_dns_unavailable`, `database_or_role_unavailable`, `sql_or_grant_error` or `unclassified` based on redacted libpq output. It still never displays raw PostgreSQL diagnostics, stores or uploads credentials, or writes SQL.
 
 Run `--check` again first after green GitHub CI and guarded sync. **Do not retry or guess passwords until the password-less checks are reviewed.** A configured `postgres` bootstrap password is not necessarily the `crc_app` password. If the existing application password is not known securely, stop and plan a separate reviewed secret/provisioning procedure; do not paste credentials into chat, use `docker inspect` to dump secrets, or rotate database credentials as part of diagnosis.
+
+## Update — 23 November 2026: root-only app password stored; runtime file-based secret handoff prepared (not activated)
+
+Operator confirmed `CRC_APP_AUTH=verified_read_only_tls_and_grants` after changing the password interactively, then saved that same password locally on EC2 using a hidden terminal prompt. The resulting status was `CRC_APP_SECRET=stored_root_only`. This indicates a host credential file was created at `/etc/crc-beta/secrets/crc-app.password` with owner root and permissions `0600`; the containing directory is root-only `0700`. The credential is **not** available to GitHub, this chat or the backend autosync checkout.
+
+New **code-only** password delivery path:
+
+1. `api/src/crc_api/beta_db_secret.py` reads exactly one file inside the future non-root container, `/run/crc-beta/creds/crc-app.password`. It requires a regular, non-symlink file owned by the current nonroot UID and mode `0400`, a single UTF-8 line, and a strictly validated non-secret `CRC_BETA_POSTGRES_DB`. It builds the encrypted PostgreSQL DSN **in process memory** with URL-encoded password, fixed `crc_app@crc-postgres:5432`, pinned CA path and `sslmode=verify-full`. The real `BetaConfig.from_environment` refuses `CRC_BETA_POSTGRES_DSN` to prevent password exposure in Docker environment inspection. Existing explicit test-injected `BetaConfig` is unaffected.
+2. `deploy/aws/prepare-private-beta-secret.sh --check` runs as root, validates the **original** host file/permissions, confirms volatile `/run` tmpfs and fails closed if the beta container or service is active. It **does not copy or print a password**. `--stage` may subsequently create a second, ephemeral runtime copy on `/run` (tmpfs) under root-only `0700` parent directories, with only the leaf file owned by UID/GID 10001 and mode `0400`. An atomic no-overwrite link prevents silently replacing a running secret. The original root:root `0600` file is not modified.
+3. The **review-only** Docker compose bind-mounts only the runtime tmpfs file read-only into the nonroot `10001:10001` beta container. **It does not mount the original root-only file or the entire secrets directory.** It retains the explicit owner-approval profile, loopback-only 8001 and all existing security constraints.
+4. The runtime copy disappears after an EC2 reboot and must be recreated from the protected host source before any future start. The beta app still requires other missing private-beta secrets, assertions and owner activation; no API, AI, Tunnel, worker, firewall, database migration or live service was activated by these code edits.
+
+After GitHub CI passes and the guarded EC2 code-only sync, perform a **read-only** validation first:
+
+```bash
+sudo systemctl start crc-sync-private-backend.service &&
+sudo bash /opt/clash-royale-companion/backend-github/deploy/aws/prepare-private-beta-secret.sh --check
+```
+
+Expected: `CRC_APP_HOST_SECRET=verified_root_only` and `CRC_APP_RUNTIME_SECRET=not_staged_by_this_check`. Then, if the security preflight is green, the operator may run `sudo bash .../prepare-private-beta-secret.sh --stage` to stage the temporary runtime copy **without starting** the private beta. No user should paste a password into commands, logs, GitHub or chat.
+
+**Deployment still OFF.** Do not run `docker compose up`, set `CRC_BETA_RUNTIME_GATE`, create a listening port, connect Cloudflare Tunnel or enable OpenRouter/Supercell at this stage.
