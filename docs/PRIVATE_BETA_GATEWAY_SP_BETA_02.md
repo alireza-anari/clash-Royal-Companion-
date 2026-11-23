@@ -96,3 +96,13 @@ Never commit or paste raw invite codes, keys, DSNs, player data or AWS credentia
 - No Cloudflare Access checkout, payment card, paid plan or permanent AWS key is required for the current design.
 - Worker off-switch and backend live-lookup off-switch remain independent.
 - A successful CI run is not authorization to enable the beta.
+
+
+## Update — 23 November 2026: reviewed CA and independent Docker backend design
+
+The operator identified the existing PostgreSQL private CA and verified the server certificate against it with the exact DNS name `crc-postgres`. The public CA SHA-256 fingerprint pinned for the beta runtime is `A2:74:75:9C:3A:0E:05:26:26:25:F9:5A:F3:51:65:AA:66:28:FD:F4:59:F1:49:58:AE:FA:13:F6:8B:E6:0A:56`. This public fingerprint is not a password; no CA private key or production DSN is stored in Git.
+
+The **new review-only path** is `deploy/docker/compose.private-beta.review.yml` with a non-root beta image on the existing internal Docker network `crc-private`, and a host **loopback-only** map `127.0.0.1:8001:8001`. The compose profile blocks default startup. The backend loads the public root CA from a single file mounted read-only at `/run/crc-beta/db-ca/ca.crt`, pins its fingerprint, requires `sslmode=verify-full`, and uses an explicit hostname-verifying TLS context in `asyncpg`. A guarded operator script `deploy/aws/stage-public-beta-ca.sh` can stage only the public CA for that mount. A disposable client script `deploy/aws/probe-beta-client-tls.sh` performs an independent CA/hostname handshake on Docker's private network (without authenticating to PostgreSQL or creating a permanent service).
+
+Do not use the older host-only systemd service template to access Docker DNS. Do not `docker compose up`, set any activation marker, attach a Tunnel, or enable the Worker until TLS, database authentication, application authorization, invite secrets, quota protection and rollback are verified together. The internal bridge intentionally prevents generic internet egress; live Supercell and online AI remain off and need a separately reviewed outbound routing design.
+
