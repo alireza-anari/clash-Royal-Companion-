@@ -1,7 +1,10 @@
 # REVIEW-ONLY TEMPLATE — do not enable without owner-approved private infrastructure.
 # Install into /etc/systemd/system/ only after reviewing paths, ownership,
 # the signed package build, operator secrets, Tunnel/VPC and egress controls.
-# The backend listener is deliberately localhost-only.
+# The backend listener is deliberately localhost-only and uses a distinct
+# port (8001) so the existing local-only API on 8000 is left untouched.
+# REVIEW: Cloudflare VPC Service still points at 127.0.0.1:8000 until
+# separately retargeted and checked. Never enable the edge before that.
 [Unit]
 Description=CRC Private Beta Backend (not enabled by default)
 After=network-online.target
@@ -14,7 +17,7 @@ User=crc-beta
 Group=crc-beta
 WorkingDirectory=/opt/crc-beta/current/api
 EnvironmentFile=/etc/crc-beta/app.env
-ExecStart=/opt/crc-beta/venv/bin/python -m uvicorn crc_api.beta_gateway:create_beta_app --factory --host 127.0.0.1 --port 8000 --workers 1 --no-access-log
+ExecStart=/opt/crc-beta/venv/bin/python -m uvicorn crc_api.beta_gateway:create_beta_app --factory --host 127.0.0.1 --port 8001 --workers 1 --no-access-log
 Restart=on-failure
 RestartSec=5
 TimeoutStartSec=20
@@ -34,7 +37,7 @@ LockPersonality=true
 RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
 # IMPORTANT: this service has outbound network access for Supercell,
 # Access JWKS and private Postgres. Firewall/policy must deny inbound access
-# to 8000, and the cloudflared connector must target localhost specifically.
+# to 8001, and the cloudflared connector must target localhost specifically.
 # A production operator must run the service and validate real TLS and quotas.
 
 [Install]
