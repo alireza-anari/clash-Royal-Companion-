@@ -333,7 +333,7 @@ def test_live_lookup_switch_requires_exact_explicit_opt_in(monkeypatch, tmp_path
     monkeypatch.setenv("CRC_BETA_ALLOWED_SUBJECTS", SUBJECT)
     from crc_api import beta_db_secret
     secret_file = tmp_path / "crc-app.password"
-    secret_file.write_bytes(b"test-only-private-password\\n".replace(b"\\\\n", b"\\n"))
+    secret_file.write_bytes(b"test-only-private-password" + bytes([10]))
     secret_file.chmod(0o400)
     monkeypatch.setattr(beta_db_secret, "RUNTIME_PASSWORD_FILE", secret_file)
     monkeypatch.delenv("CRC_BETA_POSTGRES_DSN", raising=False)
