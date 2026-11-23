@@ -324,14 +324,20 @@ def test_live_lookup_remains_disabled_with_worker_auth_and_database_ready():
     assert len(quota.calls) == 3  # Auth and quotas still applied.
 
 
-def test_live_lookup_switch_requires_exact_explicit_opt_in(monkeypatch):
+def test_live_lookup_switch_requires_exact_explicit_opt_in(monkeypatch, tmp_path):
     config = fake_settings()
     monkeypatch.setenv("CRC_BETA_RUNTIME_GATE", "private-beta-explicit-owner-approval")
     monkeypatch.setenv("CRC_BETA_HOST", HOST)
     monkeypatch.setenv("CRC_BETA_AUTH_ISSUER", ISSUER)
     monkeypatch.setenv("CRC_BETA_AUTH_AUDIENCE", AUD)
     monkeypatch.setenv("CRC_BETA_ALLOWED_SUBJECTS", SUBJECT)
-    monkeypatch.setenv("CRC_BETA_POSTGRES_DSN", config.database_dsn)
+    from crc_api import beta_db_secret
+    secret_file = tmp_path / "crc-app.password"
+    secret_file.write_bytes(b"test-only-private-password\\n".replace(b"\\\\n", b"\\n"))
+    secret_file.chmod(0o400)
+    monkeypatch.setattr(beta_db_secret, "RUNTIME_PASSWORD_FILE", secret_file)
+    monkeypatch.delenv("CRC_BETA_POSTGRES_DSN", raising=False)
+    monkeypatch.setenv("CRC_BETA_POSTGRES_DB", "crc_test")
     monkeypatch.setenv("CRC_BETA_QUOTA_HMAC_HEX", QUOTA_SECRET.hex())
     monkeypatch.setenv("CRC_BETA_WORKER_ASSERTION_HMAC_HEX", WORKER_SECRET.hex())
     monkeypatch.delenv("CRC_BETA_LIVE_LOOKUP_ENABLED", raising=False)
