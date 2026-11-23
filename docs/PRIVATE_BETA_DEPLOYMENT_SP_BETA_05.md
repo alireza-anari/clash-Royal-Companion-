@@ -134,3 +134,18 @@ bash /opt/clash-royale-companion/backend-github/deploy/aws/diagnose-private-beta
 ```
 
 If `SERVER_SSL_CONFIG=off`, keep the `verify-full` requirement intact; a reviewed private DNS/CA/server-certificate design and isolated application role must be prepared before enabling the beta API. A successful Unix socket or `pg_isready` does **not** prove authenticated TCP+TLS service readiness, and no service should be started until this is resolved.
+
+## Update — 23 November 2026: custom PostgreSQL bootstrap role confirmed
+
+Read-only operator output: `CONTAINER=postgres17_running_healthy`, `UNIX_SOCKET=present`, `POSTGRES_ACCEPTING_CONNECTIONS=yes`, `SERVER_SSL_CONFIG=on`, and `LOCAL_POSTGRES_ROLE_LOGIN=postgres_db_role_missing`. The PostgreSQL *database role* `postgres` is absent; this is consistent with a custom `POSTGRES_USER` bootstrap role and is **not evidence that PostgreSQL is broken**. Server SSL set to `on` does NOT prove host-to-DB certificate chain/hostname verification.
+
+Do **not** recreate the database, create a `postgres` superuser, reset its password, expose port 5432, or loosen authentication. New GitHub-only inspection script `deploy/aws/inspect-private-beta-catalog.sh` reads the existing container's configured bootstrap role and DB **inside** the container, without printing either name or secrets, then runs only fixed SQL `SELECT` catalog checks over the Unix socket. It reports boolean role existence/login/superuser flags for `crc_app` and whether quota tables are visible in that **configured** database, not necessarily in the eventual beta DB. The result is filtered against a strict allowlist; SQL/database errors are suppressed and reduced to safe categories.
+
+After the current GitHub backend CI succeeds and code sync finishes, operator can run (without providing any credentials):
+
+```bash
+sudo systemctl start crc-sync-private-backend.service
+bash /opt/clash-royale-companion/backend-github/deploy/aws/inspect-private-beta-catalog.sh
+```
+
+This does not configure TLS, validate `verify-full`, create users or tables, run migrations, start the beta service, or activate the Worker. Any failed inspection is a reason to review auth and network paths before deployment, **not** a reason to weaken them.
