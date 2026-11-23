@@ -145,10 +145,10 @@ asyncio.run(check())
 print("BETA_ASYNCPG_VERIFY_FULL=success_with_disposable_CI_CA")
 '
 # Exercise the new production file-only password handoff path with a TEST-ONLY
-# credential. The real secret source and AWS host are never read by CI.
+# credential. The real secret source and production host are never read by CI.
 printf 'disposable-ci-password\n' > "$scratch/ci-app-password"
-sudo chown 10001:10001 "$scratch/ci-app-password"
 chmod 0400 "$scratch/ci-app-password"
+sudo chown 10001:10001 "$scratch/ci-app-password"
 docker run --rm --pull never \
   --network "$network" --read-only --user 10001:10001 \
   --cap-drop ALL --security-opt no-new-privileges \
