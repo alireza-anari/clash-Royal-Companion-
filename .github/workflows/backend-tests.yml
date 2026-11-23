@@ -96,3 +96,13 @@ jobs:
           test "$success" = 1
           test "$(docker inspect -f '{{.HostConfig.NetworkMode}}' crc-api-smoke)" = none
           test "$(docker inspect -f '{{.Config.User}}' crc-api-smoke)" = "10001:10001"
+
+  private-beta-tls:
+    name: Disposable private beta PostgreSQL verify-full (never EC2)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+      - name: Verify independent client TLS, CA/hostname rejection and asyncpg
+        run: bash deploy/docker/ci-test-private-beta-tls.sh
