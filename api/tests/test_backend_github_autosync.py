@@ -68,3 +68,13 @@ def test_automation_is_opt_in_and_does_not_use_permanent_aws_keys():
     assert "AWS_SECRET_ACCESS_KEY" not in workflow
     assert "AWS_ACCESS_KEY_ID" not in workflow
     assert "ssm send-command" in workflow
+
+
+def test_beta_documentation_has_no_trailing_blank_lines_that_block_git_sync():
+    """EC2's git diff --check rejects new blank lines at EOF."""
+    for document in (
+        "docs/PRIVATE_BETA_DEPLOYMENT_SP_BETA_05.md",
+        "docs/PRIVATE_BETA_GATEWAY_SP_BETA_02.md",
+    ):
+        value = (ROOT / document).read_text(encoding="utf-8")
+        assert value.endswith(chr(10)) and not value.endswith(chr(10) * 2), document
