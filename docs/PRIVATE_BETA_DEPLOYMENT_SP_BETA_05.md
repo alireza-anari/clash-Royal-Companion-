@@ -166,3 +166,22 @@ bash /opt/clash-royale-companion/backend-github/deploy/aws/check-private-beta-db
 ```
 
 Keep `BETA_ENABLED=false`, the backend gate unset, live lookup and online AI off. This command only checks the existing DB; it does not install/run services or apply migrations.
+
+## Update — 23 November 2026: DB grants and TLS certificate name look good; actual TLS handshake next
+
+Operator report: `DB_CONTAINER=healthy_on_crc-private`, `DOCKER_NETWORK=internal_bridge`, `SCHEMA_USAGE=true`, `QUOTA_SELECT=true`, `QUOTA_INSERT=true`, `QUOTA_UPDATE=true`, `CERT_FILE=readable`, `CERT_HOSTNAME_MATCH=yes`, `CERT_VALID_7_DAYS=yes`. The `crc_app` role can perform the required quota-table operations in the configured database, without making changes. Certificate metadata matches the candidate DNS name `crc-postgres`, but it has **not** yet been validated against an independent client CA, and the certificate metadata probe did not make a network TLS connection.
+
+A new code-only script `deploy/aws/probe-private-beta-tls.sh` uses `openssl s_client -starttls postgres -connect 127.0.0.1:5432 -servername crc-postgres -verify_hostname crc-postgres -verify_return_error -brief` within the **existing** PostgreSQL container, with its system default trust roots. It will report success only if the OpenSSL process succeeds and explicitly reports a TLS 1.2/1.3 connection and `Verification: OK`. Untrusted/self-signed certificates that are not in the client trust store are treated as **not verified**; the script never suppresses CA validation or copies a server leaf certificate into trust automatically. All raw TLS output (which may include private subjects/paths) is discarded.
+
+This is a **real TLS-layer handshake test** but it is deliberately *not* the finished beta-to-DB verification: it does not connect from a separate beta container, validate Docker DNS from another namespace, authenticate as `crc_app`, or establish `libpq sslmode=verify-full` with a trusted client CA and credentials. The dedicated beta image/entrypoint and private Docker network architecture remain unactivated.
+
+After green GitHub CI and the guarded source sync, inspect without secrets or DB changes:
+
+```bash
+sudo systemctl start crc-sync-private-backend.service
+bash /opt/clash-royale-companion/backend-github/deploy/aws/probe-private-beta-tls.sh
+```
+
+If the default system roots do not trust the existing certificate, investigate the existing CA chain and a securely distributed client trust root; **do not use `sslmode=require`, `verify-ca` as a replacement for `verify-full`, an unreviewed `sslrootcert` copied from the peer, or disabling hostname verification**.
+
+Keep the Worker beta and AI flags false, Tunnel stopped, API port 8001 unused, and local API on port 8000 untouched.
