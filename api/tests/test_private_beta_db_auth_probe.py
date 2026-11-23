@@ -47,6 +47,8 @@ elif a[:2] == ["docker", "exec"] and "-i" in a:
         print("SECRET_HASH_AND_DB_PASSWORD_MUST_NOT_LEAK", file=sys.stderr)
         sys.exit(3)
     print("CRC_APP_PASSWORD_CONFIGURED=false" if mode == "unset" else "CRC_APP_PASSWORD_CONFIGURED=true")
+    print("CRC_APP_ROLE_LOGIN=true")
+    print("CRC_APP_DB_CONNECT=true")
     if mode == "unsafe_response":
         print("LEAKED_REAL_DB_NAME_OR_HASH")
 else:
@@ -70,6 +72,8 @@ def test_read_only_role_password_presence_and_no_actual_password(tmp_path):
     result = _run_check(tmp_path)
     assert result.returncode == 0, result.stderr
     assert "CRC_APP_PASSWORD_CONFIGURED=true" in result.stdout
+    assert "CRC_APP_ROLE_LOGIN=true" in result.stdout
+    assert "CRC_APP_DB_CONNECT=true" in result.stdout
     assert "CRC_APP_AUTH=not_tested" in result.stdout
     assert "LEAK" not in result.stdout + result.stderr
 
@@ -86,7 +90,7 @@ def test_catalog_error_and_unexpected_text_are_redacted(tmp_path):
         root.mkdir()
         result = _run_check(root, mode)
         assert result.returncode == 0, result.stderr
-        assert "CRC_APP_PASSWORD_CONFIGURED=unknown" in result.stdout
+        assert "CRC_APP_READINESS=unknown" in result.stdout
         assert "LEAK" not in result.stdout + result.stderr
 
 
@@ -100,6 +104,12 @@ def test_probe_never_writes_db_or_persists_password():
     src = SCRIPT.read_text(encoding="utf-8")
     assert "pg_authid" in src
     assert "rolpassword IS NOT NULL" in src
+    assert "CRC_APP_ROLE_LOGIN=" in src
+    assert "CRC_APP_DB_CONNECT=" in src
+    assert "CRC_APP_AUTH=password_rejected" not in src  # Classification is constructed, not hardcoded
+    assert "category=password_rejected" in src
+    assert "category=sql_or_grant_error" in src
+    assert "raw errors suppressed" in src
     assert "verify-full" in src
     assert "default_transaction_read_only=on" in src
     assert "pg_stat_ssl" in src
