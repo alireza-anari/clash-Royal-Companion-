@@ -90,7 +90,8 @@ def test_systemd_example_is_local_only_and_unprivileged():
     text = (ROOT / "deploy" / "infra" / "crc-private-beta.service.example").read_text()
     assert "User=crc-beta" in text
     assert "--host 127.0.0.1" in text
-    assert "--port 8000" in text
+    assert "--port 8001" in text
+    assert "--port 8000" not in text
     assert "NoNewPrivileges=true" in text
     assert "ProtectSystem=strict" in text
     assert "EnvironmentFile=/etc/crc-beta/app.env" in text
