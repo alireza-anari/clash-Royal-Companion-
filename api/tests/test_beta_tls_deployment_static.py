@@ -90,7 +90,8 @@ def test_tls_ci_uses_disposable_certs_network_and_real_libpq_asyncpg():
     assert "LIBPQ_WRONG_CA=denied" in src
     assert "BETA_ASYNCPG_VERIFY_FULL=success" in src
     assert "pg_stat_ssl" in src
-    assert "ssl=tls.verified_beta_ssl_context(dsn)" in src
+    assert "context = tls.verified_beta_ssl_context(dsn)" in src
+    assert "ssl=context" in src
     assert "crc-postgres-data" not in src
     assert "BETA_ENABLED=true" not in src
     assert "aws " not in src.lower()
