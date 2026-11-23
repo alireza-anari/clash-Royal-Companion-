@@ -102,13 +102,19 @@ def test_non_ca_certificate_rejected_even_if_fingerprint_matches(tmp_path, monke
         tls.verified_beta_ssl_context(_dsn(ca))
 
 
-def test_real_factory_requires_pinned_ca_before_starting(monkeypatch):
+def test_real_factory_requires_pinned_ca_before_starting(monkeypatch, tmp_path):
     monkeypatch.setenv("CRC_BETA_RUNTIME_GATE", "private-beta-explicit-owner-approval")
     monkeypatch.setenv("CRC_BETA_HOST", "beta.example.test")
     monkeypatch.setenv("CRC_BETA_AUTH_ISSUER", "https://beta.example.test")
     monkeypatch.setenv("CRC_BETA_AUTH_AUDIENCE", "test-beta")
     monkeypatch.setenv("CRC_BETA_ALLOWED_SUBJECTS", "test-opaque-user")
-    monkeypatch.setenv("CRC_BETA_POSTGRES_DSN", _dsn(tls.BETA_CA_PATH))
+    from crc_api import beta_db_secret
+    password_file = tmp_path / "crc-app.password"
+    password_file.write_bytes(b"disposable-test-password" + bytes([10]))
+    password_file.chmod(0o400)
+    monkeypatch.setattr(beta_db_secret, "RUNTIME_PASSWORD_FILE", password_file)
+    monkeypatch.delenv("CRC_BETA_POSTGRES_DSN", raising=False)
+    monkeypatch.setenv("CRC_BETA_POSTGRES_DB", "crc_test")
     monkeypatch.setenv("CRC_BETA_QUOTA_HMAC_HEX", "aa" * 32)
     monkeypatch.setenv("CRC_BETA_WORKER_ASSERTION_HMAC_HEX", "bb" * 32)
     monkeypatch.setenv("CRC_BETA_AI_ENABLED", "false")
