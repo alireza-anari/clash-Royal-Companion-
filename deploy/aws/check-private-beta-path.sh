@@ -39,6 +39,18 @@ else
   printf '%s\n' 'port 8000: not checked (ss unavailable)'
 fi
 
+# Beta must use a dedicated port while crc-local-api stays on 8000.
+# Report port occupancy only: no process names, arguments or secrets.
+if command -v ss >/dev/null 2>&1; then
+  beta_listeners="$(ss -H -ltn '( sport = :8001 )' 2>/dev/null || true)"
+  if [[ -z "$beta_listeners" ]]; then
+    printf '%s\n' 'port 8001: free of observed TCP listeners (candidate for isolated beta)'
+  else
+    printf '%s\n' 'port 8001: OCCUPIED; do not deploy beta on this port without review'
+  fi
+else
+  printf '%s\n' 'port 8001: not checked (ss unavailable)'
+fi
 # A Docker cloudflared on a bridge cannot reach the host loopback address
 # just because its VPC Service is configured to use 127.0.0.1.
 if command -v docker >/dev/null 2>&1; then
