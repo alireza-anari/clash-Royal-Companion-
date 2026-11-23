@@ -31,6 +31,7 @@ from .ai_coach import CoachRequest, CoachUnavailable, OpenRouterCoach
 from .ai_daily_budget import SharedAIDailyBudget, AIDailyBudgetExceeded
 from .ssm_secret import load_openrouter_key_from_ssm, SSMSecretUnavailable
 from .beta_db_tls import verified_beta_ssl_context
+from .beta_db_secret import credential_dsn, BetaDatabaseCredentialUnavailable
 
 
 HOST = re.compile(r"^[a-z0-9](?:[a-z0-9.-]{0,251}[a-z0-9])?$")
@@ -63,7 +64,16 @@ class BetaConfig:
         audience = os.environ.get("CRC_BETA_AUTH_AUDIENCE", "").strip()
         subjects = frozenset(s.strip() for s in
                              os.environ.get("CRC_BETA_ALLOWED_SUBJECTS", "").split(",") if s.strip())
-        dsn = os.environ.get("CRC_BETA_POSTGRES_DSN", "")
+        # The database password must never be placed in an environment
+        # variable (visible via Docker inspect). The Docker runtime reads
+        # a single UID-10001-only, read-only secret file mounted from host
+        # /run tmpfs. No plaintext DSN may be supplied as a fallback.
+        if os.environ.get("CRC_BETA_POSTGRES_DSN") is not None:
+            raise UnsafeBetaConfiguration("Plaintext database environment credentials are forbidden.")
+        try:
+            dsn = credential_dsn(os.environ.get("CRC_BETA_POSTGRES_DB", ""))
+        except BetaDatabaseCredentialUnavailable:
+            raise UnsafeBetaConfiguration("Private beta database credential is unavailable.") from None
         secret = os.environ.get("CRC_BETA_QUOTA_HMAC_HEX", "")
         assertion_secret = os.environ.get("CRC_BETA_WORKER_ASSERTION_HMAC_HEX", "")
         try:
@@ -180,8 +190,10 @@ def create_beta_app(
     async def lifespan(app: FastAPI):
         try:
             pool = await pool_factory(settings.database_dsn)
-        except Exception as exc:
-            raise UnsafeBetaConfiguration("Private beta quota database unavailable.") from exc
+        except Exception:
+            # Do not chain asyncpg exceptions, which might include a DSN or
+            # credential in their repr or server-side diagnostic strings.
+            raise UnsafeBetaConfiguration("Private beta quota database unavailable.") from None
         if pool is None:
             raise UnsafeBetaConfiguration("Private beta quota database unavailable.")
         app.state.pool = pool
