@@ -14,8 +14,16 @@ for tool in sudo docker timeout openssl sed tr; do
 done
 
 printf '%s\n' 'CRC standalone TLS client: READ-ONLY; no database credentials.'
-[[ -f "$CA" && ! -L "$CA" ]] || refuse 'staged public CA missing'
-actual="$(openssl x509 -in "$CA" -noout -fingerprint -sha256 2>/dev/null |
+# /etc/crc-beta may intentionally be 0700 to protect future secrets.
+# ec2-user cannot stat/read the leaf certificate through that parent path,
+# even though root-owned Docker can safely bind-mount the *single* public CA.
+# Use sudo only for this fixed, read-only CA check; never relax permissions on
+# /etc/crc-beta or expose any credential/private-key file.
+sudo -n test -f "$CA" >/dev/null 2>&1 &&
+  sudo -n test ! -L "$CA" >/dev/null 2>&1 &&
+  sudo -n test -r "$CA" >/dev/null 2>&1 ||
+  refuse 'staged public CA missing or unreadable to root'
+actual="$(sudo -n openssl x509 -in "$CA" -noout -fingerprint -sha256 2>/dev/null |
   sed -n 's/^sha256 Fingerprint=//p' | tr -d ':' | tr 'A-F' 'a-f')"
 [[ "$actual" == "$PIN" ]] || refuse 'unexpected CA certificate'
 db="$(sudo -n docker inspect --format '{{.Config.Image}}|{{.State.Status}}|{{.State.Health.Status}}|{{.HostConfig.NetworkMode}}' crc-postgres 2>/dev/null)" ||
