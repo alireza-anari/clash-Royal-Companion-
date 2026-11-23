@@ -26,8 +26,9 @@ show_unit cloudflared.service
 
 # Report only local listening ADDRESS, never process arguments or environment.
 if command -v ss >/dev/null 2>&1; then
-  listeners="$(ss -H -ltn '( sport = :8000 )' 2>/dev/null || true)"
-  if [[ -z "$listeners" ]]; then
+  if ! listeners="$(ss -H -ltn '( sport = :8000 )' 2>/dev/null)"; then
+    printf '%s\\n' 'port 8000: not checked (ss failed)'
+  elif [[ -z "$listeners" ]]; then
     printf '%s\n' 'port 8000: no local TCP listener observed'
   elif printf '%s\n' "$listeners" | awk '{print $4}' |
        grep -Eq '^(\*|0\.0\.0\.0|\[::\]|::):8000$'; then
@@ -42,8 +43,9 @@ fi
 # Beta must use a dedicated port while crc-local-api stays on 8000.
 # Report port occupancy only: no process names, arguments or secrets.
 if command -v ss >/dev/null 2>&1; then
-  beta_listeners="$(ss -H -ltn '( sport = :8001 )' 2>/dev/null || true)"
-  if [[ -z "$beta_listeners" ]]; then
+  if ! beta_listeners="$(ss -H -ltn '( sport = :8001 )' 2>/dev/null)"; then
+    printf '%s\\n' 'port 8001: not checked (ss failed)'
+  elif [[ -z "$beta_listeners" ]]; then
     printf '%s\n' 'port 8001: free of observed TCP listeners (candidate for isolated beta)'
   else
     printf '%s\n' 'port 8001: OCCUPIED; do not deploy beta on this port without review'
