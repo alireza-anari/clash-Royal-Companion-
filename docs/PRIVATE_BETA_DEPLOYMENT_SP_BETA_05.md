@@ -104,3 +104,18 @@ bash /opt/clash-royale-companion/backend-github/deploy/aws/stage-private-beta-py
 ```
 
 Expected: `STAGED SUCCESSFULLY: <40-character SHA>`, `Private beta config gate: CLOSED (expected)`, and explicit confirmation that no service started. If it refuses, inspect the message rather than bypassing a guard. Do not paste secret values or `.env` files. For database inventory, inspect container names/images/status only (not container environments or connection strings) before planning TLS-backed quota setup.
+
+## Update — 23 November 2026: staged Python and healthy PostgreSQL container
+
+Operator reported successful `stage-private-beta-python.sh` execution on revision `e17b19cff75197e2ab49e88899cb291910c5e382`: Python 3.12 private virtual environment built, pip dependency check successful, and `Private beta config gate: CLOSED (expected)`; no unit or port started. Reported `docker ps` shows `crc-postgres` running image `postgres:17` and healthy for 36 hours. This does **not** verify a TLS-enabled PostgreSQL service, a scoped application DB role, schema migrations, private network reachability, or credentials.
+
+Next stage is a **read-only** inspection using `deploy/aws/inspect-private-beta-postgres.sh`. The script uses selected Docker metadata fields (never full Docker JSON or `.Config.Env`) and queries PostgreSQL settings/catalog from the `postgres` maintenance database through a local container socket. It reports server SSL enabled/disabled, existence of an application role and candidate quota tables *in that maintenance database*, and whether port 5432 is published; it does not expose secrets or execute SQL writes. If socket authentication fails, the script reports an unknown state without asking for a password. Presence/absence of tables in `postgres` says nothing conclusive about a separate future beta database.
+
+After CI-gated sync, operator can run:
+
+```bash
+sudo systemctl start crc-sync-private-backend.service
+bash /opt/clash-royale-companion/backend-github/deploy/aws/inspect-private-beta-postgres.sh
+```
+
+Do not paste Docker environment variables, database passwords, connection strings or certificate private keys into chat. If server SSL is off, **do not weaken `sslmode=verify-full`**: establish a reviewed certificate/CA and DNS strategy for any TCP beta connection, or redesign the DB connection boundary with equivalent reviewed authentication and transport protections. Nothing in this step changes the running PostgreSQL container.
