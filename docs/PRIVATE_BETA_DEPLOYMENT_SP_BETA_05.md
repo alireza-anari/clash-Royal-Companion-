@@ -185,3 +185,29 @@ bash /opt/clash-royale-companion/backend-github/deploy/aws/probe-private-beta-tl
 If the default system roots do not trust the existing certificate, investigate the existing CA chain and a securely distributed client trust root; **do not use `sslmode=require`, `verify-ca` as a replacement for `verify-full`, an unreviewed `sslrootcert` copied from the peer, or disabling hostname verification**.
 
 Keep the Worker beta and AI flags false, Tunnel stopped, API port 8001 unused, and local API on port 8000 untouched.
+
+
+## Update — 23 November 2026: owner-verified private CA and review-only beta Docker client
+
+The EC2 operator identified the existing **public** PostgreSQL CA at `/var/lib/docker/volumes/crc-postgres-data/_data/ca.crt` (not the server private key). The SHA-256 fingerprint, independently recorded in the project conversation, is `A2:74:75:9C:3A:0E:05:26:26:25:F9:5A:F3:51:65:AA:66:28:FD:F4:59:F1:49:58:AE:FA:13:F6:8B:E6:0A:56`. On EC2, operator-side OpenSSL verified `CA:TRUE`, server certificate issuer matching that CA, and `SERVER_CERT_VERIFY=OK` for `crc-postgres`. This established the server certificate chain and hostname **against the designated local CA**. Earlier default-system-root checks failed because that private CA was not trusted by the general-purpose image; that was not a PostgreSQL health problem.
+
+**Code-only changes, not activated:**
+
+1. `api/src/crc_api/beta_db_tls.py` now pins the reviewed public CA fingerprint, checks `CA:TRUE`, insists on DSN host `crc-postgres`, role `crc_app`, TCP 5432, `sslmode=verify-full` and `sslrootcert=/run/crc-beta/db-ca/ca.crt`, and constructs an explicit Python SSLContext with `CERT_REQUIRED` and `check_hostname=True`. The actual production beta ASGI factory rejects missing/unreviewed CA files **before** starting; its asyncpg pool uses this strict SSLContext explicitly. There is no fallback to plaintext/weak SSL.
+2. `deploy/docker/Dockerfile.beta` is a dedicated nonroot image distinct from the running `crc_api.main`. Review-only `deploy/docker/compose.private-beta.review.yml` is **profile-gated** and specifies `crc-private` as an existing external Docker network, a single read-only public CA file bind, and localhost-only host port mapping `127.0.0.1:8001:8001`; PostgreSQL 5432 is never published. The beta container binds to all addresses **inside its own Docker namespace**, not to the EC2 public interface.
+3. `deploy/aws/stage-public-beta-ca.sh` copies just the reviewed **public CA certificate** from the pre-existing Docker volume into `/etc/crc-beta/trust/db-ca.crt`, checks the pinned fingerprint, CA constraints and validity, and refuses conflicting CA destinations. It does **not** read/mount the database private key, rotate certificates or alter PostgreSQL.
+4. `deploy/aws/probe-beta-client-tls.sh` launches a **temporary**, nonroot PostgreSQL-image TLS client on the same isolated `crc-private` network, with **only** the copied public CA mounted read-only; checks Docker DNS, real PostgreSQL SSLRequest/TLS, CA trust and hostname verification, and tests a wrong hostname must fail. This test does not log in to the DB or read/write any SQL records; no credentials are passed.
+5. GitHub CI job `private-beta-tls` uses a completely **disposable** PostgreSQL 17, generated test CA/server certificate and isolated Docker network. It tests libpq `verify-full` success, refusal of wrong host/unrelated CA, and the actual beta `asyncpg` SSLContext path. It cannot use or modify AWS production data or certificates.
+
+**Deployment remains OFF:** nothing from the new Docker compose is installed or running on EC2. Worker `BETA_ENABLED=false`, `BETA_AI_CHAT_ENABLED=false`, Tunnel disconnected, and backend approval marker unset. The old host-only systemd review template is **not** sufficient to reach `crc-postgres` Docker DNS and is superseded for the isolated-network design; do not install it for this flow.
+
+**Next operator actions, only after this exact GitHub commit passes all CI checks and EC2 sync completes:**
+
+```bash
+sudo systemctl start crc-sync-private-backend.service
+sudo bash /opt/clash-royale-companion/backend-github/deploy/aws/stage-public-beta-ca.sh
+bash /opt/clash-royale-companion/backend-github/deploy/aws/probe-beta-client-tls.sh
+```
+
+The second command creates only `/etc/crc-beta/trust/db-ca.crt` and its parent trust directory with root ownership; it does not change a service, port or DB. The third command briefly creates an independent disposable Docker **client**, not a beta API service. A real `crc_app` authenticated TCP connection from the eventual beta runtime, protected env/secrets and session/invite authentication still require final deployment testing and explicit owner approval. The `crc-private` internal network deliberately has no general internet egress, so online Supercell/AI networking would need a separate reviewed egress design and remains disabled.
+
