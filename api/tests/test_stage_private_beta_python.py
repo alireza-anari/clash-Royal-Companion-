@@ -42,7 +42,7 @@ def test_staging_script_never_uses_repository_as_install_target():
     assert "readonly CHECKOUT=/opt/clash-royale-companion/backend-github" in text
     assert "readonly STAGE_ROOT=/home/ec2-user/crc-beta-staging" in text
     assert '"$dest/api[security]"' in text
-    assert "git status --porcelain" in text
+    assert 'git -C "$CHECKOUT" status --porcelain' in text
     assert "READY_SHA" in text
     assert "rm -rf -- \"$dest\"" in text
     assert "pip install --no-cache-dir --no-compile" in text
