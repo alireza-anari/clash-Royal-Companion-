@@ -11,7 +11,7 @@ The public sample Worker remains separate and unchanged. `main` is untouched. No
 - Static assets: 14 files, attached with `ASSETS`.
 - Plain-text switches: `BETA_ENABLED=false`, `BETA_AI_CHAT_ENABLED=false`; exact hostname, issuer and audience are pinned.
 - `PRIVATE_API` binding: attached to VPC Service `crc-private-beta-api`, ID `01a202d5-1889-72d3-9a12-4a2838612589`.
-- VPC Service destination: `127.0.0.1:8000`, through Cloudflare Tunnel ID `45520fe5-2670-417e-8f8e-932c60821aa6`.
+- VPC Service destination: `127.0.0.1:8001` (retargeted on 23 November 2026), through Cloudflare Tunnel ID `45520fe5-2670-417e-8f8e-932c60821aa6`.
 - Verified Worker response while off: HTTP 503, error code `BETA_NOT_CONFIGURED`.
 
 The Worker deployment is a safe, non-live edge shell. It does not prove that the origin is reachable or that a browser session can authenticate.
@@ -19,8 +19,8 @@ The Worker deployment is a safe, non-live edge shell. It does not prove that the
 ## 2. Current blockers before a real private request
 
 1. **AWS automation:** the read-only OIDC and backend-sync workflows are skipped because `AWS_CRC_OIDC_ROLE_ARN`, `AWS_CRC_BACKEND_SYNC_ROLE_ARN` and/or `CRC_BACKEND_AUTOSYNC` are not configured. The existing EC2 pull timer only updates a Git checkout; it does not run SSM, install a service or restart containers.
-2. **Tunnel connector:** the Cloudflare Tunnel has no active connection. Its prior Docker container was stopped. The old bridge network cannot reach host loopback. Recreate the connector with `--network host` (or another reviewed route) so its configured `127.0.0.1:8000` target reaches the host's beta service.
-3. **Backend service:** `crc-private-beta.service` was not installed at the last readiness check. The running local-only app is not the beta gateway and occupies `127.0.0.1:8000`; the deployment must deliberately replace it or use a separately reviewed port and update the VPC Service.
+2. **Tunnel connector:** the Cloudflare Tunnel has no active connection. Its prior Docker container was stopped. The old bridge network cannot reach host loopback. Recreate the connector with `--network host` (or another reviewed route) so its configured `127.0.0.1:8001` target reaches the host's beta service.
+3. **Backend service:** `crc-private-beta.service` was not installed at the last readiness check. The running local-only app is not the beta gateway and occupies `127.0.0.1:8000`; it must remain intact. The beta template and private VPC Service now both target `127.0.0.1:8001` (still no beta process).
 4. **Secret injection:** create separate random Worker session/assertion HMAC keys and invite-code hash map in Worker Secrets. Inject the matching assertion key, separate quota HMAC key, invited subject allowlist and PostgreSQL DSN into the backend from AWS SSM. Do not store any of these in GitHub.
 5. **Database and runtime:** preserve verified PostgreSQL TLS, least-privilege `crc_app`, quota migration and cleanup timer. Install the beta runtime with its exact explicit owner-approval gate unset until the final review.
 6. **End-to-end tests:** verify real invite login, cookie flags, logout/expiry, Worker assertion verification, quota reservation, private VPC reachability and unauthorized denial. Do not call Supercell during these tests.
@@ -28,8 +28,8 @@ The Worker deployment is a safe, non-live edge shell. It does not prove that the
 ## 3. Deployment order — not yet executed
 
 1. Complete the one-time AWS GitHub OIDC IAM bootstrap and add the exact role ARN repository variable. Use the read-only workflow first. Then configure a separate, narrowly scoped backend-sync role only if needed.
-2. Use SSM Session Manager (not SSH or a public inbound port) to inspect the instance and apply the reviewed backend deployment. Keep all secrets in SSM/host-protected files. Replace the local API process only after the beta service and rollback are ready.
-3. Recreate `cloudflared` on host networking with the existing token file and no published ports; verify Cloudflare reports an active connector. Do not expose port 8000 in the security group.
+2. Use SSM Session Manager (not SSH or a public inbound port) to inspect the instance and apply the reviewed backend deployment. Keep all secrets in SSM/host-protected files. Keep the local API process on port 8000 untouched while staging the separate beta process on 8001, with a reviewed rollback.
+3. Recreate `cloudflared` on host networking with the existing token file and no published ports; verify Cloudflare reports an active connector. Do not expose ports 8000 or 8001 in the security group.
 4. Confirm the VPC Service points to the actual beta gateway on localhost. Run a private-origin connectivity check without enabling the public Worker.
 5. Configure the three Worker Secrets and matching backend SSM parameters; add only opaque subject IDs to the backend allowlist.
 6. Validate all automated tests and the protected readiness route. Keep `BETA_ENABLED=false`, `BETA_AI_CHAT_ENABLED=false` and `CRC_BETA_LIVE_LOOKUP_ENABLED=false` until the owner approves the final activation review.
@@ -78,13 +78,13 @@ Operator read-only EC2 probe reported `crc-local-api.service` active, `crc-priva
 
 **New staged, source-only decision:** keep the existing local API on `127.0.0.1:8000` intact and reserve `127.0.0.1:8001` as the candidate private-beta origin. The review-only systemd template now uses port 8001; nothing has been installed or started. The read-only EC2 diagnostic checks whether port 8001 is occupied.
 
-**Critical mismatch to resolve before any activation:** the deployed Cloudflare VPC Service was last configured for `127.0.0.1:8000`, not 8001. Do not start/connect the Tunnel to the old destination or enable `BETA_ENABLED` while it could reach `crc-local-api`. Retarget only the *isolated private-beta VPC Service* to the verified `127.0.0.1:8001` origin as part of a separately reviewed change, then prove end-to-end private connectivity and authorization. Do not modify the existing public sample Worker.
+**Resolved destination mismatch (23 November 2026):** the separate `crc-private-beta-api` Cloudflare VPC Service was changed through the Cloudflare API from `127.0.0.1:8000` to `127.0.0.1:8001`. The updated service was read back successfully. Worker `BETA_ENABLED=false`, `BETA_AI_CHAT_ENABLED=false`, and the Tunnel remained down. This is **not** a functional private beta; backend provisioning, secrets, database quotas and protected routing are still pending.
 
 Next actions, in order:
 
 1. Allow CI-gated GitHub-to-EC2 checkout sync to finish; inspect output of `bash /opt/clash-royale-companion/backend-github/deploy/aws/check-private-beta-path.sh`. This changes nothing on the instance. Port 8001 must not already be in use.
 2. Review service package/OS user, separate host-only network binding, TLS-verified PostgreSQL, installed quota migrations, secrets and rollback before preparing the beta runtime. The existing local service must keep running.
-3. Change the private VPC Service's destination only when port 8001 is verified to host the *correct* beta app. Verify the cloudflared connector reaches host loopback without public EC2 inbound ports; the existing disconnected Tunnel by itself proves no connectivity.
+3. Before activating the Tunnel, prove that port 8001 serves the *correct, authenticated* beta app; VPC Service already targets that port. Verify the cloudflared connector reaches host loopback without public EC2 inbound ports; a disconnected Tunnel by itself proves no connectivity.
 4. Test login, expiry, issuer/audience/HMAC checks, quota enforcement and shutdown paths without Supercell or OpenRouter calls. Obtain product-owner approval before setting any runtime gate or switching the private Worker on.
 
 Until then, keep `BETA_ENABLED=false`, `BETA_AI_CHAT_ENABLED=false`, `CRC_BETA_LIVE_LOOKUP_ENABLED=false` and the backend activation marker unset. The sample-only frontend and `main` remain unaffected.
