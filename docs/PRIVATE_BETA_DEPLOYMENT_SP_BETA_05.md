@@ -210,4 +210,3 @@ bash /opt/clash-royale-companion/backend-github/deploy/aws/probe-beta-client-tls
 ```
 
 The second command creates only `/etc/crc-beta/trust/db-ca.crt` and its parent trust directory with root ownership; it does not change a service, port or DB. The third command briefly creates an independent disposable Docker **client**, not a beta API service. A real `crc_app` authenticated TCP connection from the eventual beta runtime, protected env/secrets and session/invite authentication still require final deployment testing and explicit owner approval. The `crc-private` internal network deliberately has no general internet egress, so online Supercell/AI networking would need a separate reviewed egress design and remains disabled.
-
