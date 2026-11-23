@@ -119,3 +119,18 @@ bash /opt/clash-royale-companion/backend-github/deploy/aws/inspect-private-beta-
 ```
 
 Do not paste Docker environment variables, database passwords, connection strings or certificate private keys into chat. If server SSL is off, **do not weaken `sslmode=verify-full`**: establish a reviewed certificate/CA and DNS strategy for any TCP beta connection, or redesign the DB connection boundary with equivalent reviewed authentication and transport protections. Nothing in this step changes the running PostgreSQL container.
+
+## Update — 23 November 2026: PostgreSQL is healthy but metadata login is not
+
+Operator read-only run returned `crc-postgres` with image `postgres:17`, status `running`, health `healthy` and isolated Docker network `crc-private`. Neither a published 5432 port nor a host TCP listener was found. The SQL catalog probe returned `Metadata SQL: unavailable (auth/socket/permissions)`, which does not establish whether the `postgres` database role, the `postgres` maintenance DB or TLS certificate configuration exists. Do not recreate the DB or change authentication to bypass this diagnostic.
+
+A separate redacted follow-up script `deploy/aws/diagnose-private-beta-postgres.sh` detects Unix socket presence, passwordless `pg_isready` responsiveness, effective server `ssl` config (via `postgres -D ... -C ssl`), and the *category* of a failed, non-interactive `psql -w -c 'SELECT 1'` probe. Raw PostgreSQL error text, credentials, Docker environment/config, PGDATA files, DB rows and secrets are **not printed**. The script makes no writes and its mock tests exercise redaction.
+
+After the GitHub CI-gated sync has taken the newly tested head, the operator may run:
+
+```bash
+sudo systemctl start crc-sync-private-backend.service
+bash /opt/clash-royale-companion/backend-github/deploy/aws/diagnose-private-beta-postgres.sh
+```
+
+If `SERVER_SSL_CONFIG=off`, keep the `verify-full` requirement intact; a reviewed private DNS/CA/server-certificate design and isolated application role must be prepared before enabling the beta API. A successful Unix socket or `pg_isready` does **not** prove authenticated TCP+TLS service readiness, and no service should be started until this is resolved.
