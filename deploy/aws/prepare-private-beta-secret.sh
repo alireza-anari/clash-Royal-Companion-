@@ -53,10 +53,9 @@ PY
 # second copy in the host root filesystem after a reboot.
 [[ "$(stat -f -c %T /run)" == tmpfs ]] ||
   refuse '/run is not tmpfs; secret will not be copied to persistent storage'
-if docker ps --format '{{.Names}}' --filter 'name=crc-private-beta' |
-    grep -q .; then
-  refuse 'beta container already running'
-fi
+active_beta="$(docker ps --format '{{.Names}}' --filter 'name=crc-private-beta' 2>/dev/null)" ||
+  refuse 'Docker unavailable; beta runtime state cannot be verified'
+[[ -z "$active_beta" ]] || refuse 'beta container already running'
 if command -v systemctl >/dev/null 2>&1 &&
    systemctl is-active --quiet crc-private-beta.service; then
   refuse 'beta service already running'
