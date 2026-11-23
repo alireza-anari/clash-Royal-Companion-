@@ -70,15 +70,24 @@ done
 [[ "$ready" == true ]] || { echo "Disposable PostgreSQL is not ready"; exit 1; }
 
 run_psql() {
-  local ca_file="$1" host="$2"
-  docker run --rm --pull never \
+  local ca_file="$1" host="$2" password="${3:-disposable-ci-password}"
+  # Exercise the SAME pattern as the production optional auth probe: the
+  # password travels over stdin, not a Docker inspect-visible --env value.
+  printf '%s\n' "$password" | docker run --rm -i --pull never \
     --network "$network" --read-only --user 10001:10001 \
     --cap-drop ALL --security-opt no-new-privileges \
     --mount "type=bind,src=$ca_file,dst=/run/crc-beta/db-ca/ca.crt,readonly" \
-    --env PGPASSWORD=disposable-ci-password \
-    --entrypoint psql postgres:17 \
-    "host=$host port=5432 user=crc_app dbname=crc_tls_test sslmode=verify-full sslrootcert=/run/crc-beta/db-ca/ca.crt connect_timeout=5" \
-    -X -A -t -q -c 'SELECT ssl FROM pg_stat_ssl WHERE pid = pg_backend_pid()'
+    --env PGSSLMODE=verify-full \
+    --env PGSSLROOTCERT=/run/crc-beta/db-ca/ca.crt \
+    --env PGOPTIONS='-c default_transaction_read_only=on' \
+    --env PGCONNECT_TIMEOUT=5 \
+    --entrypoint sh postgres:17 -eu -c '
+      IFS= read -r PGPASSWORD || exit 86
+      export PGPASSWORD
+      exec psql -X -A -t -q -w -v ON_ERROR_STOP=1 \
+        -h "$1" -p 5432 -U crc_app -d crc_tls_test \
+        -c "SELECT ssl FROM pg_stat_ssl WHERE pid = pg_backend_pid()"
+    ' -- "$host"
 }
 
 result="$(run_psql "$scratch/ca.crt" crc-postgres)"
@@ -96,6 +105,12 @@ if run_psql "$scratch/unrelated-ca.crt" crc-postgres >/dev/null 2>&1; then
   exit 1
 fi
 echo "LIBPQ_WRONG_CA=denied"
+
+if run_psql "$scratch/ca.crt" crc-postgres invalid-ci-password >/dev/null 2>&1; then
+  echo "FAIL: verify-full accepted a wrong database password"
+  exit 1
+fi
+echo "LIBPQ_WRONG_PASSWORD=denied"
 
 # Run actual beta asyncpg configuration against the same PostgreSQL from an
 # independently built image, with the disposable CI CA substituted only inside
