@@ -210,3 +210,18 @@ bash /opt/clash-royale-companion/backend-github/deploy/aws/probe-beta-client-tls
 ```
 
 The second command creates only `/etc/crc-beta/trust/db-ca.crt` and its parent trust directory with root ownership; it does not change a service, port or DB. The third command briefly creates an independent disposable Docker **client**, not a beta API service. A real `crc_app` authenticated TCP connection from the eventual beta runtime, protected env/secrets and session/invite authentication still require final deployment testing and explicit owner approval. The `crc-private` internal network deliberately has no general internet egress, so online Supercell/AI networking would need a separate reviewed egress design and remains disabled.
+
+## Update — 23 November 2026: root-private CA directory and client probe permission fix
+
+The operator reported `BETA_PUBLIC_CA=staged_and_verified` after the reviewed public CA copy, followed by `REFUSED: staged public CA missing` from the independent-client probe. The CA **was staged**. The original unprivileged check `[[ -f "$CA" ]]` and unprivileged OpenSSL invocation could not traverse a preexisting root-only `/etc/crc-beta` directory. This is a **client probe permissions bug**, not evidence that the trusted CA is absent.
+
+Fixed `deploy/aws/probe-beta-client-tls.sh` to validate the exact public CA path through narrow root-invoked read-only `test` and `openssl x509 -fingerprint` commands, **without chmod/chown of `/etc/crc-beta`, exposing the CA file to ec2-user, or relaxing secret-directory permissions**. The Docker daemon subsequently mounts only the CA file read-only into a disposable nonroot client. An executable mocked regression verifies the fix and ensures secret error text is never printed.
+
+After exact-head CI and the existing verified sync, only repeat the independent client check:
+
+```bash
+sudo systemctl start crc-sync-private-backend.service &&
+bash /opt/clash-royale-companion/backend-github/deploy/aws/probe-beta-client-tls.sh
+```
+
+Do not rerun CA staging unnecessarily and do not install/start the beta API. The script still authenticates no database user and changes no persistent service. If it fails at a *later* TLS/network check, diagnose that distinct error; never weaken certificate verification.
