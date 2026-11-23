@@ -81,8 +81,8 @@ for dir in "$BASE" "$RUNTIME_DIR"; do
 done
 if [[ -e "$DEST" || -L "$DEST" ]]; then
   [[ -f "$DEST" && ! -L "$DEST" &&
-      "$(stat -c '%u:%g:%a' "$DEST")" == 10001:10001:400 &&
-      cmp -s -- "$SOURCE" "$DEST" ]] ||
+      "$(stat -c '%u:%g:%a' "$DEST")" == 10001:10001:400 ]] &&
+  cmp -s -- "$SOURCE" "$DEST" ||
       refuse 'existing runtime secret requires manual review'
   printf '%s\n' 'CRC_APP_RUNTIME_SECRET=already_staged_private_tmpfs'
   exit 0
@@ -99,8 +99,8 @@ rm -- "$temp"
 trap - EXIT
 [[ -f "$DEST" && ! -L "$DEST" &&
    "$(stat -c '%u:%g:%a' "$DEST")" == 10001:10001:400 &&
-   "$(stat -f -c %T "$DEST")" == tmpfs &&
-   cmp -s -- "$SOURCE" "$DEST" ]] ||
+   "$(stat -f -c %T "$DEST")" == tmpfs ]] &&
+cmp -s -- "$SOURCE" "$DEST" ||
   refuse 'staged runtime credential verification failed'
 printf '%s\n' 'CRC_APP_RUNTIME_SECRET=staged_private_tmpfs'
 printf '%s\n' 'No beta service, PostgreSQL change, port, Cloudflare tunnel or AI enabled.'
