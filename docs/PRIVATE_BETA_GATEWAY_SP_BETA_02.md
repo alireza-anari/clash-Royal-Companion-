@@ -41,15 +41,15 @@ The Player Tag is not proof of account ownership. No JWT, API key, invite code, 
 - Static assets: 14 files attached through the `ASSETS` binding.
 - `BETA_ENABLED=false` and `BETA_AI_CHAT_ENABLED=false`.
 - The `PRIVATE_API` binding points to VPC Service `crc-private-beta-api`, service ID `01a202d5-1889-72d3-9a12-4a2838612589`.
-- The VPC Service targets `127.0.0.1:8000` through Tunnel ID `45520fe5-2670-417e-8f8e-932c60821aa6`.
+- The VPC Service targets `127.0.0.1:8001` (updated and verified on 23 November 2026) through Tunnel ID `45520fe5-2670-417e-8f8e-932c60821aa6`.
 - The Worker returns HTTP 503 with `BETA_NOT_CONFIGURED` while disabled. This is the expected fail-closed state, not a successful backend health check.
 
-The Cloudflare Tunnel currently has no active connector. The last verified EC2 Docker configuration used the `crc-edge-egress` bridge network; that does not make the host's `127.0.0.1:8000` reachable from inside the container. Before the VPC route can work, the connector must be recreated with host networking (or another explicitly reviewed path that can reach the loopback-only service).
+The Cloudflare Tunnel currently has no active connector. The last verified EC2 Docker configuration used the `crc-edge-egress` bridge network; that does not make the host's `127.0.0.1:8001` reachable from inside the container. Before the VPC route can work, the connector must be recreated with host networking (or another explicitly reviewed path that can reach the loopback-only service).
 
 ## Current backend and secret blockers
 
 - The separate `crc-private-beta.service` was reported as not installed at the last EC2 readiness check.
-- The existing `crc-local-api.service` is a local-only application and is not the beta gateway. On 23 November 2026 the operator reported it active, with a listener observed on port 8000 (process ownership not independently verified). Preserve it; the review-only beta service template now uses `127.0.0.1:8001`, provided that port is verified free. The currently disabled Cloudflare VPC Service still targets `127.0.0.1:8000`; do **not** connect/enable the Tunnel against the old destination. Separately retarget the private VPC Service to the verified beta origin only after the backend is safely staged and a rollback plan is approved.
+- The existing `crc-local-api.service` is a local-only application and is not the beta gateway. On 23 November 2026 the operator reported it active, with a listener observed on port 8000 (process ownership not independently verified). Preserve it; the review-only beta service template now uses `127.0.0.1:8001`, provided that port is verified free. On 23 November 2026 the disabled Cloudflare VPC Service was retargeted to `127.0.0.1:8001` and verified through the Cloudflare API. The Tunnel remains down, Worker access and AI remain disabled, and backend installation and rollback review are still required. Do **not** enable the edge until all release gates pass.
 - No Worker invite-code/session/assertion secrets have been configured by the deployment pipeline. Required Worker secrets are `BETA_INVITE_CODES_JSON`, `BETA_SESSION_HMAC_HEX` and `BETA_ASSERTION_HMAC_HEX`.
 - The backend needs the matching `CRC_BETA_WORKER_ASSERTION_HMAC_HEX`, separate `CRC_BETA_QUOTA_HMAC_HEX`, `CRC_BETA_ALLOWED_SUBJECTS`, exact issuer/audience/host and verified-TLS PostgreSQL DSN, all injected from protected infrastructure rather than GitHub.
 - `CRC_BETA_RUNTIME_GATE` must remain unset until the owner explicitly approves activation.
