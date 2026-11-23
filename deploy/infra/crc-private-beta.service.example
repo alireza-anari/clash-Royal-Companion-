@@ -3,8 +3,9 @@
 # the signed package build, operator secrets, Tunnel/VPC and egress controls.
 # The backend listener is deliberately localhost-only and uses a distinct
 # port (8001) so the existing local-only API on 8000 is left untouched.
-# REVIEW: Cloudflare VPC Service still points at 127.0.0.1:8000 until
-# separately retargeted and checked. Never enable the edge before that.
+# Cloudflare VPC Service crc-private-beta-api was verified targeting
+# 127.0.0.1:8001 on 2026-11-23. Tunnel and Worker remain disabled.
+# Never enable the edge before authenticated beta runtime checks pass.
 [Unit]
 Description=CRC Private Beta Backend (not enabled by default)
 After=network-online.target
