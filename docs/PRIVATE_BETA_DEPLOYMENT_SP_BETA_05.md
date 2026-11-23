@@ -246,3 +246,12 @@ bash /opt/clash-royale-companion/backend-github/deploy/aws/probe-private-beta-db
 If \`CRC_APP_PASSWORD_CONFIGURED=true\` and the operator possesses that existing password securely, they may **separately** run \`bash .../probe-private-beta-db-auth.sh --verify\` and enter it *only at the terminal prompt*, **never in chat**, GitHub, shell command line or system logs. If the role has no password, or its actual password is unavailable, **do not invent, copy, print, reset or rotate credentials as part of this probe**; use a separately reviewed provisioning process. Do not turn on beta.
 
 CI also tests a disposable PostgreSQL with a disposable password supplied via stdin and proves that an incorrect password, wrong CA, or wrong hostname is rejected. No production credentials are sent to CI.
+
+## Update — 23 November 2026: distinguish authentication failures without exposing credentials
+
+The operator performed one optional `--verify` attempt and received `CRC_APP_AUTH=failed`. That message was **ambiguous**, not evidence that the existing `crc_app` password is wrong. The known-good independent TLS handshake verified CA and hostname, but the `psql` login attempt could fail because of password, database routing, or SQL/grants.
+
+The review-only probe now improves the **no-password** `--check` output: `CRC_APP_PASSWORD_CONFIGURED`, `CRC_APP_ROLE_LOGIN`, and `CRC_APP_DB_CONNECT` are safe boolean checks from the configured database; no hashes, role details or database records are printed. `--verify` now classifies a failed attempt as `password_rejected`, `certificate_rejected`, `network_or_dns_unavailable`, `database_or_role_unavailable`, `sql_or_grant_error` or `unclassified` based on redacted libpq output. It still never displays raw PostgreSQL diagnostics, stores or uploads credentials, or writes SQL.
+
+Run `--check` again first after green GitHub CI and guarded sync. **Do not retry or guess passwords until the password-less checks are reviewed.** A configured `postgres` bootstrap password is not necessarily the `crc_app` password. If the existing application password is not known securely, stop and plan a separate reviewed secret/provisioning procedure; do not paste credentials into chat, use `docker inspect` to dump secrets, or rotate database credentials as part of diagnosis.
+
