@@ -105,7 +105,7 @@ def test_probe_never_writes_db_or_persists_password():
     assert "pg_stat_ssl" in src
     assert "CRC_APP_AUTH=verified_read_only_tls_and_grants" in src
     assert "read -r -s secret </dev/tty" in src
-    assert 'printf \'%s\\\\n\' "$secret" |' in src
+    assert r"""printf '%s\n' "$secret" |""" in src
     assert 'IFS= read -r PGPASSWORD' in src
     assert "docker run --rm -i --pull never" in src
     assert "stage-public-beta-ca" not in src
