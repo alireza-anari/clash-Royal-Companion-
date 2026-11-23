@@ -149,3 +149,20 @@ bash /opt/clash-royale-companion/backend-github/deploy/aws/inspect-private-beta-
 ```
 
 This does not configure TLS, validate `verify-full`, create users or tables, run migrations, start the beta service, or activate the Worker. Any failed inspection is a reason to review auth and network paths before deployment, **not** a reason to weaken them.
+
+## Update — 23 November 2026: existing quota role/table and next TLS/network decision
+
+Operator's configured-database catalog probe succeeded: `DB_ACCESSIBLE=yes`, `SERVER_SSL=on`, `CRC_APP_ROLE_PRESENT=true`, `CRC_APP_ROLE_LOGIN=true`, `CRC_APP_ROLE_SUPERUSER=false`, `GATEWAY_QUOTA_TABLE_PRESENT=true`, `AI_QUOTA_TABLE_PRESENT=false`. The last is expected while AI remains disabled. **Do not apply migrations or recreate the existing role/table.** Existence does not by itself confirm `crc_app` can reserve quota; actual table privileges still need verification.
+
+The database currently runs in a healthy `postgres:17` container on Docker network `crc-private`, without a host-published PostgreSQL port. There is a separate localhost API on port 8000 and the disabled Cloudflare VPC Service targets localhost port 8001. The review-only host systemd beta template does not itself provide stable Docker DNS for `crc-postgres`; before activating the backend, review whether to place the beta API inside the same private Docker network with a host-loopback-only bind for 8001, or another explicit private route. Never publish DB port 5432 or route the beta API through port 8000.
+
+New redacted, read-only preflight `deploy/aws/check-private-beta-db-path.sh` verifies Docker network type/internal flag, checks the current DB's `crc_app` schema USAGE and quota SELECT/INSERT/UPDATE grants via a fixed SQL query, and inspects the existing server certificate's hostname match against the proposed Docker DNS `crc-postgres` and seven-day validity using OpenSSL. It does not print role/database names, credentials, certificate content or file paths, and prints only fixed allowed results. A matching certificate is **not** proof of trusted CA or of successful libpq `sslmode=verify-full` over TCP. A separate real TLS handshake and strict CA validation are still required before service activation.
+
+Once this exact commit's backend CI passes and the EC2 source-sync timer updates:
+
+```bash
+sudo systemctl start crc-sync-private-backend.service
+bash /opt/clash-royale-companion/backend-github/deploy/aws/check-private-beta-db-path.sh
+```
+
+Keep `BETA_ENABLED=false`, the backend gate unset, live lookup and online AI off. This command only checks the existing DB; it does not install/run services or apply migrations.
