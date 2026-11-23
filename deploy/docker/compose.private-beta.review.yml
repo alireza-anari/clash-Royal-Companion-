@@ -28,6 +28,14 @@ services:
         source: /etc/crc-beta/trust/db-ca.crt
         target: /run/crc-beta/db-ca/ca.crt
         read_only: true
+      # Runtime credential is a tmpfs copy, not the root-owned 0600
+      # original at /etc/crc-beta/secrets/crc-app.password. It is
+      # UID 10001-owned, mode 0400, and has a root-only host parent.
+      # Prepare only with deploy/aws/prepare-private-beta-secret.sh --stage.
+      - type: bind
+        source: /run/crc-beta/creds/crc-app.password
+        target: /run/crc-beta/creds/crc-app.password
+        read_only: true
     networks:
       - crc-private
     ports:
