@@ -49,7 +49,7 @@ The Cloudflare Tunnel currently has no active connector. The last verified EC2 D
 ## Current backend and secret blockers
 
 - The separate `crc-private-beta.service` was reported as not installed at the last EC2 readiness check.
-- The existing `crc-local-api.service` is a local-only application and is not the beta gateway. It uses port 8000, so it cannot coexist with the beta service on the same address/port. Stop/replace it only as part of the reviewed SSM deployment.
+- The existing `crc-local-api.service` is a local-only application and is not the beta gateway. On 23 November 2026 the operator reported it active, with a listener observed on port 8000 (process ownership not independently verified). Preserve it; the review-only beta service template now uses `127.0.0.1:8001`, provided that port is verified free. The currently disabled Cloudflare VPC Service still targets `127.0.0.1:8000`; do **not** connect/enable the Tunnel against the old destination. Separately retarget the private VPC Service to the verified beta origin only after the backend is safely staged and a rollback plan is approved.
 - No Worker invite-code/session/assertion secrets have been configured by the deployment pipeline. Required Worker secrets are `BETA_INVITE_CODES_JSON`, `BETA_SESSION_HMAC_HEX` and `BETA_ASSERTION_HMAC_HEX`.
 - The backend needs the matching `CRC_BETA_WORKER_ASSERTION_HMAC_HEX`, separate `CRC_BETA_QUOTA_HMAC_HEX`, `CRC_BETA_ALLOWED_SUBJECTS`, exact issuer/audience/host and verified-TLS PostgreSQL DSN, all injected from protected infrastructure rather than GitHub.
 - `CRC_BETA_RUNTIME_GATE` must remain unset until the owner explicitly approves activation.
