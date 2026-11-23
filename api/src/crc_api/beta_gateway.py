@@ -30,6 +30,7 @@ from .supercell import SupercellClient, SupercellError
 from .ai_coach import CoachRequest, CoachUnavailable, OpenRouterCoach
 from .ai_daily_budget import SharedAIDailyBudget, AIDailyBudgetExceeded
 from .ssm_secret import load_openrouter_key_from_ssm, SSMSecretUnavailable
+from .beta_db_tls import verified_beta_ssl_context
 
 
 HOST = re.compile(r"^[a-z0-9](?:[a-z0-9.-]{0,251}[a-z0-9])?$")
@@ -128,6 +129,11 @@ def create_beta_app(
     """
     settings = config if config is not None else BetaConfig.from_environment()
     settings.validate()
+    # Real --factory startup has no injected test configuration. Verify that
+    # the operator-mounted CA matches the reviewed root BEFORE opening a port,
+    # loading AI secrets, or contacting the database.
+    if config is None:
+        verified_beta_ssl_context(settings.database_dsn)
     api = supercell if supercell is not None else SupercellClient()
     if settings.live_lookup_enabled and not api.configured:
         raise UnsafeBetaConfiguration("Private beta Supercell provider is not configured.")
@@ -161,8 +167,11 @@ def create_beta_app(
     if pool_factory is None:
         async def default_pool(dsn: str):
             import asyncpg  # Optional beta-only dependency.
+            # Never rely on ambient system roots or asyncpg SSL defaults.
+            # Explicit context checks BOTH the server chain and DNS hostname.
+            tls = verified_beta_ssl_context(dsn)
             return await asyncpg.create_pool(
-                dsn=dsn, min_size=1, max_size=5, timeout=5,
+                dsn=dsn, ssl=tls, min_size=1, max_size=5, timeout=5,
                 command_timeout=5, server_settings={"application_name": "crc_private_beta"},
             )
         pool_factory = default_pool
