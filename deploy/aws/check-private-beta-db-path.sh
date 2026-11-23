@@ -39,9 +39,8 @@ SQL
 if sql_output="$(printf '%s\n' "$query" | timeout 20 sudo -n docker exec -i --user postgres crc-postgres \
   env -u PGPASSWORD -u PGUSER -u PGDATABASE -u PGHOST -u PGSERVICE \
   sh -eu -c '
-    [ -n "$POSTGRES_USER" ] || exit 9
-    db="$POSTGRES_DB"
-    [ -n "$db" ] || db="$POSTGRES_USER"
+    [ -n "${POSTGRES_USER:-}" ] || exit 9
+    db="${POSTGRES_DB:-$POSTGRES_USER}"
     export PGCONNECT_TIMEOUT=5
     exec psql -X -A -t -q -w -v ON_ERROR_STOP=1 -h /var/run/postgresql -U "$POSTGRES_USER" -d "$db" -f -
   ' 2>&1)"; then
