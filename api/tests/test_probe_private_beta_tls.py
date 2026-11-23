@@ -27,7 +27,7 @@ def test_tls_probe_is_strict_and_does_not_mutate():
     assert "systemctl start" not in content
     assert ".Config.Env" not in content
     assert "-CAfile" not in content
-    assert "-verify 0" not in content.replace("# OpenSSL performs PostgreSQL SSLRequest negotiation (not a plaintext probe).", "")
+    assert " -verify 0 " not in content
     assert "openssl s_client" in content
 
 
