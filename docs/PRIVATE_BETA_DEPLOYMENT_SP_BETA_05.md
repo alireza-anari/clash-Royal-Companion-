@@ -88,3 +88,19 @@ Next actions, in order:
 4. Test login, expiry, issuer/audience/HMAC checks, quota enforcement and shutdown paths without Supercell or OpenRouter calls. Obtain product-owner approval before setting any runtime gate or switching the private Worker on.
 
 Until then, keep `BETA_ENABLED=false`, `BETA_AI_CHAT_ENABLED=false`, `CRC_BETA_LIVE_LOOKUP_ENABLED=false` and the backend activation marker unset. The sample-only frontend and `main` remain unaffected.
+
+## Update — 23 November 2026: separate Python 3.12 staging on EC2
+
+The EC2 operator reported Python 3.12.16 (Python 3.9 is also present), approximately 17 GiB available on the root filesystem, and no local TCP listeners on ports 8001 or 5432. Port 8000 was observed listening on loopback as a Python process. Port 5432 not listening locally **does not establish that PostgreSQL is absent**; it may be in Docker without a published port or on another host. Do not create or migrate a database based on this output alone.
+
+CI-gated source-only script `deploy/aws/stage-private-beta-python.sh` stages the tracked `api/` source from `/opt/clash-royale-companion/backend-github` into a revision-specific, private directory in `/home/ec2-user/crc-beta-staging/`. As `ec2-user` (not sudo), it checks source branch/origin/clean worktree, Python 3.12, minimum 1 GiB free, and that port 8001 is unused; it creates a dedicated Python 3.12 virtual environment, downloads/install packages from PyPI with the `[security]` extra, checks dependencies and imports, and verifies the runtime gate fails closed when unset.
+
+**This is a source and dependencies staging operation, not a deployment:** it does not install systemd units, start an API, alter the current `crc-local-api`, change AWS resources or PostgreSQL, connect Tunnel, configure secrets, or enable Cloudflare/AI/Supercell. It does use disk space and outbound package-download traffic; monitor AWS Free Plan credits. The staging environment under the ec2-user home is **not** the final hardened `/opt/crc-beta` service directory, and must not be used directly by a privileged service.
+
+Run only after the corresponding GitHub backend CI is green and the EC2 code sync timer has fetched the revision:
+
+```bash
+bash /opt/clash-royale-companion/backend-github/deploy/aws/stage-private-beta-python.sh
+```
+
+Expected: `STAGED SUCCESSFULLY: <40-character SHA>`, `Private beta config gate: CLOSED (expected)`, and explicit confirmation that no service started. If it refuses, inspect the message rather than bypassing a guard. Do not paste secret values or `.env` files. For database inventory, inspect container names/images/status only (not container environments or connection strings) before planning TLS-backed quota setup.
