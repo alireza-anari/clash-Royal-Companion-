@@ -20,6 +20,9 @@ def test_private_beta_path_probe_does_not_modify_cloud_or_services():
     assert "cloudflared.service" in source
     assert "docker inspect --format '{{.HostConfig.NetworkMode}}'" in source
     assert "ss -H -ltn" in source
+    assert "sport = :8000" in source
+    assert "sport = :8001" in source
+    assert "port 8001: OCCUPIED" in source
     # Restrict invocations, not mentions in comments.
     for unsafe in (
         r"\bsystemctl\s+(?:start|stop|restart|enable|disable)\b",
