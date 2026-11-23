@@ -51,7 +51,13 @@ fi
 # INSIDE the existing DB container, not printed, copied to Git or logged.
 catalog_query="SELECT 'CRC_APP_PASSWORD_CONFIGURED=' || (EXISTS
     (SELECT 1 FROM pg_authid
-     WHERE rolname = 'crc_app' AND rolcanlogin AND rolpassword IS NOT NULL))::text;"
+     WHERE rolname = 'crc_app' AND rolcanlogin AND rolpassword IS NOT NULL))::text;
+  SELECT 'CRC_APP_ROLE_LOGIN=' || COALESCE((
+    SELECT rolcanlogin::text FROM pg_roles WHERE rolname = 'crc_app'
+  ), 'absent');
+  SELECT 'CRC_APP_DB_CONNECT=' || (EXISTS(
+    SELECT 1 FROM pg_roles WHERE rolname='crc_app'
+  ) AND has_database_privilege('crc_app', current_database(), 'CONNECT'))::text;"
 if metadata="$(printf '%s\n' "$catalog_query" |
   timeout 20 sudo -n docker exec -i --user postgres "$DB_CONTAINER" \
     env -u PGPASSWORD -u PGUSER -u PGDATABASE -u PGHOST -u PGSERVICE \
@@ -61,13 +67,34 @@ if metadata="$(printf '%s\n' "$catalog_query" |
       exec psql -X -A -t -q -w -v ON_ERROR_STOP=1 \
         -h /var/run/postgresql -U "$POSTGRES_USER" -d "$database" -f -
     ' 2>&1)"; then
-  case "$metadata" in
-    'CRC_APP_PASSWORD_CONFIGURED=true'|'CRC_APP_PASSWORD_CONFIGURED=false')
-      printf '%s\n' "$metadata" ;;
-    *) printf '%s\n' 'CRC_APP_PASSWORD_CONFIGURED=unknown (unexpected output suppressed)' ;;
-  esac
+  # Capture only the three expected booleans. Never echo raw SQL results
+  # (which could include hashes, role names or unexpected server diagnostics).
+  declare -A fields=()
+  valid=1
+  while IFS= read -r line; do
+    case "$line" in
+      CRC_APP_PASSWORD_CONFIGURED=true|CRC_APP_PASSWORD_CONFIGURED=false|\
+      CRC_APP_ROLE_LOGIN=true|CRC_APP_ROLE_LOGIN=false|CRC_APP_ROLE_LOGIN=absent|\
+      CRC_APP_DB_CONNECT=true|CRC_APP_DB_CONNECT=false)
+        key="${line%%=*}"
+        [[ -z "${fields[$key]+set}" ]] || valid=0
+        fields[$key]="${line#*=}"
+        ;;
+      *) valid=0 ;;
+    esac
+  done <<< "$metadata"
+  for key in CRC_APP_PASSWORD_CONFIGURED CRC_APP_ROLE_LOGIN CRC_APP_DB_CONNECT; do
+    [[ -n "${fields[$key]+set}" ]] || valid=0
+  done
+  if [[ "$valid" == 1 ]]; then
+    for key in CRC_APP_PASSWORD_CONFIGURED CRC_APP_ROLE_LOGIN CRC_APP_DB_CONNECT; do
+      printf '%s=%s\n' "$key" "${fields[$key]}"
+    done
+  else
+    printf '%s\n' 'CRC_APP_READINESS=unknown (unexpected output suppressed)'
+  fi
 else
-  printf '%s\n' 'CRC_APP_PASSWORD_CONFIGURED=unknown (database catalog failure suppressed)'
+  printf '%s\n' 'CRC_APP_READINESS=unknown (database catalog failure suppressed)'
 fi
 
 if [[ "$mode" == --check ]]; then
@@ -141,7 +168,24 @@ if result="$(
     *) printf '%s\n' 'CRC_APP_AUTH=untrusted_output_suppressed'; exit 2 ;;
   esac
 else
-  printf '%s\n' 'CRC_APP_AUTH=failed (credentials, TLS, role, grant or network; raw errors suppressed)'
+  # Classify diagnostic text IN MEMORY; never print its raw contents. The
+  # old script reduced every psql/client failure to a single ambiguous error.
+  # A failure class is evidence, not proof that a particular password was used.
+  case "$result" in
+    *'password authentication failed'*|*'no password supplied'*)
+      category=password_rejected ;;
+    *'certificate verify failed'*|*'certificate verification failed'*|*'root certificate file'*|*'server certificate'*)
+      category=certificate_rejected ;;
+    *'could not translate host name'*|*'Connection refused'*|*'timeout expired'*|*'could not connect to server'*)
+      category=network_or_dns_unavailable ;;
+    *'database '*' does not exist'*|*'role '*' does not exist'*)
+      category=database_or_role_unavailable ;;
+    *'ERROR:'*)
+      category=sql_or_grant_error ;;
+    *)
+      category=unclassified ;;
+  esac
+  printf 'CRC_APP_AUTH=%s (raw errors suppressed)\n' "$category"
   exit 2
 fi
 printf '%s\n' 'No database writes, password files, service changes, published ports, or beta activation.'
