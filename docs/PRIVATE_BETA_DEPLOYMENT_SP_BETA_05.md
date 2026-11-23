@@ -225,3 +225,24 @@ bash /opt/clash-royale-companion/backend-github/deploy/aws/probe-beta-client-tls
 ```
 
 Do not rerun CA staging unnecessarily and do not install/start the beta API. The script still authenticates no database user and changes no persistent service. If it fails at a *later* TLS/network check, diagnose that distinct error; never weaken certificate verification.
+## Update — 23 November 2026: read-only crc_app password readiness and optional login verification
+
+The operator has now **successfully verified TLS from an independent Docker client on EC2**:
+\`INDEPENDENT_CLIENT_TLS=verified\` and \`NEGATIVE_HOSTNAME_CHECK=denied_as_expected\`.
+This proves the server certificate/hostname against the pinned CRC internal CA from the Docker network but does **not** establish authenticated \`crc_app\` access.
+
+New \`deploy/aws/probe-private-beta-db-auth.sh\` has two explicit modes:
+
+- \`--check\` (**safe default**, no password prompt): confirms PostgreSQL 17 is healthy on the existing internal \`crc-private\` bridge, root-staged public CA matches the reviewed pin, 5432 is not published, and uses a *fixed read-only PostgreSQL catalog SELECT* via the container's configured local bootstrap role to print only whether \`crc_app\` has a non-null password. This **does not read its password/hash** or attempt a login.
+- \`--verify\` (only if the operator **already knows the existing crc_app password**): asks for that password directly in the EC2 interactive terminal with echo disabled. The value travels via a one-time stdin pipe into a short-lived, read-only, nonroot \`postgres:17\` client container, where it becomes \`PGPASSWORD\` only after the container has started; it is **never placed in Docker run arguments/config, committed, written to a password file or printed**. The client connects to the configured database as \`crc_app\` with \`PGSSLMODE=verify-full\`, the reviewed root CA, \`PGOPTIONS='-c default_transaction_read_only=on'\`, and runs a fixed SELECT that checks current role, negotiated TLS, read-only transaction mode and USAGE/SELECT/INSERT/UPDATE quota grants. It suppresses every raw error and reports only allowlisted statuses. It never executes a write; it does not enable API port 8001, Supercell or AI.
+
+After this exact revision has green backend CI, run **only the check first**:
+
+\`\`\`bash
+sudo systemctl start crc-sync-private-backend.service &&
+bash /opt/clash-royale-companion/backend-github/deploy/aws/probe-private-beta-db-auth.sh --check
+\`\`\`
+
+If \`CRC_APP_PASSWORD_CONFIGURED=true\` and the operator possesses that existing password securely, they may **separately** run \`bash .../probe-private-beta-db-auth.sh --verify\` and enter it *only at the terminal prompt*, **never in chat**, GitHub, shell command line or system logs. If the role has no password, or its actual password is unavailable, **do not invent, copy, print, reset or rotate credentials as part of this probe**; use a separately reviewed provisioning process. Do not turn on beta.
+
+CI also tests a disposable PostgreSQL with a disposable password supplied via stdin and proves that an incorrect password, wrong CA, or wrong hostname is rejected. No production credentials are sent to CI.
