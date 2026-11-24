@@ -50,7 +50,7 @@
   }
   function signInAgain(){root.location.assign("/login");}
   root.CRCBetaSession=Object.freeze({
-    VERSION:"invite-cookie-0.1",enabled:true,fetch:transport,
+    VERSION:"automatic-session-0.2",enabled:true,fetch:transport,
     createTransport:createTransport,permittedPath:permittedPath,
     signInAgain:signInAgain,signOut:signOut
   });
