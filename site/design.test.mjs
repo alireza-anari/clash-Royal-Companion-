@@ -26,7 +26,7 @@ test('design system has readable surfaces, mobile controls and reduced-motion su
 
 test('theme and service worker cache are refreshed for the new CSS', () => {
   assert.match(html, /name="theme-color" content="#080f1e"/);
-  assert.match(sw, /crc-mvp-static-v10/);
+  assert.match(sw, /crc-mvp-static-v11/);
 });
 
 test('action-first dashboard preserves report targets, mobile battles and consent', () => {
@@ -39,4 +39,13 @@ test('action-first dashboard preserves report targets, mobile battles and consen
   assert.match(html, /id="coachAIConsent"/);
   assert.match(html.slice(html.indexOf('class="bottom-nav"')), /data-nav="battles"/);
   assert.match(html, /class="avatar profile-link" href="#player"/);
+});
+
+test('approved UI has all five mobile destinations and a separate report for each coach action', () => {
+  const mobile = html.slice(html.indexOf('class="bottom-nav"'), html.indexOf('id="toast"'));
+  for (const name of ['home','deck','coach','battles','cards']) assert.ok(mobile.includes('data-nav="'+name+'"'));
+  for (const key of ['coachMetrics','coachOwnedOptions','coachBattleReport']) assert.ok(html.includes('data-report-group="'+key+'"'));
+  assert.match(html, /id="coachReportTitle"/);
+  assert.equal((html.match(/id="profileSummary"/g)||[]).length,1);
+  assert.match(css, /grid-template-columns:repeat\(8,minmax\(0,1fr\)\)/);
 });
