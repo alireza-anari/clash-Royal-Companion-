@@ -287,14 +287,14 @@ async function refreshLiveAvailability(){
   if(cap.live_lookup_enabled){
     betaLoginVisible(false);
     btn.disabled=false;btn.textContent="دریافت اطلاعات";
-    status.textContent=window.CRCBetaSession?"بتای خصوصی آماده است؛ ورود با کد دعوت انجام شده و Player Tag اثبات مالکیت نیست.":"Backend آمادگی دریافت داده عمومی را اعلام کرده است. مالکیت حساب تأیید نمی‌شود.";
+    status.textContent=window.CRCBetaSession?"بتای خصوصی آماده است؛ اتصال زنده برقرار است و Player Tag اثبات مالکیت نیست.":"Backend آمادگی دریافت داده عمومی را اعلام کرده است. مالکیت حساب تأیید نمی‌شود.";
   }else{
     btn.disabled=true;btn.textContent="اتصال زنده در دسترس نیست";
-    var needsLogin=!!(window.CRCBetaSession&&["INVITE_SESSION_REQUIRED","WORKER_ASSERTION_MISSING","WORKER_ASSERTION_INVALID","HTTP_401","HTTP_403"].includes(cap.reason));
+    var needsLogin=!!(window.CRCBetaSession&&["SESSION_REQUIRED","INVITE_SESSION_REQUIRED","WORKER_ASSERTION_MISSING","WORKER_ASSERTION_INVALID","HTTP_401","HTTP_403"].includes(cap.reason));
     betaLoginVisible(needsLogin);
     var rateLimited=!!(window.CRCBetaSession&&["MEMBER_QUOTA_EXCEEDED","GLOBAL_QUOTA_EXCEEDED","HTTP_429"].includes(cap.reason));
     var notInvited=!!(window.CRCBetaSession&&cap.reason==="WORKER_ASSERTION_INVALID");
-    status.textContent=needsLogin?"نشست بتای خصوصی منقضی یا نامعتبر است؛ با کد دعوت دوباره وارد شو.":rateLimited?"سهمیه موقت درخواست‌های بتا پر شده است؛ از ارسال مکرر درخواست خودداری کن.":notInvited?"این حساب برای بتای خصوصی دعوت نشده است.":"Backend زنده در این محیط فعال نیست؛ واردکردن فایل JSON همچنان در دسترس است.";
+    status.textContent=needsLogin?"نشست بتای خصوصی منقضی یا نامعتبر است؛ یک‌بار صفحه را تازه‌سازی کن.":rateLimited?"سهمیه موقت درخواست‌های بتا پر شده است؛ از ارسال مکرر درخواست خودداری کن.":notInvited?"اعتبارسنجی نشست بتای خصوصی ناموفق بود.":"Backend زنده در این محیط فعال نیست؛ واردکردن فایل JSON همچنان در دسترس است.";
   }
 }
 async function loadProfileLive(){
