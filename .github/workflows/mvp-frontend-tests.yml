@@ -1,7 +1,7 @@
 name: MVP frontend tests
 on:
   push:
-    branches: [feat/mvp-frontend, feat/mvp-coach-offline, feat/minimal-action-first-ux]
+    branches: [feat/mvp-frontend, feat/mvp-coach-offline, feat/minimal-action-first-ux, fix/restore-live-coach-integration]
   pull_request:
     branches: [main, feat/mvp-coach-offline]
 permissions:
@@ -23,7 +23,8 @@ jobs:
           node --check site/beta-session.js
           node --check deploy/cloudflare/mvp-worker.js
           node --check deploy/cloudflare/beta-edge-worker.mjs
+          node --check deploy/cloudflare/deploy-private-beta.mjs
       - name: Verify bundle is reproducible
         run: node deploy/cloudflare/build-site.mjs --check
       - name: Run deterministic staging checks
-        run: node --test site/mvp.test.mjs site/battle-insights.test.mjs site/offline-coach.test.mjs site/coach-chat.test.mjs site/design.test.mjs site/owned-options.test.mjs site/backend-client.test.mjs site/beta-session.test.mjs deploy/cloudflare/beta-edge.test.mjs
+        run: node --test site/mvp.test.mjs site/battle-insights.test.mjs site/offline-coach.test.mjs site/coach-chat.test.mjs site/design.test.mjs site/owned-options.test.mjs site/backend-client.test.mjs site/beta-session.test.mjs deploy/cloudflare/beta-edge.test.mjs deploy/cloudflare/private-beta-deploy.test.mjs
