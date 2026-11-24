@@ -89,10 +89,10 @@ test('the page, app, worker and offline cache serve the same local chat module',
   assert.match(sw,/\/coach-chat\.js/);
 });
 
-test('online consent explains external routing and data-collection restriction accurately',()=>{
+test('online consent describes the actual Workers AI route and data scope',()=>{
  const html=fs.readFileSync(new URL('./index.html',import.meta.url),'utf8');
- assert.match(html,/data_collection=deny/);
- assert.match(html,/به معنی پردازش محلی یا تضمین حذف فوری نیست/);
+ assert.match(html,/Cloudflare Workers AI/);
+ assert.match(html,/پردازش محلی نیست/);
  assert.match(html,/رضایت برای هر ارسال جداگانه است/);
 });
 
