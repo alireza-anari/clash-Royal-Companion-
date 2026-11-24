@@ -1,0 +1,44 @@
+name: CRC private beta deploy
+
+on:
+  push:
+    branches:
+      - release/private-beta-integration-20261124
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: crc-private-beta-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Verify and publish private beta
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: crc-coach-stage
+    env:
+      CF_ACCOUNT_ID: ${{ vars.CRC_CLOUDFLARE_ACCOUNT_ID }}
+      CF_API_TOKEN: ${{ secrets.CRC_CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - name: Validate deployment credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$CF_ACCOUNT_ID" =~ ^[a-f0-9]{32}$ ]] || { echo "Missing or invalid CRC_CLOUDFLARE_ACCOUNT_ID variable"; exit 1; }
+          test -n "$CF_API_TOKEN" || { echo "Missing CRC_CLOUDFLARE_API_TOKEN secret"; exit 1; }
+      - name: Check Worker and deployment source
+        run: |
+          node --check deploy/cloudflare/beta-edge-worker.mjs
+          node --check deploy/cloudflare/deploy-private-beta.mjs
+      - name: Run complete regression suite
+        run: |
+          node --test site/mvp.test.mjs site/battle-insights.test.mjs site/offline-coach.test.mjs site/coach-chat.test.mjs site/design.test.mjs site/owned-options.test.mjs site/backend-client.test.mjs site/beta-session.test.mjs deploy/cloudflare/beta-edge.test.mjs deploy/cloudflare/private-beta-deploy.test.mjs
+      - name: Publish private beta assets and Worker
+        run: node deploy/cloudflare/deploy-private-beta.mjs
