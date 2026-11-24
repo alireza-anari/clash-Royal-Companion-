@@ -29,6 +29,12 @@ The API token stays in the existing Cloudflare secret binding and is sent only f
 - Publish only when at least 65% of leaderboard players were read, at least 200 unique Ranked battles were observed, and at least 400 deck appearances were counted.
 - Failed upstream requests are summarized by safe error code only; tokens and raw player tags are never logged.
 
+
+
+## CPU-plan assumption
+
+The deployed staging Worker currently reports `usage_model: standard`. Cloudflare's current limits list a 10 ms CPU limit per Cron invocation on Workers Free and a 30-second default on Workers Paid Standard. The first two 32-player batches measured approximately 132 ms and 88 ms CPU and completed successfully. The 32-player batch is therefore appropriate for the currently deployed Standard usage model, but must not be assumed safe on Workers Free. If the project is moved to Free, reduce the batch to a very small number of players per invocation or move aggregation to the existing backend host. The 50-subrequest guard remains in place independently of the CPU-plan choice.
+
 ## KV keys
 
 | Key | Purpose |
