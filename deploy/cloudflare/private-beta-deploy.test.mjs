@@ -8,6 +8,7 @@ import {
   SCRIPT_NAME,
   buildAssetManifest,
   buildWorkerMetadata,
+  verifyGatewaySmokeTests,
 } from "./deploy-private-beta.mjs";
 
 test("private beta deploy target is distinct from public sample workers", () => {
@@ -53,4 +54,61 @@ test("private beta assets include the login and browser session resources", () =
   for (const file of ["index.html", "beta-session.js", "beta-login.html", "beta-login.js", "backend-client.js"])
     assert.ok(ASSET_PATHS.includes(file));
   assert.equal(ASSET_PATHS.includes("sw.js"), false);
+});
+
+
+test("deployment smoke tests cover live routing, private VPC readiness and AI consent", async () => {
+  const calls = [];
+  const cookie = "__Host-crc_beta_session=test-session-token";
+  const fetchMock = async (url, options = {}) => {
+    calls.push({ url, options });
+    if (url.endsWith("/")) {
+      return new Response("<html>ok</html>", {
+        status: 200,
+        headers: { "Set-Cookie": cookie + "; Path=/; Secure; HttpOnly; SameSite=Strict" },
+      });
+    }
+    if (url.endsWith("/api/v1/capabilities")) {
+      return Response.json({
+        schema_version: "1.0",
+        live_lookup_enabled: true,
+        ai_coach_enabled: true,
+        ai_external_data_requires_consent: true,
+      });
+    }
+    if (url.endsWith("/api/v1/health/ready")) {
+      return Response.json({ status: "ready_for_authenticated_requests" });
+    }
+    if (url.endsWith("/api/v1/coach/chat")) {
+      return Response.json({ error: { code: "AI_CONSENT_REQUIRED" } }, { status: 403 });
+    }
+    throw new Error("Unexpected smoke-test URL.");
+  };
+
+  const result = await verifyGatewaySmokeTests(fetchMock);
+  assert.deepEqual(result, {
+    automatic_session: true,
+    live_supercell_capability: true,
+    workers_ai_capability: true,
+    private_vpc_ready: true,
+    ai_consent_guard: true,
+  });
+  assert.equal(calls.length, 4);
+  assert.ok(calls.slice(1).every(({ options }) =>
+    options.headers.Cookie === cookie && options.cache === "no-store"));
+  assert.equal(calls[3].options.method, "POST");
+  assert.equal(JSON.parse(calls[3].options.body).consent_to_external_ai, false);
+});
+
+test("deployment smoke test fails closed when the legacy service route is unavailable", async () => {
+  const fetchMock = async (url) => {
+    if (url.endsWith("/")) {
+      return new Response("<html>ok</html>", {
+        status: 200,
+        headers: { "Set-Cookie": "__Host-crc_beta_session=test; Path=/; Secure; HttpOnly" },
+      });
+    }
+    return Response.json({ error: { code: "SERVICE_UNAVAILABLE" } }, { status: 503 });
+  };
+  await assert.rejects(verifyGatewaySmokeTests(fetchMock), /capability smoke test failed/);
 });
