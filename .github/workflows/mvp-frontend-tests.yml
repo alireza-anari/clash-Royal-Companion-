@@ -1,9 +1,9 @@
 name: MVP frontend tests
 on:
   push:
-    branches: [feat/mvp-frontend, feat/mvp-coach-offline]
+    branches: [feat/mvp-frontend, feat/mvp-coach-offline, feat/minimal-action-first-ux]
   pull_request:
-    branches: [main]
+    branches: [main, feat/mvp-coach-offline]
 permissions:
   contents: read
 jobs:

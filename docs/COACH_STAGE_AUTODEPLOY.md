@@ -64,3 +64,7 @@ The owner configured the Cloudflare token secret and both GitHub Actions variabl
 on 2026-11-21. This documentation-only commit intentionally triggers the
 `feat/mvp-coach-offline` push workflow for its first opt-in deployment.
 Production Workers and the private backend are not targets of this pipeline.
+
+## Frontend-only release isolation
+
+The frontend verification workflow also runs for the minimal UX branch and PRs targeting the coach staging branch. The coach staging deployment only uploads the sample Worker. It no longer invokes `deploy-private-beta.mjs` on staging pushes because that script intentionally sets both private beta activation flags to false. Run private beta deployments separately with explicit authorization and review of activation state. No change to the private beta deployment script or backend is made by this UI release.
