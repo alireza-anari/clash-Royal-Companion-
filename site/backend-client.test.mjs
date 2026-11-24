@@ -117,7 +117,7 @@ test('partial snapshots preserve player data without inventing empty-history cla
 
 test('AI consent and capability fail closed; structured evidence excludes identities',async()=>{
  const seen=[];
- const session={enabled:true,fetch:async(path,options)=>{seen.push({path,options});return {ok:true,json:async()=>({answer:'پاسخ تست',model:'google/gemma-4-31b-it:free',external_inference:true,replay_analyzed:false,evidence_status:'client_submitted_unverified'})};}};
+ const session={enabled:true,fetch:async(path,options)=>{seen.push({path,options});return {ok:true,json:async()=>({answer:'پاسخ تست',model:'@cf/google/gemma-4-26b-a4b-it',external_inference:true,replay_analyzed:false,evidence_status:'client_submitted_unverified'})};}};
  const f={errors:[],items:Array(8).fill({name:'PRIVATE_NAME'}),average:3.25,cycle:7,tag:'#SECRET'};
  const b={filter:'event',matched_records:3,outcomes:{wins:2,losses:1,draws:0,unknown:0},player_tag:'#SECRET'};
  const cap={ai_coach_enabled:true};
