@@ -70,7 +70,7 @@
 <button class="coach-action" type="button" data-coach-jump="coachReport" aria-controls="coachReport" aria-pressed="true"><span class="action-icon"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 20V12m5 8V8m5 12V4m5 16v-8"/></svg></span><span class="action-text"><strong>گزارش کلی</strong><small>دک و نبردها</small></span><span class="action-arrow" aria-hidden="true">‹</span></button></div>
 
 
-<div id="coachReport" class="coach-report" tabindex="-1"><div class="section-heading"><h2 id="coachReportTitle">گزارش دک و نبردها</h2></div><section data-report-group="coachMetrics" aria-label="تحلیل دک"><div class="metric-grid" id="coachMetrics" tabindex="-1"><div class="metric"><span class="muted">میانگین اکسیر</span><span class="number">—</span></div></div>
+<div id="coachReport" class="coach-report" tabindex="-1"><div class="section-heading"><h2 id="coachReportTitle">گزارش دک و نبردها</h2></div><div id="coachRunOnlinePanel" class="panel" hidden><p class="small">با زدن دکمه، داده کارت‌های دک، گزینه‌های متعلق به مجموعه و آمار محدود نبردها برای Cloudflare Workers AI ارسال می‌شود؛ نام و Player Tag ارسال نمی‌شوند.</p><button id="coachRunOnline" type="button" class="btn primary">ارسال داده و تحلیل آنلاین این گزارش</button></div><section data-report-group="coachMetrics" aria-label="تحلیل دک"><div class="metric-grid" id="coachMetrics" tabindex="-1"><div class="metric"><span class="muted">میانگین اکسیر</span><span class="number">—</span></div></div>
 <div class="section-heading"><div><h2>یافته‌های قابل توضیح</h2><p>نتیجه‌ها به‌صورت مشاهده و همراه با محدودیت تحلیل ارائه می‌شوند.</p></div><button class="btn ghost" id="refreshAnalysis">محاسبه دوباره</button></div>
 <div id="coachFindings" class="result-list"></div></section>
 <section data-report-group="coachOwnedOptions" aria-label="پیشنهاد کارت"><div class="section-heading"><div><h2>کارت‌های موجود برای بررسی</h2><p>گزینه‌های مشروط فقط بر اساس کارت‌های فایل پروفایل؛ بدون پیشنهاد تعویض قطعی</p></div></div>
@@ -99,8 +99,8 @@
   </div>
   <div id="coachChatMessages" class="coach-chat-messages" role="log" aria-live="polite" aria-relevant="additions" aria-label="پیام‌های مربی"></div>
   <div id="coachAIOptions" class="coach-ai-options" hidden>
-    <label><input type="checkbox" id="coachAIConsent"> ارسال سؤال بعدی به مربی آنلاین Gemma (از طریق OpenRouter)</label>
-    <p>با انتخاب این گزینه، متن سؤال و آمار عددی محدود دک و نبردها به OpenRouter ارسال می‌شود. مسیر درخواست با data_collection=deny تنظیم شده تا ارائه‌دهندگان جمع‌آوری‌کننده داده انتخاب نشوند؛ این به معنی پردازش محلی یا تضمین حذف فوری نیست. اطلاعات خصوصی، نام یا Player Tag را در سؤال ننویس. رضایت برای هر ارسال جداگانه است.</p>
+    <label><input type="checkbox" id="coachAIConsent"> ارسال سؤال بعدی به مربی آنلاین Gemma (Cloudflare Workers AI)</label>
+    <p>با انتخاب این گزینه، متن سؤال، اطلاعات کارت‌های دک و گزینه‌های موجود، و آمار تجمیعی نبردها برای Cloudflare Workers AI ارسال می‌شود. پردازش محلی نیست. اطلاعات خصوصی، نام یا Player Tag را در سؤال ننویس. رضایت برای هر ارسال جداگانه است.</p>
   </div>
   <p id="coachAIStatus" role="status" class="small">حالت آفلاین فعال است.</p>
   <div class="coach-chat-suggestions" aria-label="پرسش‌های پیشنهادی">

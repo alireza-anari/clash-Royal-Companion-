@@ -138,3 +138,21 @@ test('AI capability independently checks explicit backend consent flag',async()=
  assert.equal(cap.live_lookup_enabled,false);
  assert.equal(cap.ai_coach_enabled,true);
 });
+
+test('personal coach payload includes selected cards and only owned candidates, without identity',()=>{
+ const items=Array.from({length:8},(_,i)=>({id:26000000+i,name:'Card '+i,elixir:3,type:'troop'}));
+ const other={id:26000100,name:'Owned candidate',elixir:2,type:'troop'};
+ const absent={id:26000101,name:'Not owned',elixir:2,type:'troop'};
+ const facts={errors:[],items,average:3,cycle:12};
+ const profile={name:'PRIVATE_PROFILE',tag:'#PRIVATE_TAG',cards:items.concat(other).map(c=>({...c,rarity:'common',level:12,maxLevel:16}))};
+ const entries=[{attribution:'matched_tag',outcome:'win',deck:{card_ids:items.map(c=>c.id)}},{attribution:'matched_tag',outcome:'loss',deck:{card_ids:[1,2,3,4,5,6,7,8]}}];
+ const context=api.personalCoachContext(facts,profile,items.concat(other,absent),[other.id,absent.id],'profile-live',entries);
+ const p=api.coachPayload('تحلیل دک',facts,null,context,'deck');
+ assert.equal(p.action,'deck');assert.equal(p.personal.deck_cards.length,8);
+ assert.equal(p.personal.deck_cards[0].display_level,12);
+ assert.equal(p.personal.owned_candidates.length,1);
+ assert.equal(p.personal.selected_deck_results.wins,1);
+ assert.equal(p.personal.selected_deck_results.losses,0);
+ assert.equal(p.personal.style.records,2);
+ assert.ok(!JSON.stringify(p).includes('PRIVATE_'));
+});

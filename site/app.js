@@ -143,11 +143,17 @@ function clearCoachChat(){
     "سلام! من راهنمای آفلاین دک و نبردهای تو هستم. از پرسش‌های آماده شروع کن یا سؤال کوتاهی درباره دک و آمار نبردها بنویس. پاسخ‌ها از داده‌های واقعی همین صفحه محاسبه می‌شوند.",
     "قواعد قابل توضیح · بدون مدل زبانی مولد");
 }
-async function askCoachChat(question){
+function currentPersonalCoachContext(f){
+  const scope=$("coachBattleScope").value;
+  const entries=window.CRCBattleIntelligence&&player?window.CRCBattleIntelligence.summarize(battles,player.tag,scope).entries:[];
+  const candidates=window.CRCOwnedOptions&&player?window.CRCOwnedOptions.ownedOptions(deck,catalog,player.cards).candidates:[];
+  return window.CRCBackendClient.personalCoachContext(f,player,catalog,candidates.map(c=>c.id),deckSource,entries);
+}
+async function askCoachChat(question,action,explicitConsent){
   var text=String(question==null?"":question).trim().slice(0,280);
   if(!text||coachBusy)return;
   var consent=$("coachAIConsent");
-  var useAI=!!(window.CRCBetaSession&&coachAICap&&coachAICap.ai_coach_enabled===true&&consent&&consent.checked&&!$("coachAIOptions").hidden);
+  var useAI=!!(window.CRCBetaSession&&coachAICap&&coachAICap.ai_coach_enabled===true&&(explicitConsent===true||consent&&consent.checked)&&!$("coachAIOptions").hidden);
   if(consent)consent.checked=false;
   addCoachChatMessage("user",text);
   var f=calcFacts();
@@ -165,16 +171,16 @@ async function askCoachChat(question){
     : {text:"موتور راهنمای آفلاین بارگذاری نشده است.",source:"خطای بارگذاری",kind:"missing"};
   if(useAI){
     coachBusy=true;
-    var buttons=Array.from(document.querySelectorAll("#coachChatForm button,[data-coach-question],#clearCoachChat"));
+    var buttons=Array.from(document.querySelectorAll("#coachChatForm button,[data-coach-question],#clearCoachChat,#coachRunOnline"));
     buttons.forEach(b=>b.disabled=true);
     $("coachAIStatus").textContent="در حال دریافت پاسخ آنلاین…";
     try{
-      var reply=await window.CRCBackendClient.askAI(window.CRCBetaSession,text,f,evidence,true,coachAICap);
+      var reply=await window.CRCBackendClient.askAI(window.CRCBetaSession,text,f,evidence,true,coachAICap,currentPersonalCoachContext(f),action);
       addCoachChatMessage("ai",reply.answer,reply.model+" · داده ارسالی تأییدنشده؛ پاسخ مولد ممکن است خطا داشته باشد");
       $("coachAIStatus").textContent="پاسخ آنلاین دریافت شد؛ ارسال بعدی نیاز به رضایت جدید دارد.";
       return;
     }catch(e){
-      $("coachAIStatus").textContent="مربی آنلاین در دسترس نیست؛ پاسخ آفلاین ارائه شد.";
+      $("coachAIStatus").textContent=(e&&e.message?e.message:"مربی آنلاین در دسترس نیست.")+" پاسخ آفلاین ارائه شد."+(e&&e.code?" ("+e.code+")":"");
     }finally{
       coachBusy=false;
       buttons.forEach(b=>b.disabled=false);
@@ -201,6 +207,14 @@ function setupCoachChat(){
     });
   });
   $("clearCoachChat").addEventListener("click",clearCoachChat);
+  $("coachRunOnline").addEventListener("click",function(){
+    if(coachBusy||!coachAICap)return;
+    const key=document.querySelector('[data-coach-jump][aria-pressed="true"]')?.dataset.coachJump||"coachReport";
+    const action={coachMetrics:"deck",coachOwnedOptions:"suggestions",coachBattleReport:"style",coachReport:"overview"}[key]||"overview";
+    const questions={deck:"دک فعلی من و نقش هر هشت کارت را تحلیل کن.",suggestions:"بهترین تغییر آزمایشی مجاز را از کارت‌های موجود پیشنهاد بده.",style:"سبک و عملکرد بازی من را فقط با شواهد نبردها بررسی کن.",overview:"دک، عملکرد نبردها و اولویت بهبود را تحلیل کن."};
+    $("coachChatMessages").closest("details").open=true;
+    askCoachChat(questions[action],action,true);
+  });
 }
 
 function selectCoachReport(key,move){
@@ -282,6 +296,7 @@ async function refreshLiveAvailability(){
   var cap=await window.CRCBackendClient.capabilities(apiTransport());
   coachAICap=window.CRCBetaSession&&cap.ai_coach_enabled===true?cap:null;
   $("coachAIOptions").hidden=!coachAICap;
+  $("coachRunOnlinePanel").hidden=!coachAICap;
   $("coachAIConsent").checked=false;
   $("coachAIStatus").textContent=coachAICap?"مربی آنلاین در بتای خصوصی آماده است؛ حالت پیش‌فرض آفلاین.":"حالت آفلاین فعال است.";
   if(cap.live_lookup_enabled){

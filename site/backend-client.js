@@ -169,10 +169,40 @@
       full_history:false,ownership_verified:false
     };
   }
-  function coachPayload(question,facts,evidence){
+  // Only card metadata and aggregated battle evidence, never player identity.
+  function personalCoachContext(facts, profile, catalog, candidateIds, deckSource, entries){
+    const selected=facts&&Array.isArray(facts.items)&&!facts.errors?.length?facts.items:[];
+    const owned=new Map((profile?.cards||[]).filter(c=>c&&Number.isSafeInteger(c.id)).map(c=>[c.id,c]));
+    const catalogById=new Map((catalog||[]).map(c=>[c.id,c]));
+    const ids=new Set(selected.map(c=>c.id));
+    const caps={common:16,rare:14,epic:11,legendary:8,champion:6};
+    const describe=c=>{
+      const o=owned.get(c.id)||{};
+      const rarity=typeof o.rarity==="string"?o.rarity.toLowerCase():null;
+      const item={id:c.id,name:String(c.name||"").slice(0,65),elixir:Number.isInteger(c.elixir)?c.elixir:null,rarity,active_form:"unknown"};
+      if(Number.isInteger(o.level)&&caps[rarity]===o.maxLevel&&o.level>=1&&o.level<=o.maxLevel)item.display_level=o.level+16-o.maxLevel;
+      if(Number.isInteger(o.evolutionLevel)&&o.evolutionLevel>=0&&o.evolutionLevel<=3)item.unlocked_forms=o.evolutionLevel;
+      if(Number.isInteger(o.starLevel)&&o.starLevel>=0&&o.starLevel<=3)item.star_level=o.starLevel;
+      return item;
+    };
+    const candidates=[...new Set(candidateIds||[])].filter(id=>owned.has(id)&&!ids.has(id)&&catalogById.has(id)&&catalogById.get(id).type!=="support").slice(0,6).map(id=>describe(catalogById.get(id)));
+    const counts={wins:0,losses:0,draws:0,unknown:0};
+    const key=selected.length===8?[...ids].sort((a,b)=>a-b).join(":"):null;
+    const matched=(entries||[]).filter(e=>e.attribution==="matched_tag").slice(0,200);
+    const groups=new Map(),leak=[];
+    for(const e of matched){
+      const id=Array.isArray(e.deck?.card_ids)?e.deck.card_ids.slice().sort((a,b)=>a-b).join(":"):null;
+      if(id)groups.set(id,(groups.get(id)||0)+1);
+      if(Number.isFinite(e.elixir_leaked)&&e.elixir_leaked>=0)leak.push(e.elixir_leaked);
+      if(key&&id===key)counts[{win:"wins",loss:"losses",draw:"draws",unknown:"unknown"}[e.outcome]||"unknown"]++;
+    }
+    return {deck_source:deckSource,deck_cards:selected.map(describe),owned_candidates:candidates,selected_deck_results:counts,style:{records:matched.length,distinct_decks:groups.size,most_used_deck_matches:Math.max(0,...groups.values()),elixir_leaked_sample:leak.length,elixir_leaked_average:leak.length?Math.round(leak.reduce((s,n)=>s+n,0)/leak.length*100)/100:null}};
+  }
+  function coachPayload(question,facts,evidence,personal,action){
     const q=String(question||'').trim();
     if(q.length<3||q.length>280)throw new BackendError('INVALID_INPUT','سؤال باید بین ۳ و ۲۸۰ نویسه باشد.');
     const payload={consent_to_external_ai:true,question:q};
+    if(['deck','suggestions','style','overview'].includes(action))payload.action=action;
     if(facts&&Array.isArray(facts.errors)&&!facts.errors.length&&Array.isArray(facts.items)&&facts.items.length===8){
       payload.deck={selected_card_count:8};
       if(Number.isFinite(facts.average)&&facts.average>=0&&facts.average<=10)payload.deck.average_elixir=facts.average;
@@ -184,17 +214,30 @@
       if(Number.isInteger(n)&&n>0&&n<=200&&counts.every(x=>Number.isInteger(x)&&x>=0&&x<=200)&&counts.reduce((a,b)=>a+b,0)<=n)
         payload.battles={filter:evidence.filter,matched_records:n,wins:c.wins,losses:c.losses,draws:c.draws,unknown:c.unknown};
     }
+    if(personal&&typeof personal==="object"){
+      const clean={};
+      if(["profile-live","profile-import","profile-edited","manual","sample","battle-event-import","battle-import"].includes(personal.deck_source))clean.deck_source=personal.deck_source;
+      const card=c=>Object.fromEntries(["id","name","elixir","rarity","active_form","unlocked_forms","available_forms","display_level","star_level"].filter(k=>Object.hasOwn(c,k)).map(k=>[k,c[k]]));
+      for(const k of ["deck_cards","owned_candidates"])if(Array.isArray(personal[k]))clean[k]=personal[k].slice(0,8).filter(c=>c&&Number.isSafeInteger(c.id)&&typeof c.name==="string").map(card);
+      if(personal.selected_deck_results)clean.selected_deck_results=Object.fromEntries(["wins","losses","draws","unknown"].map(k=>[k,personal.selected_deck_results[k]]));
+      if(personal.style)clean.style=Object.fromEntries(["records","distinct_decks","most_used_deck_matches","elixir_leaked_sample","elixir_leaked_average"].map(k=>[k,personal.style[k]]));
+      payload.personal=clean;
+    }
+    if(new TextEncoder().encode(JSON.stringify(payload)).length>4096)throw new BackendError("INVALID_INPUT","حجم داده تحلیل بیش از حد مجاز است.",422);
     return payload;
   }
-  async function askAI(session,question,facts,evidence,consent,cap){
+  async function askAI(session,question,facts,evidence,consent,cap,personal,action){
     if(consent!==true)throw new BackendError('AI_CONSENT_REQUIRED','رضایت ارسال داده لازم است.',403);
     if(!session||session.enabled!==true||typeof session.fetch!=='function'||!cap||cap.ai_coach_enabled!==true)
       throw new BackendError('AI_DISABLED','مربی آنلاین فعال نیست.',503);
-    const payload=coachPayload(question,facts,evidence);
+    const payload=coachPayload(question,facts,evidence,personal,action);
     let response;
     try{response=await session.fetch('/api/v1/coach/chat',{method:'POST',body:JSON.stringify(payload)});}
     catch(e){throw new BackendError('AI_UNAVAILABLE','ارتباط با مربی آنلاین برقرار نشد.',503);}
-    if(!response||!response.ok)throw new BackendError('AI_UNAVAILABLE','مربی آنلاین موقتاً در دسترس نیست.',response&&response.status);
+    if(!response||!response.ok){
+      let code="AI_UNAVAILABLE";try{const d=await response.json();if(/^[A-Z0-9_]{1,64}$/.test(d?.error?.code||""))code=d.error.code;}catch{}
+      throw new BackendError(code,response?.status===429?"سهمیه موقت مربی پر شده است. کمی بعد دوباره امتحان کن.":"مربی آنلاین موقتاً در دسترس نیست.",response?.status);
+    }
     let data;
     try{data=await response.json();}catch(e){throw new BackendError('BAD_RESPONSE','پاسخ مربی معتبر نیست.');}
     const allowed=['@cf/google/gemma-4-26b-a4b-it','google/gemma-4-31b-it:free','google/gemma-4-26b-a4b-it:free'];
@@ -204,5 +247,5 @@
       throw new BackendError('BAD_RESPONSE','پاسخ مربی معتبر نیست.');
     return {answer:data.answer,model:data.model};
   }
-  root.CRCBackendClient=Object.freeze({VERSION,BackendError,normalizeTag,route,capabilities,loadPlayer,normalizedToProfile,normalizedToBattles,coachPayload,askAI});
+  root.CRCBackendClient=Object.freeze({VERSION,BackendError,normalizeTag,route,capabilities,loadPlayer,normalizedToProfile,normalizedToBattles,personalCoachContext,coachPayload,askAI});
 })(typeof window!=='undefined'?window:globalThis);
