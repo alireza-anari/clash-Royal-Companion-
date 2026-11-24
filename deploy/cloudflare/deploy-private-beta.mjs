@@ -62,7 +62,7 @@ export function buildWorkerMetadata(assetJwt) {
     keep_bindings: ["vpc_service"],
     assets: {
       jwt: assetJwt,
-      config: { html_handling: "none", not_found_handling: "404-page" },
+      config: { html_handling: "none", not_found_handling: "404-page", run_worker_first: ["/*"] },
     },
     annotations: {
       "workers/message": "Private beta edge source deployed disabled; no VPC origin or credentials attached",
