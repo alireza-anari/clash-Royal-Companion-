@@ -3,7 +3,7 @@
 "use strict";
 var $ = function(id){return document.getElementById(id);};
 var deck = [], activeSlot=0, deckSource="sample", filter="all", catalog=[], predefined={}, guides={}, player=null, battles=null, modalCard=null, profileSource="file", battlesSource="file", liveFetchedAt=null;
-var pageNames={home:"داشبورد / نمای کلی",deck:"Deck Studio / دک‌ساز",coach:"Deck Intelligence / مربی",cards:"بانک کارت‌ها",player:"پروفایل بازیکن",battles:"تاریخچه نبردها",roadmap:"نقشه راه محصول"};
+var pageNames={home:"داشبورد",deck:"دک من",coach:"مربی",cards:"بانک کارت‌ها",player:"پروفایل بازیکن",battles:"تاریخچه نبردها",roadmap:"نقشه راه محصول"};
 var PAGE_IDS=Object.keys(pageNames);
 var toastTimer=null;
 function safe(value){return String(value==null?"":value).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});}
@@ -13,7 +13,7 @@ function validIcon(url){try{var u=new URL(url);return u.protocol==="https:"&&(u.
 function art(card){if(card&&validIcon(card.icon)){return '<img class="card-img" loading="lazy" alt="" src="'+safe(card.icon)+'">';}return '<span class="emoji-img" aria-hidden="true">'+safe(card&&card.emoji||"🃏")+'</span>';}
 function notify(text){var el=$("toast");el.textContent=text;el.classList.add("show");if(toastTimer)clearTimeout(toastTimer);toastTimer=setTimeout(function(){el.classList.remove("show");},3400);}
 function fmt(n){return typeof n==="number"&&Number.isFinite(n)?new Intl.NumberFormat("fa-IR",{maximumFractionDigits:3}).format(n):"نامشخص";}
-function view(name){var p=PAGE_IDS.includes(name)?name:"home";document.querySelectorAll(".page").forEach(function(el){el.classList.toggle("active",el.id==="page-"+p);});document.querySelectorAll("[data-nav]").forEach(function(el){el.classList.toggle("active",el.getAttribute("data-nav")===p);});$("pageTitle").textContent=pageNames[p];if(p==="coach")renderCoach();if(p==="cards")renderCatalog();if(p==="deck")renderDeck();if(p==="battles")renderBattles();window.scrollTo({top:0,behavior:"auto"});}
+function view(name){var p=PAGE_IDS.includes(name)?name:"home";document.querySelectorAll(".page").forEach(function(el){el.classList.toggle("active",el.id==="page-"+p);});document.querySelectorAll("[data-nav]").forEach(function(el){var current=el.getAttribute("data-nav")===p;el.classList.toggle("active",current);if(current)el.setAttribute("aria-current","page");else el.removeAttribute("aria-current");});$("pageTitle").textContent=pageNames[p];if(p==="coach")renderCoach();if(p==="cards")renderCatalog();if(p==="deck")renderDeck();if(p==="battles")renderBattles();window.scrollTo({top:0,behavior:"auto"});}
 function toPage(p){location.hash=p;view(p);}
 function readDeck(){try{var raw=JSON.parse(localStorage.getItem("crc.deck")||"null");if(Array.isArray(raw)&&raw.length===8&&raw.every(function(id){return Number.isSafeInteger(id);})&&new Set(raw).size===8){return raw;}}catch(e){}return null;}
 function saveDeck(){try{localStorage.setItem("crc.deck",JSON.stringify(deck));}catch(e){}}
@@ -21,7 +21,7 @@ function setDeck(ids,source,quiet){deck=ids.slice(0,8);while(deck.length<8)deck.
 function deckErrors(){var errors=[];if(deck.length!==8||deck.some(function(x){return x==null;}))errors.push("دک باید دقیقاً ۸ کارت داشته باشد.");var used=deck.filter(function(x){return x!=null;});if(new Set(used).size!==used.length)errors.push("کارت تکراری در دک وجود دارد.");if(used.some(function(id){var c=getCard(id);return !c||c.type==="support";}))errors.push("کارت نامعتبر یا Tower Troop در جایگاه اصلی قرار گرفته است.");return errors;}
 function selectSlot(index){activeSlot=index;renderDeck();notify("جایگاه "+(index+1)+" انتخاب شد؛ کارت جدید را از فهرست لمس کن.");}
 function selectCard(id){var c=getCard(id);if(!c||c.type==="support"){notify("این کارت در جایگاه اصلی دک قابل انتخاب نیست.");return;}if(deck.some(function(x,i){return x===id&&i!==activeSlot;})){notify("این کارت قبلاً در دک وجود دارد.");return;}deck[activeSlot]=id;var next=deck.findIndex(function(x){return x==null;});if(next!==-1)activeSlot=next;else activeSlot=(activeSlot+1)%8;deckSource=deckSource==="profile-import"?"profile-edited":"manual";saveDeck();renderAll();notify(safe(c.name)+" به دک اضافه شد.");}
-function slotHtml(card,index){return '<button type="button" class="deck-slot '+(index===activeSlot?"active ":"")+(card?"":"empty")+'" data-slot="'+index+'" aria-label="جایگاه '+(index+1)+(card?"، "+safe(card.name):"، خالی")+'"><span class="slot-number">'+(index+1)+'</span>'+(card?('<span class="elixir-bubble">'+safe(card.elixir==null?"?":card.elixir)+'</span>'+art(card)+'<span class="card-name">'+safe(card.name)+'</span>'):'<span aria-hidden="true" style="font-size:29px">＋</span><span class="card-name">انتخاب کارت</span>')+'</button>';}
+function slotHtml(card,index,readOnly){return '<button type="button" class="deck-slot '+(!readOnly&&index===activeSlot?"active ":"")+(card?"":"empty")+'" data-slot="'+index+'" aria-label="جایگاه '+(index+1)+(card?"، "+safe(card.name):"، خالی")+'"><span class="slot-number">'+(index+1)+'</span>'+(card?('<span class="elixir-bubble">'+safe(card.elixir==null?"?":card.elixir)+'</span>'+art(card)+'<span class="card-name">'+safe(card.name)+'</span>'):'<span aria-hidden="true" style="font-size:29px">＋</span><span class="card-name">انتخاب کارت</span>')+'</button>';}
 function calcFacts(){
 var errors=deckErrors();if(errors.length)return {errors:errors};
 var items=deck.map(getCard);
@@ -37,11 +37,12 @@ var defensive=items.filter(function(c){return c.type==="building";}).length;
 return {errors:[],items:items,average:total==null?null:total/8,cycle:four,expensive:known?costs.filter(function(n){return n>=5;}).length:null,cheap:known?costs.filter(function(n){return n<=2;}).length:null,missing:missing,allKnownRoles:allKnownRoles,spells:spells,defensive:defensive,roleCount:countRole};
 }
 function renderDeck(){
+ $("deckSlotHint").textContent="جایگاه انتخاب‌شده: "+fmt(activeSlot+1);
 var wrap=$("deckSlots");if(!wrap)return;
 wrap.innerHTML=deck.map(function(id,i){return slotHtml(getCard(id),i);}).join("");
 wrap.querySelectorAll("[data-slot]").forEach(function(b){b.addEventListener("click",function(){selectSlot(Number(b.dataset.slot));});});
 $("deckSource").textContent=deckSource==="profile-import"?"دک واردشده از JSON":deckSource==="profile-edited"?"دک ویرایش‌شده پروفایل":deckSource==="profile-live"?"دک دریافت‌شده از Backend":deckSource==="battle-event-import"?"دک رویدادی (فایل Battle Log)":deckSource==="battle-import"?"دک نبرد (فایل Battle Log)":deckSource==="manual"?"انتخاب دستی":"داده نمونه";
-var errors=deckErrors();$("deckAlert").textContent=errors.length?errors.join(" "):"۸ جایگاه معتبر انتخاب شده‌اند؛ برای دیدن گزارش روی «تحلیل این دک» بزن.";
+var errors=deckErrors();$("deckAlert").textContent=errors.length?errors.join(" "):"دک کامل است";
 $("deckAlert").className="message"+(errors.length?" error":"");
 renderDeckLibrary();renderHome();
 }
@@ -55,7 +56,7 @@ $("catalogCount").textContent=list.length+" کارت";
 $("deckLibrary").innerHTML=list.map(function(c){return '<button class="card-option '+(deck.includes(c.id)?"in-deck":"")+'" data-card="'+c.id+'" type="button">'+(validIcon(c.icon)?'<img loading="lazy" alt="" src="'+safe(c.icon)+'">':'<span class="fallback-icon">'+safe(c.emoji||"🃏")+'</span>')+'<span><strong>'+safe(c.name)+'</strong><small>'+(c.elixir==null?"اکسیر نامشخص":safe(c.elixir)+" اکسیر")+'</small></span></button>';}).join("")||'<p class="small">کارتی پیدا نشد.</p>';
 $("deckLibrary").querySelectorAll("[data-card]").forEach(function(b){b.addEventListener("click",function(){selectCard(Number(b.dataset.card));});});
 }
-function renderHome(){var w=$("homeDeck");if(!w)return;w.innerHTML=deck.map(function(id,i){return slotHtml(getCard(id),i);}).join("");w.querySelectorAll("[data-slot]").forEach(function(b){b.addEventListener("click",function(){activeSlot=Number(b.dataset.slot);toPage("deck");});});var f=calcFacts();$("homeDeckElixir").textContent=f.average==null?"اکسیر نامشخص":fmt(f.average)+" اکسیر";$("homeDeckSource").textContent=deckSource==="sample"?"دک نمونه":deckSource==="profile-import"?"داده واردشده":"دک ویرایش‌شده";}
+function renderHome(){var w=$("homeDeck");if(!w)return;w.innerHTML=deck.map(function(id,i){return slotHtml(getCard(id),i,true);}).join("");w.querySelectorAll("[data-slot]").forEach(function(b){b.addEventListener("click",function(){activeSlot=Number(b.dataset.slot);toPage("deck");});});var f=calcFacts();$("homeDeckElixir").textContent=f.average==null?"اکسیر نامشخص":fmt(f.average)+" اکسیر";$("homeDeckSource").textContent=deckSource==="sample"?"دک نمونه":deckSource==="profile-import"?"داده واردشده":deckSource==="profile-live"?"دک بازیکن":"دک ویرایش‌شده";}
 function roleFinding(title,text,evidence,quality){return {title:title,text:text,evidence:evidence||[],quality:quality||"اطلاعات اولیه"};}
 function findings(f){
 if(f.errors.length)return [];
@@ -202,6 +203,14 @@ function setupCoachChat(){
   $("clearCoachChat").addEventListener("click",clearCoachChat);
 }
 
+function selectCoachReport(key,move){
+ var titles={coachMetrics:"تحلیل دک",coachOwnedOptions:"پیشنهاد کارت",coachBattleReport:"عملکرد نبردها",coachReport:"گزارش دک و نبردها"};
+ if(!Object.prototype.hasOwnProperty.call(titles,key))return;
+ $("coachReportTitle").textContent=titles[key];
+ document.querySelectorAll("[data-report-group]").forEach(function(section){section.hidden=key!=="coachReport"&&section.dataset.reportGroup!==key;});
+ document.querySelectorAll("[data-coach-jump]").forEach(function(button){button.setAttribute("aria-pressed",String(button.dataset.coachJump===key));});
+ if(move){var target=$("coachReport");target.focus({preventScroll:true});target.scrollIntoView({block:"start",behavior:"auto"});}
+}
 function renderCoach(){
 renderOfflineCoach();
 var f=calcFacts();
@@ -277,10 +286,10 @@ async function refreshLiveAvailability(){
   $("coachAIStatus").textContent=coachAICap?"مربی آنلاین در بتای خصوصی آماده است؛ حالت پیش‌فرض آفلاین.":"حالت آفلاین فعال است.";
   if(cap.live_lookup_enabled){
     betaLoginVisible(false);
-    btn.disabled=false;btn.textContent="دریافت اطلاعات با Player Tag";
+    btn.disabled=false;btn.textContent="دریافت اطلاعات";
     status.textContent=window.CRCBetaSession?"بتای خصوصی آماده است؛ ورود با کد دعوت انجام شده و Player Tag اثبات مالکیت نیست.":"Backend آمادگی دریافت داده عمومی را اعلام کرده است. مالکیت حساب تأیید نمی‌شود.";
   }else{
-    btn.disabled=true;btn.textContent="دریافت مستقیم از Supercell (غیرفعال)";
+    btn.disabled=true;btn.textContent="اتصال زنده در دسترس نیست";
     var needsLogin=!!(window.CRCBetaSession&&["INVITE_SESSION_REQUIRED","WORKER_ASSERTION_MISSING","WORKER_ASSERTION_INVALID","HTTP_401","HTTP_403"].includes(cap.reason));
     betaLoginVisible(needsLogin);
     var rateLimited=!!(window.CRCBetaSession&&["MEMBER_QUOTA_EXCEEDED","GLOBAL_QUOTA_EXCEEDED","HTTP_429"].includes(cap.reason));
@@ -317,6 +326,9 @@ async function loadProfileLive(){
 }
 function renderProfile(){
 var wrap=$("profileSummary");if(!player)return;
+ $("homePlayerSummary").textContent=(player.name||"بازیکن")+" · "+(typeof player.trophies==="number"?fmt(player.trophies)+" جام":"جام نامشخص");
+ $("homePlayerAction").textContent="پروفایل بازیکن ←";
+ $("dataStatus").textContent=profileSource==="live"?"داده دریافت‌شده":"داده واردشده";
 var owned=Array.isArray(player.cards)?player.cards.length:0;var support=Array.isArray(player.supportCards)?player.supportCards.length:0;
 var name=safe(player.name||"بدون نام"),tag=safe(player.tag||""),trophies=safe(player.trophies==null?"نامشخص":player.trophies),arena=safe(player.arena&&player.arena.name||"نامشخص");
 wrap.className="panel";wrap.innerHTML='<div class="panel-top"><div><div class="eyebrow">'+(profileSource==="live"?"LIVE PROFILE · SERVER-SIDE SUPERCELL":"IMPORTED PROFILE · LOCAL ONLY")+'</div><h2>'+name+'</h2><p dir="ltr">'+tag+'</p></div><span class="chip gold">مالکیت احراز نشده</span></div><div class="stat-inline"><div class="stat"><b>'+trophies+'</b><span>Trophies</span></div><div class="stat"><b>'+owned+'</b><span>کارت اصلی در فایل</span></div><div class="stat"><b>'+support+'</b><span>کارت پشتیبان</span></div><div class="stat"><b>'+arena+'</b><span>Arena</span></div></div><div class="message">'+safe(profileSource==="live"?"پاسخ از Backend با کلید سرور دریافت شده است؛ مالکیت حساب تأیید نشده و زمان دریافت: "+(liveFetchedAt||"نامشخص"):"این اطلاعات فقط از فایل واردشده خوانده شده‌اند. تازگی داده و مالکیت حساب مستقل از آن تأیید نشده است.")+'</div>'+(Array.isArray(player.currentDeck)&&player.currentDeck.length===8?'<button type="button" id="useProfileDeck" class="btn primary" style="margin-top:15px">بازکردن دک پروفایل در دک‌ساز ←</button>':"");
@@ -400,12 +412,13 @@ function renderBattles(){
 }
 function renderAll(){renderDeck();renderCoach();renderCatalog();}
 function setupEvents(){
+ document.querySelectorAll("[data-coach-jump]").forEach(function(button){button.addEventListener("click",function(){selectCoachReport(button.dataset.coachJump,true);});});
 setupCoachChat();
 window.addEventListener("hashchange",function(){view(location.hash.slice(1));});
 $("loadHeavy").addEventListener("click",function(){setDeck(predefined.heavy,"sample");});
 $("loadHog").addEventListener("click",function(){setDeck(predefined.hog,"sample");});
 $("clearDeck").addEventListener("click",function(){setDeck([null,null,null,null,null,null,null,null],"manual");});
-$("analyzeDeck").addEventListener("click",function(){var e=deckErrors();if(e.length)notify(e.join(" "));else toPage("coach");});
+$("analyzeDeck").addEventListener("click",function(){var e=deckErrors();if(e.length)notify(e.join(" "));else{toPage("coach");selectCoachReport("coachMetrics",false);}});
 $("refreshAnalysis").addEventListener("click",renderCoach);
 $("copyDeck").addEventListener("click",async function(){var value=deck.filter(Boolean).join(",");if(!value){notify("دکی برای کپی وجود ندارد.");return;}try{await navigator.clipboard.writeText(value);notify("شناسه کارت‌ها کپی شد.");}catch(e){notify("مرورگر اجازه دسترسی به Clipboard را نداد.");}});
 $("deckSearch").addEventListener("input",renderDeckLibrary);$("deckFilters").querySelectorAll("[data-filter]").forEach(function(btn){btn.addEventListener("click",function(){filter=btn.dataset.filter;$("deckFilters").querySelectorAll(".filter").forEach(function(el){el.classList.toggle("active",el===btn);});renderDeckLibrary();});});
@@ -414,6 +427,8 @@ $("closeModal").addEventListener("click",hideModal);$("cardModal").addEventListe
 window.addEventListener("keydown",function(e){if(e.key==="Escape")hideModal();});
 $("modalToDeck").addEventListener("click",function(){var id=modalCard&&modalCard.id;hideModal();if(id){selectCard(id);toPage("deck");}});
 $("loadLivePlayer").addEventListener("click",loadProfileLive);
+ document.querySelectorAll('a[href="#coach"].btn.primary').forEach(function(link){link.addEventListener("click",function(e){e.preventDefault();toPage("coach");selectCoachReport("coachMetrics",false);});});
+$("playerTag").addEventListener("keydown",function(e){if(e.key==="Enter"){e.preventDefault();if(!$("loadLivePlayer").disabled)loadProfileLive();else $("tagStatus").textContent=tagFormat(this.value)?"تگ معتبر است؛ اتصال زنده در دسترس نیست.":"تگ بازیکن را بررسی کن.";}});
 $("checkTag").addEventListener("click",function(){var t=tagFormat($("playerTag").value);$("tagStatus").textContent=t?"قالب تگ معتبر است: "+t+(window.CRCBetaSession?" — دریافت آنلاین به نشست بتای خصوصی وابسته است.":" — اتصال زنده هنوز فعال نیست."):"قالب Player Tag معتبر نیست؛ تگ شامل حروف و عدد و در صورت نیاز # است.";});
 $("profileFile").addEventListener("change",function(e){if(e.target.files[0])importProfile(e.target.files[0]);});
 $("battlesFile").addEventListener("change",function(e){if(e.target.files[0])importBattles(e.target.files[0]);});
