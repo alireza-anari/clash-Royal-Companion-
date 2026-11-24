@@ -79,6 +79,70 @@ export function buildWorkerMetadata(assetJwt) {
   };
 }
 
+export async function verifyGatewaySmokeTests(fetchImpl = fetch) {
+  const root = await fetchImpl(`https://${PRIVATE_BETA_HOST}/`, {
+    redirect: "manual",
+    cache: "no-store",
+  });
+  const setCookie = root.headers.get("Set-Cookie") || "";
+  if (root.status !== 200 || !setCookie.startsWith("__Host-crc_beta_session="))
+    throw new Error("Private beta root did not issue its automatic session.");
+
+  const sessionCookie = setCookie.split(";", 1)[0];
+  const headers = { Accept: "application/json", Cookie: sessionCookie };
+  const capabilitiesResponse = await fetchImpl(
+    `https://${PRIVATE_BETA_HOST}/api/v1/capabilities`,
+    { headers, redirect: "manual", cache: "no-store" },
+  );
+  const capabilities = await capabilitiesResponse.json().catch(() => null);
+  if (capabilitiesResponse.status !== 200 ||
+      capabilities?.schema_version !== "1.0" ||
+      capabilities?.live_lookup_enabled !== true ||
+      capabilities?.ai_coach_enabled !== true ||
+      capabilities?.ai_external_data_requires_consent !== true) {
+    throw new Error("Live Supercell or consent-gated AI capability smoke test failed.");
+  }
+
+  const readinessResponse = await fetchImpl(
+    `https://${PRIVATE_BETA_HOST}/api/v1/health/ready`,
+    { headers, redirect: "manual", cache: "no-store" },
+  );
+  const readiness = await readinessResponse.json().catch(() => null);
+  if (readinessResponse.status !== 200 ||
+      readiness?.status !== "ready_for_authenticated_requests") {
+    throw new Error("Private VPC backend readiness smoke test failed.");
+  }
+
+  const consentResponse = await fetchImpl(
+    `https://${PRIVATE_BETA_HOST}/api/v1/coach/chat`,
+    {
+      method: "POST",
+      headers: {
+        ...headers,
+        Origin: `https://${PRIVATE_BETA_HOST}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        question: "deployment smoke test",
+        consent_to_external_ai: false,
+      }),
+      redirect: "manual",
+      cache: "no-store",
+    },
+  );
+  const consent = await consentResponse.json().catch(() => null);
+  if (consentResponse.status !== 403 || consent?.error?.code !== "AI_CONSENT_REQUIRED")
+    throw new Error("External-AI consent guard smoke test failed.");
+
+  return {
+    automatic_session: true,
+    live_supercell_capability: true,
+    workers_ai_capability: true,
+    private_vpc_ready: true,
+    ai_consent_guard: true,
+  };
+}
+
 async function cloudflareRequest(url, token, options = {}) {
   const response = await fetch(url, {
     ...options,
@@ -181,11 +245,7 @@ export async function runPrivateBetaDeployment(env = process.env) {
     throw new Error("Deployed private beta Worker bindings failed the active-service check.");
   }
 
-  const response = await fetch(`https://${PRIVATE_BETA_HOST}/`, { redirect: "manual" });
-  const cookie = response.headers.get("Set-Cookie") || "";
-  if (response.status !== 200 || !cookie.startsWith("__Host-crc_beta_session=")) {
-    throw new Error("Private beta Worker did not issue its expected automatic HttpOnly session.");
-  }
+  const smoke = await verifyGatewaySmokeTests(fetch);
 
   const legacySubdomain = await cloudflareRequest(
     `${API_ROOT(account)}/workers/scripts/${LEGACY_LIVE_WORKER_NAME}/subdomain`,
@@ -203,9 +263,9 @@ export async function runPrivateBetaDeployment(env = process.env) {
     deployed_enabled: true,
     assets: entries.length,
     bindings: names,
-    automatic_session: true,
+    ...smoke,
     legacy_worker_private: true,
-    response_status: response.status,
+    response_status: 200,
   };
 }
 
