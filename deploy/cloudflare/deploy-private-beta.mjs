@@ -6,6 +6,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 export const SCRIPT_NAME = "crc-private-beta-gateway";
 export const PRIVATE_BETA_HOST = "crc-private-beta-gateway.alirezaanari117.workers.dev";
 export const PRIVATE_API_SERVICE_ID = "01a202d5-1889-72d3-9a12-4a2838612589";
+export const LEGACY_LIVE_WORKER_NAME = "crc-mvp-live-test-20261123";
 export const ASSET_PATHS = [
   "index.html",
   "styles.css",
@@ -45,14 +46,22 @@ export function buildAssetManifest(entries) {
 export function buildWorkerMetadata(assetJwt) {
   if (typeof assetJwt !== "string" || assetJwt.length < 16)
     throw new Error("Cloudflare asset completion token is missing.");
+  const inherited = [
+    "BETA_ENABLED",
+    "BETA_HOSTNAME",
+    "BETA_AUTH_ISSUER",
+    "BETA_AUTH_AUDIENCE",
+    "BETA_ALLOW_WORKERS_DEV",
+    "BETA_AI_CHAT_ENABLED",
+    "BETA_SESSION_HMAC_HEX",
+    "BETA_ASSERTION_HMAC_HEX",
+    "BETA_INVITE_CODES_JSON",
+    "PRIVATE_API",
+  ];
   const bindings = [
     { name: "ASSETS", type: "assets" },
-    { name: "BETA_ENABLED", type: "plain_text", text: "false" },
-    { name: "BETA_HOSTNAME", type: "plain_text", text: PRIVATE_BETA_HOST },
-    { name: "BETA_AUTH_ISSUER", type: "plain_text", text: `https://${PRIVATE_BETA_HOST}` },
-    { name: "BETA_AUTH_AUDIENCE", type: "plain_text", text: "crc-private-beta-api" },
-    { name: "BETA_ALLOW_WORKERS_DEV", type: "plain_text", text: "true" },
-    { name: "BETA_AI_CHAT_ENABLED", type: "plain_text", text: "false" },
+    ...inherited.map((name) => ({ name, type: "inherit" })),
+    { name: "LEGACY_LIVE", type: "service", service: LEGACY_LIVE_WORKER_NAME },
   ];
   return {
     main_module: "worker.js",
@@ -65,7 +74,7 @@ export function buildWorkerMetadata(assetJwt) {
       config: { html_handling: "none", not_found_handling: "404-page" },
     },
     annotations: {
-      "workers/message": "Private beta edge source deployed disabled; no VPC origin or credentials attached",
+      "workers/message": "Private beta gateway update; preserve existing secrets and VPC origin, route live Supercell and Workers AI through isolated service binding",
     },
   };
 }
@@ -153,8 +162,8 @@ export async function runPrivateBetaDeployment(env = process.env) {
     return [`/${name}`, bytes];
   }));
   const workerSource = await readFile(path.join(REPO_ROOT, "deploy/cloudflare/beta-edge-worker.mjs"), "utf8");
-  if (!workerSource.includes('env?.BETA_ENABLED!=="true"'))
-    throw new Error("Private beta Worker is missing its default-off activation guard.");
+  if (!workerSource.includes('env?.BETA_ENABLED!=="true"') || !workerSource.includes("env.LEGACY_LIVE"))
+    throw new Error("Private beta Worker is missing its activation guard or legacy live service route.");
 
   const assetJwt = await uploadAssets(account, token, entries);
   await deploy(account, token, workerSource, assetJwt);
@@ -166,24 +175,37 @@ export async function runPrivateBetaDeployment(env = process.env) {
   const names = bindings.map((binding) => binding.name);
   if (!names.includes("ASSETS") ||
       bindings.find((binding) => binding.name === "PRIVATE_API")?.service_id !== PRIVATE_API_SERVICE_ID ||
-      bindings.find((binding) => binding.name === "BETA_ENABLED")?.text !== "false") {
-    throw new Error("Deployed private beta Worker bindings failed the disabled-state check.");
+      bindings.find((binding) => binding.name === "LEGACY_LIVE")?.service !== LEGACY_LIVE_WORKER_NAME ||
+      bindings.find((binding) => binding.name === "BETA_ENABLED")?.text !== "true" ||
+      bindings.find((binding) => binding.name === "BETA_AI_CHAT_ENABLED")?.text !== "true") {
+    throw new Error("Deployed private beta Worker bindings failed the active-service check.");
   }
 
-  const response = await fetch(`https://${PRIVATE_BETA_HOST}/api/v1/capabilities`, { redirect: "manual" });
-  const body = await response.json().catch(() => null);
-  if (response.status !== 503 || body?.error?.code !== "BETA_NOT_CONFIGURED") {
-    throw new Error("Private beta Worker did not return the expected fail-closed response.");
+  const response = await fetch(`https://${PRIVATE_BETA_HOST}/`, { redirect: "manual" });
+  const cookie = response.headers.get("Set-Cookie") || "";
+  if (response.status !== 200 || !cookie.startsWith("__Host-crc_beta_session=")) {
+    throw new Error("Private beta Worker did not issue its expected automatic HttpOnly session.");
+  }
+
+  const legacySubdomain = await cloudflareRequest(
+    `${API_ROOT(account)}/workers/scripts/${LEGACY_LIVE_WORKER_NAME}/subdomain`,
+    token,
+    { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ enabled: false, previews_enabled: false }) },
+  );
+  if (legacySubdomain?.enabled !== false) {
+    throw new Error("Legacy live Worker public subdomain could not be disabled.");
   }
 
   return {
     script: SCRIPT_NAME,
     host: PRIVATE_BETA_HOST,
-    deployed_disabled: true,
+    deployed_enabled: true,
     assets: entries.length,
     bindings: names,
+    automatic_session: true,
+    legacy_worker_private: true,
     response_status: response.status,
-    response_code: body.error.code,
   };
 }
 

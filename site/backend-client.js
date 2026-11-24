@@ -197,10 +197,10 @@
     if(!response||!response.ok)throw new BackendError('AI_UNAVAILABLE','مربی آنلاین موقتاً در دسترس نیست.',response&&response.status);
     let data;
     try{data=await response.json();}catch(e){throw new BackendError('BAD_RESPONSE','پاسخ مربی معتبر نیست.');}
-    const allowed=['google/gemma-4-31b-it:free','google/gemma-4-26b-a4b-it:free'];
+    const allowed=['@cf/google/gemma-4-26b-a4b-it','google/gemma-4-31b-it:free','google/gemma-4-26b-a4b-it:free'];
     if(!data||data.external_inference!==true||data.replay_analyzed!==false||
        data.evidence_status!=='client_submitted_unverified'||!allowed.includes(data.model)||
-       typeof data.answer!=='string'||!data.answer.trim()||data.answer.length>2200)
+       typeof data.answer!=='string'||!data.answer.trim()||data.answer.length>2900)
       throw new BackendError('BAD_RESPONSE','پاسخ مربی معتبر نیست.');
     return {answer:data.answer,model:data.model};
   }

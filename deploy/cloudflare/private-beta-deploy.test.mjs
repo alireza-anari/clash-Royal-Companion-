@@ -4,6 +4,7 @@ import {
   ASSET_PATHS,
   PRIVATE_BETA_HOST,
   PRIVATE_API_SERVICE_ID,
+  LEGACY_LIVE_WORKER_NAME,
   SCRIPT_NAME,
   buildAssetManifest,
   buildWorkerMetadata,
@@ -30,19 +31,20 @@ test("asset manifest is deterministic and contains only bounded paths", () => {
   assert.throws(() => buildAssetManifest([["/../secret", Buffer.from("x")]]));
 });
 
-test("private beta upload always keeps both activation switches off", () => {
+test("private beta deployment preserves secrets and attaches isolated live Worker", () => {
   const metadata = buildWorkerMetadata("a-valid-completion-token");
   const bindings = Object.fromEntries(metadata.bindings.map((binding) => [binding.name, binding]));
-  assert.equal(bindings.BETA_ENABLED.text, "false");
-  assert.equal(bindings.BETA_AI_CHAT_ENABLED.text, "false");
-  assert.equal(bindings.BETA_HOSTNAME.text, PRIVATE_BETA_HOST);
-  assert.equal(bindings.BETA_ALLOW_WORKERS_DEV.text, "true");
+  for (const name of [
+    "BETA_ENABLED", "BETA_HOSTNAME", "BETA_AUTH_ISSUER", "BETA_AUTH_AUDIENCE",
+    "BETA_ALLOW_WORKERS_DEV", "BETA_AI_CHAT_ENABLED", "BETA_SESSION_HMAC_HEX",
+    "BETA_ASSERTION_HMAC_HEX", "BETA_INVITE_CODES_JSON", "PRIVATE_API",
+  ]) assert.equal(bindings[name].type, "inherit", name);
   assert.ok(bindings.ASSETS);
+  assert.equal(bindings.LEGACY_LIVE.type, "service");
+  assert.equal(bindings.LEGACY_LIVE.service, LEGACY_LIVE_WORKER_NAME);
   assert.equal(metadata.keep_bindings.includes("vpc_service"), true);
-  assert.equal(bindings.PRIVATE_API, undefined);
   assert.equal(PRIVATE_API_SERVICE_ID, "01a202d5-1889-72d3-9a12-4a2838612589");
-  assert.equal(bindings.BETA_SESSION_HMAC_HEX, undefined);
-  assert.equal(bindings.BETA_ASSERTION_HMAC_HEX, undefined);
+  assert.equal(LEGACY_LIVE_WORKER_NAME, "crc-mvp-live-test-20261123");
   assert.equal(metadata.assets.config.not_found_handling, "404-page");
   assert.throws(() => buildWorkerMetadata(""));
 });
