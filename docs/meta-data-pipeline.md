@@ -42,6 +42,10 @@ The API token stays in the existing Cloudflare secret binding and is sent only f
 
 The namespace is created with EU jurisdiction and bound to the Worker as `META_KV`.
 
+## Worker integration
+
+`src/meta-worker-integration.js` owns the read-only HTTP routes and delegates the scheduled event to `src/meta-pipeline.js`. The deployed Worker imports this adapter; the public routes never invoke a refresh directly.
+
 ## Read-only endpoints
 
 - `GET /api/v1/meta/current` — latest valid snapshot.
