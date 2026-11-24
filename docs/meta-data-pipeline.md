@@ -15,7 +15,7 @@ The Cloudflare Worker collects a rolling Ranked sample from the official Clash R
 - Usage is deck appearances / all observed deck appearances.
 - The sample covers the recent public battle logs returned by the API. It is not described as a fixed seven-day window or as the entire Ranked population.
 
-The API token stays in the existing Cloudflare secret binding and is sent only from the Worker to the RoyaleAPI proxy configured for the token's allowlisted IP. No player tags are published in the snapshot.
+The API token stays in the existing Cloudflare secret binding and is sent only from the Worker to the RoyaleAPI proxy configured for the token's allowlisted IP. Leaderboard tags are held only in the temporary `meta:job` KV state while the chunked collection is running; that key has a one-hour TTL and is deleted on completion. Player tags are never logged, published in the snapshot, or copied into history.
 
 ## Scheduling and free-tier safeguards
 
