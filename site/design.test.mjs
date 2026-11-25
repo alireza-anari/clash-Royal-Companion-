@@ -26,7 +26,7 @@ test('design system has readable surfaces, mobile controls and reduced-motion su
 
 test('theme and service worker cache are refreshed for the new CSS', () => {
   assert.match(html, /name="theme-color" content="#080f1e"/);
-  assert.match(sw, /crc-mvp-static-v11/);
+  assert.match(sw, /crc-mvp-static-v12/);
 });
 
 test('action-first dashboard preserves report targets, mobile battles and consent', () => {
@@ -43,7 +43,7 @@ test('action-first dashboard preserves report targets, mobile battles and consen
 
 test('approved UI has all five mobile destinations and a separate report for each coach action', () => {
   const mobile = html.slice(html.indexOf('class="bottom-nav"'), html.indexOf('id="toast"'));
-  for (const name of ['home','deck','coach','battles','cards']) assert.ok(mobile.includes('data-nav="'+name+'"'));
+  for (const name of ['home','player','coach','battles','cards']) assert.ok(mobile.includes('data-nav="'+name+'"'));
   for (const key of ['coachMetrics','coachOwnedOptions','coachBattleReport']) assert.ok(html.includes('data-report-group="'+key+'"'));
   assert.match(html, /id="coachReportTitle"/);
   assert.equal((html.match(/id="profileSummary"/g)||[]).length,1);
@@ -73,3 +73,5 @@ test('coach choices show only the selected report and preserve accessible select
   assert.equal(focused,4);
   assert.equal(scrolled,4);
 });
+
+test('onboarding and coach keep consent, loading and local state',()=>{const app=fs.readFileSync(new URL('./app.js',import.meta.url),'utf8');for(const id of ['crcOnboard','crcTag','crcConnect','crcConnectLocal','crcLoadProfile','crcLoadBattles','crcChangeAccount','crcSavedDecks','crcBattleHistory','crcBattleAnalysis'])assert.ok(html.includes('id="'+id+'"'),id);assert.match(app,/localStorage.setItem\("crc.playerTag",tag\)/);assert.match(app,/if\(!crcConsent\)return/);assert.match(app,/crcLiveBusy/);assert.match(app,/crcQuickAction/);});
