@@ -221,6 +221,12 @@ export async function runPrivateBetaDeployment(env = process.env) {
   if (subdomain?.enabled !== true || subdomain?.previews_enabled !== false)
     throw new Error("Private beta Worker subdomain must be enabled and previews disabled.");
 
+  const legacyBefore = await cloudflareRequest(
+    `${API_ROOT(account)}/workers/scripts/${LEGACY_LIVE_WORKER_NAME}/subdomain`, token,
+  );
+  if (legacyBefore?.enabled !== false || legacyBefore?.previews_enabled !== false)
+    throw new Error("Legacy service privacy preflight failed; no deployment attempted.");
+
   const entries = await Promise.all(ASSET_PATHS.map(async (name) => {
     const bytes = await readFile(path.join(REPO_ROOT, "site", name));
     return [`/${name}`, bytes];
@@ -247,14 +253,13 @@ export async function runPrivateBetaDeployment(env = process.env) {
 
   const smoke = await verifyGatewaySmokeTests(fetch);
 
+  // Frontend releases must not write settings to the existing live service.
   const legacySubdomain = await cloudflareRequest(
     `${API_ROOT(account)}/workers/scripts/${LEGACY_LIVE_WORKER_NAME}/subdomain`,
     token,
-    { method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ enabled: false, previews_enabled: false }) },
   );
-  if (legacySubdomain?.enabled !== false) {
-    throw new Error("Legacy live Worker public subdomain could not be disabled.");
+  if (legacySubdomain?.enabled !== false || legacySubdomain?.previews_enabled !== false) {
+    throw new Error("Legacy live Worker is not private; refusing to modify its settings.");
   }
 
   return {
