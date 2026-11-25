@@ -28,14 +28,14 @@
 </aside>
 <div class="main">
 <header class="topbar">
-<div class="crumb" id="pageTitle">داشبورد / نمای کلی</div>
+<a class="crc-brand" href="#home"><span>♛</span><b>CRC</b><small>Clash Royale Companion</small></a><div class="crumb" id="pageTitle">داشبورد / نمای کلی</div>
 <div class="top-actions"><span class="status" id="dataStatus">داده نمونه</span><a class="avatar profile-link" href="#player" aria-label="پروفایل بازیکن"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/></svg></a></div>
 </header>
 <div class="content">
 <section class="page active" id="page-home" aria-labelledby="home-title">
 <div class="home-heading"><div><h1 id="home-title">همراه کلش رویال</h1><p id="homePlayerSummary" class="small">برای تحلیل شخصی، بازیکن خود را اضافه کن.</p></div><a href="#player" id="homePlayerAction" class="btn primary">افزودن بازیکن ←</a></div>
-<div class="panel home-deck-panel"><div class="panel-top"><h2>دک فعلی</h2><span class="data-pill elixir-pill"><span class="elixir-dot" aria-hidden="true"></span><span id="homeDeckElixir">— اکسیر</span></span></div><span class="chip gold" id="homeDeckSource">داده نمونه</span><div class="deck-grid" id="homeDeck"></div><div class="inline-actions"><a href="#coach" class="btn primary">تحلیل دک ←</a><a href="#deck" class="btn ghost">ویرایش دک</a></div></div>
-<div class="section-heading"><h2>ابزارهای من</h2></div><div class="grid quick-tools">
+<div class="panel crc-account" id="crcAccount">♛ &nbsp; پس از دریافت اطلاعات، پروفایل شما نمایش داده می‌شود.</div><div class="crc-stats" id="crcStats"></div><div class="panel crc-performance" id="crcPerformance"></div><div class="panel home-deck-panel"><div class="panel-top"><h2>دک فعلی</h2><span class="data-pill elixir-pill"><span class="elixir-dot" aria-hidden="true"></span><span id="homeDeckElixir">— اکسیر</span></span></div><span class="chip gold" id="homeDeckSource">داده نمونه</span><div class="deck-grid" id="homeDeck"></div><div class="inline-actions"><a href="#coach" class="btn primary">تحلیل دک ←</a><a href="#deck" class="btn ghost">ویرایش دک</a></div></div>
+<div class="section-heading"><h2>مربی هوشمند شما</h2><p>تحلیل و پیشنهاد شخصی برای پیشرفت سریع‌تر</p></div><div class="grid quick-tools crc-actions"><a href="#coach" class="panel feature" data-crc-action="coachMetrics"><span class="icon">▣</span><h3>تحلیل دک</h3><p>نقاط قوت و ضعف</p></a><a href="#coach" class="panel feature" data-crc-action="coachOwnedOptions"><span class="icon">⇄</span><h3>پیشنهاد دک بهتر</h3><p>متناسب با کارت‌های شما</p></a><a href="#coach" class="panel feature" data-crc-action="coachBattleReport"><span class="icon">▥</span><h3>تحلیل سبک بازی</h3><p>بررسی شواهد نبردها</p></a><a href="#coach" class="panel feature" data-crc-action="coachReport"><span class="icon">◎</span><h3>برنامه پیشرفت</h3><p>اولویت‌های پیشنهادی</p></a></div><div class="grid quick-tools crc-extra-tools">
 <a href="#coach" class="panel feature"><span class="icon"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m12 2 2.7 7.3L22 12l-7.3 2.7L12 22l-2.7-7.3L2 12l7.3-2.7z"/></svg></span><h3>مربی</h3><p>پیشنهاد و تحلیل</p></a>
 <a href="#deck" class="panel feature"><span class="icon"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="4" y="3" width="12" height="16" rx="2"/><path d="M19 7h1v14H8"/></svg></span><h3>دک‌ساز</h3><p>ساخت و ویرایش</p></a>
 <a href="#battles" class="panel feature"><span class="icon"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m3 3 8 8-3 3-5-5zM21 3l-8 8 3 3 5-5zM5 19l14-14M19 19 5 5M3 21l4-4m14 4-4-4"/></svg></span><h3>تحلیل نبردها</h3><p>نتایج و عملکرد</p></a>
@@ -44,11 +44,11 @@
 </section>
 
 <section class="page" id="page-deck" aria-labelledby="deck-title">
-<h1 id="deck-title">دک من</h1>
+<h1 id="deck-title">دک من <span class="crc-title-icon">▣</span></h1><p class="crc-sub">دک فعال شما و تحلیل عملکرد آن</p>
 <div class="deck-layout">
 <div class="panel">
 <div class="panel-top"><h2>دک فعلی</h2><span class="chip gold" id="deckSource">داده نمونه</span></div>
-<div class="deck-grid" id="deckSlots"></div>
+<div class="deck-grid" id="deckSlots"></div><div class="crc-stats" id="crcDeckStats"></div><div class="inline-actions"><a class="btn teal" href="#coach" data-crc-action="coachOwnedOptions">بهبود دک</a></div>
 <details class="disclosure"><summary>دک‌های نمونه و پاک‌کردن</summary><div class="preset"><button class="btn ghost" id="loadHeavy" type="button">دک سنگین نمونه</button><button class="btn ghost" id="loadHog" type="button">Hog Cycle نمونه</button><button class="btn ghost" id="clearDeck" type="button">پاک‌کردن دک</button></div></details>
 <div class="inline-actions"><button class="btn primary" id="analyzeDeck" type="button">تحلیل این دک ✦</button><button class="btn ghost" id="copyDeck" type="button">کپی شناسه کارت‌ها</button></div>
 <div id="deckAlert" class="message"></div>
@@ -63,14 +63,14 @@
 </section>
 
 <section class="page" id="page-coach" aria-labelledby="coach-title">
-<h1 id="coach-title">مربی من</h1><h2 class="coach-question-heading">چه کمکی می‌خواهی؟</h2>
+<div class="crc-coach-hero"><div class="crc-crown">♛<small>AI</small></div><h1 id="coach-title">مربی هوشمند <em>شما</em></h1><p>سلام! من مربی هوش مصنوعی شما در Clash Royale هستم.</p><h2 class="coach-question-heading">چه کمکی از من می‌خواهی؟</h2></div>
 <div class="coach-action-grid" aria-label="تحلیل‌های آماده"><button class="coach-action" type="button" data-coach-jump="coachMetrics" aria-controls="coachReport" aria-pressed="false"><span class="action-icon"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="4" y="3" width="12" height="16" rx="2"/><path d="M19 7h1v14H8"/></svg></span><span class="action-text"><strong>تحلیل دک</strong><small>ترکیب و نقاط قابل بررسی</small></span><span class="action-arrow" aria-hidden="true">‹</span></button>
-<button class="coach-action" type="button" data-coach-jump="coachOwnedOptions" aria-controls="coachReport" aria-pressed="false"><span class="action-icon"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/></svg></span><span class="action-text"><strong>پیشنهاد کارت</strong><small>با کارت‌های خودم</small></span><span class="action-arrow" aria-hidden="true">‹</span></button>
-<button class="coach-action" type="button" data-coach-jump="coachBattleReport" aria-controls="coachReport" aria-pressed="false"><span class="action-icon"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m3 3 8 8-3 3-5-5zM21 3l-8 8 3 3 5-5zM5 19l14-14M19 19 5 5M3 21l4-4m14 4-4-4"/></svg></span><span class="action-text"><strong>عملکرد نبردها</strong><small>نتایج ثبت‌شده</small></span><span class="action-arrow" aria-hidden="true">‹</span></button>
-<button class="coach-action" type="button" data-coach-jump="coachReport" aria-controls="coachReport" aria-pressed="true"><span class="action-icon"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 20V12m5 8V8m5 12V4m5 16v-8"/></svg></span><span class="action-text"><strong>گزارش کلی</strong><small>دک و نبردها</small></span><span class="action-arrow" aria-hidden="true">‹</span></button></div>
+<button class="coach-action" type="button" data-coach-jump="coachOwnedOptions" aria-controls="coachReport" aria-pressed="false"><span class="action-icon"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/></svg></span><span class="action-text"><strong>پیشنهاد دک بهتر</strong><small>متناسب با کارت‌های شما</small></span><span class="action-arrow" aria-hidden="true">‹</span></button>
+<button class="coach-action" type="button" data-coach-jump="coachBattleReport" aria-controls="coachReport" aria-pressed="false"><span class="action-icon"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m3 3 8 8-3 3-5-5zM21 3l-8 8 3 3 5-5zM5 19l14-14M19 19 5 5M3 21l4-4m14 4-4-4"/></svg></span><span class="action-text"><strong>تحلیل سبک بازی</strong><small>بررسی نقاط قوت و ضعف</small></span><span class="action-arrow" aria-hidden="true">‹</span></button>
+<button class="coach-action" type="button" data-coach-jump="coachReport" aria-controls="coachReport" aria-pressed="true"><span class="action-icon"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 20V12m5 8V8m5 12V4m5 16v-8"/></svg></span><span class="action-text"><strong>برنامه پیشرفت</strong><small>گزارش و اولویت بهبود</small></span><span class="action-arrow" aria-hidden="true">‹</span></button></div>
 
 
-<div id="coachReport" class="coach-report" tabindex="-1"><div class="section-heading"><h2 id="coachReportTitle">گزارش دک و نبردها</h2></div><div id="coachRunOnlinePanel" class="panel" hidden><p class="small">با زدن دکمه، داده کارت‌های دک، گزینه‌های متعلق به مجموعه و آمار محدود نبردها برای Cloudflare Workers AI ارسال می‌شود؛ نام و Player Tag ارسال نمی‌شوند.</p><button id="coachRunOnline" type="button" class="btn primary">ارسال داده و تحلیل آنلاین این گزارش</button></div><section data-report-group="coachMetrics" aria-label="تحلیل دک"><div class="metric-grid" id="coachMetrics" tabindex="-1"><div class="metric"><span class="muted">میانگین اکسیر</span><span class="number">—</span></div></div>
+<details id="crcReportDetails" class="disclosure"><summary>گزارش و گزینه‌های بیشتر</summary><div id="coachReport" class="coach-report" tabindex="-1"><div class="section-heading"><h2 id="coachReportTitle">گزارش دک و نبردها</h2></div><div id="coachRunOnlinePanel" class="panel" hidden><p class="small">با زدن دکمه، داده کارت‌های دک، گزینه‌های متعلق به مجموعه و آمار محدود نبردها برای Cloudflare Workers AI ارسال می‌شود؛ نام و Player Tag ارسال نمی‌شوند.</p><button id="coachRunOnline" type="button" class="btn primary">ارسال داده و تحلیل آنلاین این گزارش</button></div><section data-report-group="coachMetrics" aria-label="تحلیل دک"><div class="metric-grid" id="coachMetrics" tabindex="-1"><div class="metric"><span class="muted">میانگین اکسیر</span><span class="number">—</span></div></div>
 <div class="section-heading"><div><h2>یافته‌های قابل توضیح</h2><p>نتیجه‌ها به‌صورت مشاهده و همراه با محدودیت تحلیل ارائه می‌شوند.</p></div><button class="btn ghost" id="refreshAnalysis">محاسبه دوباره</button></div>
 <div id="coachFindings" class="result-list"></div></section>
 <section data-report-group="coachOwnedOptions" aria-label="پیشنهاد کارت"><div class="section-heading"><div><h2>کارت‌های موجود برای بررسی</h2><p>گزینه‌های مشروط فقط بر اساس کارت‌های فایل پروفایل؛ بدون پیشنهاد تعویض قطعی</p></div></div>
@@ -84,13 +84,13 @@
 <option value="other">سایر نبردها / حالت نامشخص</option>
 </select>
 </div>
-<div id="coachBattleReport" class="result-list" aria-live="polite" tabindex="-1"></div></section></div>
+<div id="coachBattleReport" class="result-list" aria-live="polite" tabindex="-1"></div></section></div></details>
 <details class="disclosure"><summary>خروجی گزارش</summary>
   <button id="copyCoachEvidence" type="button" class="btn ghost">کپی خلاصه آماری برای مربی AI</button>
   <p class="small">خروجی فقط آمار تجمیعی و در صورت انتخاب دک، شناسه هشت کارت اصلی را دارد؛ نام، Player Tag و زمان دقیق نبردها در آن نیست. اطلاعات فقط با کلیک شما کپی می‌شود و به سرویس خارجی ارسال نمی‌شود. اشتراک‌گذاری دستی گزارش اختیاری است.</p>
 </details>
 <details class="disclosure"><summary>مبنای تحلیل و محدودیت‌ها</summary><p id="coachProvenance" class="small">—</p><p>بدون Replay، زمان‌بندی و جایگذاری کارت‌ها قابل تحلیل نیست.</p></details>
-<details class="panel coach-chat" id="coachChatPanel"><summary id="coachChatTitle">گفت‌وگو با مربی (اختیاری)</summary>
+<details class="panel coach-chat" id="coachChatPanel" open><summary id="coachChatTitle">گفت‌وگو با مربی (اختیاری)</summary>
   <div class="coach-chat-header">
     <div>
       <p>مربی آنلاین فقط با رضایت جداگانه برای هر پیام فعال می‌شود.</p>
@@ -122,7 +122,7 @@
 </section>
 
 <section class="page" id="page-cards" aria-labelledby="cards-title">
-<h1 id="cards-title">کارت‌ها</h1>
+<h1 id="cards-title">بانک کارت‌ها <span class="crc-title-icon">▣</span></h1><p class="crc-sub">مجموعه کارت‌های شما و وضعیت ارتقا</p><div class="panel crc-collection" id="crcCollection"></div><div class="crc-tabs"><button type="button" data-crc-filter="all" aria-pressed="true">همه کارت‌ها</button><button type="button" data-crc-filter="owned" aria-pressed="false">موجود</button><button type="button" data-crc-filter="max" aria-pressed="false">حداکثر سطح ثبت‌شده</button></div>
 <div class="panel">
 <div class="form-row"><input id="cardSearch" class="text-field" type="search" placeholder="نام کارت..." aria-label="جستجو در کارت‌ها" style="flex:1"><select id="cardCost" class="text-field" aria-label="فیلتر هزینه اکسیر"><option value="all">همه هزینه‌ها</option><option value="1-2">۱ تا ۲</option><option value="3-4">۳ تا ۴</option><option value="5+">۵ یا بیشتر</option></select></div>
 <div id="cardsGrid" class="cards-grid"></div><p id="cardsSummary" class="small"></p>
@@ -130,7 +130,7 @@
 </section>
 
 <section class="page" id="page-player" aria-labelledby="player-title">
-<h1 id="player-title">پروفایل بازیکن</h1>
+<h1 id="player-title">پروفایل بازیکن <span class="crc-title-icon">♛</span></h1><p class="crc-sub">حساب و مجموعه کارت‌های شما</p>
 <div id="profileSummary" class="empty-panel profile-overview"><span class="emoji">♙</span><strong>هنوز بازیکنی اضافه نشده است.</strong><p>با تگ یا فایل پروفایل شروع کن.</p></div><div class="grid two" style="margin-top:18px">
 <div class="panel">
 <h2>افزودن بازیکن</h2><label for="playerTag">Player Tag</label>
@@ -149,7 +149,7 @@
 </section>
 
 <section class="page" id="page-battles" aria-labelledby="battles-title">
-<h1 id="battles-title">نبردهای من</h1><a href="#player" class="btn ghost">دریافت اطلاعات بازیکن ←</a>
+<h1 id="battles-title">نبردها <span class="crc-title-icon">⚔</span></h1><p class="crc-sub">تاریخچه و تحلیل عملکرد شما</p><div class="panel crc-performance" id="crcBattleStats"></div><a href="#player" class="btn ghost">دریافت اطلاعات بازیکن ←</a>
 <details class="disclosure" style="margin-top:18px"><summary>افزودن تاریخچه از فایل</summary><p>فایل JSON نبردها، فقط در مرورگر</p><input id="battlesFile" type="file" accept=".json,application/json" aria-label="فایل JSON تاریخچه نبرد">
 </details>
 <div class="section-heading"><div><h2>نبردهای دریافت‌شده</h2><p>فقط مسابقات موجود در فایل ارسالی، نه تاریخچه کامل حساب.</p></div><select id="battleFilter" class="text-field" aria-label="فیلتر نبردها"><option value="all">همه نبردها</option><option value="event">رویدادی</option><option value="other">سایر / نامشخص</option></select></div>
@@ -180,6 +180,7 @@
 </nav>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 <div class="modal-backdrop" id="cardModal"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalName"><button type="button" class="close" id="closeModal" aria-label="بستن">✕</button><div class="modal-visual" id="modalVisual"></div><h2 id="modalName"></h2><p id="modalDescription"></p><div id="modalDetails" class="stat-inline"></div><div id="modalCoaching" class="modal-coaching"></div><div class="inline-actions"><button class="btn primary" id="modalToDeck">انتخاب در دک</button></div></div></div>
+<dialog id="crcOnboard" class="crc-onboard" aria-labelledby="crcOnboardTitle"><p id="crcDots">● ○ ○</p><section data-crc-step="0"><div class="crc-crown">♛</div><h2 id="crcOnboardTitle">برای شروع به Player Tag نیاز داریم</h2><p>با این شناسه، پروفایل، دک و نبردهای اخیر شما را دریافت می‌کنیم.</p><div class="crc-benefits"><span>♛<small>پروفایل</small></span><span>▣<small>دک فعلی</small></span><span>⚔<small>نبردها</small></span></div><button class="btn primary" id="crcNext" type="button">ادامه ←</button></section><section data-crc-step="1" hidden><h2>Player Tag را از بازی پیدا کن</h2><div class="crc-phone"><strong>Player Profile</strong><p>♛ &nbsp; Player</p><div>#2ABC123 &nbsp; ▣</div><small>نمای شماتیک راهنما</small></div><ol><li>پروفایل بازیکن را در بازی باز کن.</li><li>تگ کنار نام بازیکن را پیدا کن.</li><li>روی تگ بزن و آن را کپی کن.</li></ol><button class="btn primary" id="crcNext2" type="button">تگ را پیدا کردم ←</button></section><section data-crc-step="2" hidden><div class="crc-crown">♛</div><h2>Player Tag خودت را وارد کن</h2><p>پس از دریافت موفق، در همین مرورگر ذخیره می‌شود.</p><div class="form-row"><input id="crcTag" class="text-field" dir="ltr" maxlength="17" placeholder="#2ABC123" aria-label="Player Tag"><button type="button" id="crcPaste" class="btn ghost">چسباندن</button></div><label class="crc-consent"><input type="checkbox" id="crcConsent"> تحلیل اولیه با هوش مصنوعی؛ ارسال داده دک و آمار نبرد به Cloudflare Workers AI بدون نام و تگ</label><p id="crcError" role="status"></p><button class="btn primary" id="crcConnect" type="button">دریافت اطلاعات و ادامه ←</button><button class="btn ghost" id="crcBack" type="button">دیدن دوباره راهنما</button></section><section data-crc-step="3" hidden aria-live="polite"><h2>در حال آماده‌سازی حساب تو</h2><div class="crc-orbit"><div class="crc-crown">♛</div></div><div class="crc-loading"></div><p id="crcLoadingText">دریافت پروفایل و دک…</p></section><button type="button" id="crcSkip" class="btn ghost">بعداً</button></dialog>
 <script src="/battle-insights.js" defer></script>
 <script src="/offline-coach.js" defer></script>
 <script src="/coach-chat.js" defer></script>
