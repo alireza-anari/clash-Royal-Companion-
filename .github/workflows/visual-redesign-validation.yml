@@ -15,7 +15,7 @@ jobs:
           node-version: '22'
       - run: node --check site/app.js
       - run: node deploy/cloudflare/build-site.mjs --check
-      - run: node --test site/mvp.test.mjs site/battle-insights.test.mjs site/offline-coach.test.mjs site/coach-chat.test.mjs site/design.test.mjs site/owned-options.test.mjs site/backend-client.test.mjs site/beta-session.test.mjs deploy/cloudflare/beta-edge.test.mjs deploy/cloudflare/private-beta-deploy.test.mjs
+      - run: node --test site/mvp.test.mjs site/battle-insights.test.mjs site/battle-evidence.test.mjs site/design.test.mjs site/owned-options.test.mjs site/backend-client.test.mjs site/beta-session.test.mjs deploy/cloudflare/beta-edge.test.mjs deploy/cloudflare/private-beta-deploy.test.mjs
       - name: Install isolated browser test runner
         run: |
           npm install --no-save playwright

@@ -226,8 +226,7 @@
     if(new TextEncoder().encode(JSON.stringify(payload)).length>4096)throw new BackendError("INVALID_INPUT","حجم داده تحلیل بیش از حد مجاز است.",422);
     return payload;
   }
-  async function askAI(session,question,facts,evidence,consent,cap,personal,action){
-    if(consent!==true)throw new BackendError('AI_CONSENT_REQUIRED','رضایت ارسال داده لازم است.',403);
+  async function askAI(session,question,facts,evidence,cap,personal,action){
     if(!session||session.enabled!==true||typeof session.fetch!=='function'||!cap||cap.ai_coach_enabled!==true)
       throw new BackendError('AI_DISABLED','مربی آنلاین فعال نیست.',503);
     const payload=coachPayload(question,facts,evidence,personal,action);

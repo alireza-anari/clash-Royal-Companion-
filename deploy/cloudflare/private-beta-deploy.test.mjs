@@ -51,9 +51,11 @@ test("private beta deployment preserves secrets and attaches isolated live Worke
 });
 
 test("private beta assets include the login and browser session resources", () => {
-  for (const file of ["index.html", "beta-session.js", "beta-login.html", "beta-login.js", "backend-client.js"])
+  for (const file of ["index.html", "beta-session.js", "beta-login.html", "beta-login.js", "backend-client.js", "battle-evidence.js"])
     assert.ok(ASSET_PATHS.includes(file));
   assert.equal(ASSET_PATHS.includes("sw.js"), false);
+  assert.equal(ASSET_PATHS.includes("offline-coach.js"), false);
+  assert.equal(ASSET_PATHS.includes("coach-chat.js"), false);
 });
 
 

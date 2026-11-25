@@ -24,8 +24,7 @@ async function serve(request){
   if(request.method==="GET"&&path==="/styles.css")return respond(CSS,"text/css; charset=utf-8");
   if(request.method==="GET"&&path==="/app.js")return respond(APP,"application/javascript; charset=utf-8");
   if(request.method==="GET"&&path==="/battle-insights.js")return respond(BATTLE_INSIGHTS,"application/javascript; charset=utf-8");
-  if(request.method==="GET"&&path==="/offline-coach.js")return respond(OFFLINE_COACH,"application/javascript; charset=utf-8");
-  if(request.method==="GET"&&path==="/coach-chat.js")return respond(COACH_CHAT,"application/javascript; charset=utf-8");
+  if(request.method==="GET"&&path==="/battle-evidence.js")return respond(BATTLE_EVIDENCE,"application/javascript; charset=utf-8");
   if(request.method==="GET"&&path==="/owned-options.js")return respond(OWNED_OPTIONS,"application/javascript; charset=utf-8");
   if(request.method==="GET"&&path==="/backend-client.js")return respond(BACKEND_CLIENT,"application/javascript; charset=utf-8");
   if(request.method==="GET"&&path==="/catalog.json")return respond(CATALOG_JSON,"application/json; charset=utf-8");
