@@ -1,0 +1,29 @@
+name: CRC visual redesign validation
+on:
+  push:
+    branches: [feat/approved-visual-redesign-20261125]
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - run: node --check site/app.js
+      - run: node deploy/cloudflare/build-site.mjs --check
+      - run: node --test site/mvp.test.mjs site/battle-insights.test.mjs site/offline-coach.test.mjs site/coach-chat.test.mjs site/design.test.mjs site/owned-options.test.mjs site/backend-client.test.mjs site/beta-session.test.mjs deploy/cloudflare/beta-edge.test.mjs deploy/cloudflare/private-beta-deploy.test.mjs
+      - name: Install isolated browser test runner
+        run: |
+          npm install --no-save playwright
+          npx playwright install chromium --with-deps
+      - name: Browser smoke, mock data only
+        run: node site/visual-redesign-smoke.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: crc-visual-reference-check
+          path: visual-check/
