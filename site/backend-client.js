@@ -282,7 +282,9 @@
        data.evidence_status!=='client_submitted_unverified'||!allowed.includes(data.model)||
        typeof data.answer!=='string'||!data.answer.trim()||data.answer.length>2900)
       throw new BackendError('BAD_RESPONSE','پاسخ مربی معتبر نیست.');
-    return {answer:data.answer,model:data.model};
+    const sourceUrl=value=>{try{const u=new URL(value);return u.protocol==='https:'&&((u.hostname==='support.supercell.com'&&u.pathname.startsWith('/clash-royale/en/articles/'))||(u.hostname==='supercell.com'&&u.pathname.startsWith('/en/games/clashroyale/')))&&!u.username&&!u.password?u.href:null;}catch{return null;}};
+    const sources=Array.isArray(data.knowledge_sources)?data.knowledge_sources.slice(0,3).filter(s=>s&&/^K\\d{2}$/.test(s.id||'')&&typeof s.title==='string'&&s.title.length<=140&&sourceUrl(s.url)&&s.authority==='official-support').map(s=>({id:s.id,title:s.title,url:sourceUrl(s.url),publisher:typeof s.publisher==='string'?s.publisher.slice(0,80):'Supercell',verified_at:typeof s.verified_at==='string'?s.verified_at:null,published_at:typeof s.published_at==='string'?s.published_at:null})):[];
+    return {answer:data.answer,model:data.model,sources,knowledgeVersion:typeof data.knowledge_version==='string'?data.knowledge_version:null};
   }
   root.CRCBackendClient=Object.freeze({VERSION,BackendError,normalizeTag,route,capabilities,loadPlayer,normalizedToProfile,normalizedToBattles,personalCoachContext,coachPayload,askAI,createCoachSession,cleanCoachHistory});
 })(typeof window!=='undefined'?window:globalThis);

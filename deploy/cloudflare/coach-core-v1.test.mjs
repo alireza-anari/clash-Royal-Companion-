@@ -19,3 +19,34 @@ test('reject inconsistent totals and selected deck counts outside overall sample
  assert.deepEqual(invalid.personal.opponent_card_patterns,[]);
 });
 test('candidate patch refuses unknown worker sources',()=>assert.throws(()=>patchCoachCore('unknown')));
+
+import {COACH_KNOWLEDGE,COACH_KNOWLEDGE_VERSION,coachRetrieve,patchCoachKnowledge} from './coach-knowledge-v1.mjs';
+test('official knowledge retrieval ranks current Giant and Mirror mechanics',()=>{
+ const giant=coachRetrieve('قابلیت Evolution غول چیست؟',null,[]);
+ assert.equal(giant[0].id,'K04');
+ const mirror=coachRetrieve('How does Mirror evolution work?',null,[]);
+ assert.equal(mirror[0].id,'K04');
+ assert.ok(giant[0].url.startsWith('https://support.supercell.com/'));
+});
+test('retrieval finds elixir cycle and card level rules in Persian',()=>{
+ assert.equal(coachRetrieve('چرخه کارت و معامله مثبت اکسیر چیست؟',null,[])[0].id,'K02');
+ assert.equal(coachRetrieve('Star Level affects gameplay?',null,[])[0].id,'K01');
+});
+test('seasonal information is explicitly dated and capped to three sources',()=>{
+ const result=coachRetrieve('اخبار رویدادها و قابلیت کارت‌ها', 'events', []);
+ assert.ok(result.length<=3);
+ assert.ok(result.some(x=>x.id==='K04'||x.id==='K05'));
+ assert.ok(COACH_KNOWLEDGE.find(x=>x.id==='K04').freshness==='dated-feature');
+ assert.equal(COACH_KNOWLEDGE_VERSION,'crc-clash-royale-knowledge-2026-11-26');
+});
+test('retrieval does not fabricate current meta from evergreen docs',()=>{
+ assert.deepEqual(coachRetrieve('best current meta deck win rate right now',null,[]),[]);
+});
+test('knowledge patch inserts retrieved context, citations and source metadata once',()=>{
+ const source='async function previewChat(request,env) {\\n  const coachPlan=coachInferencePlan(question,action);\\n  const messages=[\\n    {role:\"system\",content:\"CRC_COACH_IDENTITY_V1\"},\\n    {role:\"user\",content:personal+\"\\\\nاین داده‌ها ارسالی از مرورگر و از نظر مالکیت تایید نشده‌اند.\"}\\n  ];\\n  try {\\n    answer=answer.trim().slice(0,2900);\\n    return previewResponse({answer,model:LIVE_AI_MODEL,external_inference:true,replay_analyzed:false,evidence_status:\"client_submitted_unverified\"});\\n  }\\n}';
+ const out=patchCoachKnowledge(source);
+ assert.match(out,/coachRetrieve\\(question,action,personal.deck_cards\\)/);
+ assert.match(out,/knowledge_sources:coachKnowledgeSources/);
+ assert.match(out,/coachFormatAnswer/);
+ assert.throws(()=>patchCoachKnowledge(out));
+});

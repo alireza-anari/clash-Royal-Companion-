@@ -131,7 +131,7 @@ function crcRenderCoachAnswer(body,message){
   }
 }
 
-function addCoachChatMessage(role,message,source){
+function addCoachChatMessage(role,message,source,knowledgeSources){
   var transcript=$("coachChatMessages");if(!transcript)return;
   var row=document.createElement("article");
   row.className="coach-chat-message "+(role==="user"?"is-user":role==="ai"?"is-coach":"is-status");
@@ -141,6 +141,12 @@ function addCoachChatMessage(role,message,source){
   if(role==="ai"){body.className="crc-answer-body";crcRenderCoachAnswer(body,message);}else body.textContent=String(message==null?"":message);
   row.append(heading,body);
   if(source){var evidence=document.createElement("small");evidence.className="coach-chat-evidence";evidence.textContent=source;row.appendChild(evidence);}
+  if(role==="ai"&&Array.isArray(knowledgeSources)&&knowledgeSources.length){
+    var refs=document.createElement("div");refs.className="coach-chat-sources";
+    var caption=document.createElement("small");caption.textContent="منابع رسمی بازیابی‌شده";refs.appendChild(caption);
+    knowledgeSources.slice(0,3).forEach(function(item){try{var u=new URL(item.url);if(u.protocol!=="https:"||!((u.hostname==="support.supercell.com"&&u.pathname.startsWith("/clash-royale/en/articles/"))||(u.hostname==="supercell.com"&&u.pathname.startsWith("/en/games/clashroyale/"))))return;var link=document.createElement("a");link.href=u.href;link.target="_blank";link.rel="noopener noreferrer";link.referrerPolicy="no-referrer";link.textContent="["+item.id+"] "+item.title;refs.appendChild(link);}catch(_){}});
+    if(refs.children.length>1)row.appendChild(refs);
+  }
   transcript.appendChild(row);while(transcript.children.length>20)transcript.firstElementChild.remove();crcChatScrollBottom();
 }
 function crcCoachPending(active){
@@ -193,7 +199,7 @@ async function askCoachChat(question,action){
     crcCoachPending(false);
     if(requestScope!==coachScope())return;
     requestSession.record(requestScope,text,reply.answer);
-    addCoachChatMessage("ai",reply.answer,reply.model+" · پاسخ تولیدشده توسط هوش مصنوعی");
+    addCoachChatMessage("ai",reply.answer,reply.model+" · پاسخ تولیدشده توسط هوش مصنوعی",reply.sources);
     $("coachAIStatus").textContent="پاسخ آنلاین دریافت شد.";
   }catch(e){
     crcCoachPending(false);

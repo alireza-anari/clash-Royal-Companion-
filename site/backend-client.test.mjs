@@ -191,3 +191,11 @@ test('style separates reported elixir leakage in wins and losses without guessin
  assert.equal(personal.style.loss_leaked_sample,1);assert.equal(personal.style.loss_leaked_average,7);
  const p=api.coachPayload('تحلیل',null,null,personal,'style');assert.equal(p.personal.style.loss_leaked_average,7);
 });
+
+test('coach response accepts only allowlisted official knowledge sources',async()=>{
+ const good={id:'K01',title:'Cards & Decks',url:'https://support.supercell.com/clash-royale/en/articles/cards-and-decks-6.html',publisher:'Supercell Support',verified_at:'2026-11-26',authority:'official-support'};
+ const bad={...good,id:'K99',url:'https://evil.example/steal'};
+ const session={enabled:true,fetch:async()=>({ok:true,json:async()=>({answer:'پاسخ [K01]',model:'@cf/google/gemma-4-26b-a4b-it',external_inference:true,replay_analyzed:false,evidence_status:'client_submitted_unverified',knowledge_version:'test',knowledge_sources:[good,bad]})})};
+ const reply=await api.askAI(session,'کارت‌ها و دک من',null,null,{ai_coach_enabled:true},null);
+ assert.equal(reply.sources.length,1);assert.equal(reply.sources[0].id,'K01');assert.equal(reply.knowledgeVersion,'test');
+});

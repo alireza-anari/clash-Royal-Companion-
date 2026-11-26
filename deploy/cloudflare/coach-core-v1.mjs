@@ -1,4 +1,5 @@
 import {patchCoachIdentity} from './coach-identity-v1.mjs';
+import {patchCoachKnowledge} from './coach-knowledge-v1.mjs';
 export const CORE_VERSION='crc-coach-core-v1';
 export function coachIntent(question,action){
   if(['deck','suggestions','style','overview','progress','events'].includes(action))return action;
@@ -43,5 +44,5 @@ export function patchCoachCore(source){
   const questionAnchor='content:(action?"ابزار انتخاب‌شده: "+action+"\\nوظیفه ثابت سرور: ":"سؤال: ")+question';
   once(questionAnchor,'content:"نوع درخواست پیشنهادی (فقط راهنما): "+coachPlan.intent+"\\n"+(action?"ابزار انتخاب‌شده: "+action+"\\nوظیفه ثابت سرور: ":"سؤال: ")+question');
   once('max_completion_tokens:720','max_completion_tokens:coachPlan.maxTokens');
-  return s;
+  return patchCoachKnowledge(s);
 }
