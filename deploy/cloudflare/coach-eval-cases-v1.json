@@ -409,8 +409,8 @@
             "remove_id": 26000003,
             "add_id": 26000009,
             "remove": "Bomber",
-            "add": "Electro Wizard",
-            "elixir_delta": 2,
+            "add": "Electro Spirit",
+            "elixir_delta": -1,
             "level_gap": -1,
             "gain": [
               "air",
@@ -438,11 +438,12 @@
             "remove_id": 26000007,
             "add_id": 26000011,
             "remove": "Skeletons",
-            "add": "Guards",
-            "elixir_delta": 2,
+            "add": "Spear Goblins",
+            "elixir_delta": 1,
             "level_gap": 1,
             "gain": [
-              "tankkill"
+              "air",
+              "damage"
             ],
             "loss": [
               "cycle"
@@ -646,8 +647,8 @@
             "remove_id": 26000000,
             "add_id": 26000009,
             "remove": "Giant",
-            "add": "Electro Wizard",
-            "elixir_delta": 2,
+            "add": "Electro Spirit",
+            "elixir_delta": -1,
             "level_gap": -1,
             "gain": [
               "air",
@@ -675,11 +676,12 @@
             "remove_id": 26000000,
             "add_id": 26000011,
             "remove": "Giant",
-            "add": "Guards",
-            "elixir_delta": 2,
+            "add": "Spear Goblins",
+            "elixir_delta": 1,
             "level_gap": 1,
             "gain": [
-              "tankkill"
+              "air",
+              "damage"
             ],
             "loss": [
               "cycle"
@@ -1704,7 +1706,7 @@
       "fixture": "swap",
       "intent": "suggestions",
       "language": "fa",
-      "question": "برای افزایش نقش Tank Killer از بین گزینه‌های مجاز چه تعویضی مناسب است؟",
+      "question": "می‌خواهم به‌جای کارت چرخه، یک گزینه ارزان با حمله هوایی و آسیب مستقیم داشته باشم؛ کدام تعویض مجاز را انتخاب می‌کنی؟",
       "rubric": {
         "mustIncludeAny": [],
         "mustNotInclude": [],
