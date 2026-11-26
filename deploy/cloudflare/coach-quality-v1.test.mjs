@@ -54,12 +54,12 @@ test('unverified numerical win-rate prose is withheld in both Persian and Englis
 });
 
 test('unverified personal battle counts and average elixir prose are withheld',()=>{
- const raw=payload({answer:'در ۲۰ نبرد ۱۱ برد و ۷ باخت داشتی. میانگین اکسیر 2.85 است.',fact_keys:['overall','selected','elixir']});
+ const raw=payload({answer:'در ۲۰ نبرد ۱۱ برد و ۷ باخت داشتی. میانگین هزینه هر کارت 3.25 اکسیر است.',fact_keys:['overall','selected','elixir']});
  const r=coachQualityEvaluate(raw,{...ctx,intent:'style'});
  assert.equal(r.status,'limited');
  assert.equal(r.reason,'UNVERIFIED_PERSONAL_STATS_IN_PROSE');
  assert.match(r.answer,/میانگین اکسیر ثبت‌شده/);
- assert.doesNotMatch(r.answer,/2\.85|۱۱ برد/);
+ assert.doesNotMatch(r.answer,/3\.25|۱۱ برد/);
 });
 test('personal-stat guard does not block official mechanics with numbers',()=>{
  for(const answer of ['برای Evolution شش Evolution Shard لازم است.','پس از بازی یک کارت، چهار کارت دیگر باید بازی شود.','Evolution Giant در ۵۰٪ جان فعال می‌شود.']){
