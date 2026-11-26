@@ -39,6 +39,10 @@ export function coachQualityFacts(battles,personal){
       const previous=memory.snapshots[1];
       if(previous&&Array.isArray(previous.deck_card_ids)&&previous.deck_card_ids.length===8&&previous.deck_card_ids.every(Number.isSafeInteger)&&previous.deck_card_ids.join(':')!==ids.join(':'))
         historical.push('ترکیب دک در دو ثبت محلی متفاوت است؛ این تفاوت به‌تنهایی بهبود یا افت عملکرد را ثابت نمی‌کند.');
+      const feedback=Array.isArray(memory.practice_feedback)?memory.practice_feedback[0]:null;
+      const feedbackLabels={improved:'بهتر شد',same:'تفاوتی نداشت',worse:'بدتر شد',not_tried:'هنوز امتحان نشده'};
+      const actionLabels={deck:'تحلیل دک',suggestions:'پیشنهاد تعویض',style:'تحلیل سبک بازی',overview:'برنامه پیشرفت'};
+      if(feedback&&feedbackLabels[feedback.outcome]&&actionLabels[feedback.action])historical.push('آخرین بازخورد خوداظهاری بازیکن درباره '+actionLabels[feedback.action]+': '+feedbackLabels[feedback.outcome]+'؛ این گزارش ذهنی است و نتیجه آماری را اثبات نمی‌کند.');
       out.memory=historical.join('؛ ');
     }
   }
