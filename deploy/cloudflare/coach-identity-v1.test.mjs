@@ -9,6 +9,8 @@ test('identity update changes only the known presentation tail',()=>{
   assert.equal(patched,fixture.replace(old,NEW_TAIL));
   assert.ok(patched.includes('selected_deck_results و allowed_single_swaps'));
   assert.ok(patched.includes('CRC_COACH_IDENTITY_V1'));
+  assert.ok(patched.includes('max_evolution_level'));
+  assert.ok(patched.includes('Star Level'));
 });
 test('refuse unknown, duplicate or already patched source',()=>{
   assert.throws(()=>patchCoachIdentity('different'));
