@@ -90,8 +90,21 @@ export function coachMemoryContext(value){
     if(!value||typeof value!=='object'||!actions.has(value.action)||typeof value.created_at!=='string'||
       value.created_at.length>40||!Number.isFinite(Date.parse(value.created_at)))return null;
     const ids=Array.isArray(value.deck_card_ids)?value.deck_card_ids.slice(0,8):[];
-    return ids.length===8&&ids.every(id=>Number.isSafeInteger(id)&&id>0&&id<=1000000000)&&new Set(ids).size===8?
-      {action:value.action,deck_card_ids:ids,created_at:value.created_at}:null;
+    if(ids.length!==8||!ids.every(id=>Number.isSafeInteger(id)&&id>0&&id<=1000000000)||new Set(ids).size!==8)return null;
+    const countBundle=(raw,total)=>{
+      const keys=['wins','losses','draws','unknown'];
+      if(!raw||!Number.isInteger(total)||total<0||total>200||!keys.every(k=>Number.isInteger(raw[k])&&raw[k]>=0&&raw[k]<=200))return null;
+      const outcomes=Object.fromEntries(keys.map(k=>[k,raw[k]]));
+      return keys.reduce((sum,k)=>sum+outcomes[k],0)===total?{matched_records:total,outcomes}:null;
+    };
+    const baseline=value.baseline==null?null:countBundle(value.baseline.outcomes,value.baseline.matched_records);
+    const progress=value.progress==null?{matched_records:0,outcomes:{wins:0,losses:0,draws:0,unknown:0}}:countBundle(value.progress.outcomes,value.progress.matched_records);
+    if(value.baseline!=null&&!baseline||!progress)return null;
+    const validDate=x=>typeof x==='string'&&x.length<=40&&Number.isFinite(Date.parse(x))?x:null;
+    const since=validDate(value.since_battle_at),last=validDate(value.last_battle_at);
+    if(value.since_battle_at!=null&&!since||value.last_battle_at!=null&&!last)return null;
+    if(last&&since&&Date.parse(last)<Date.parse(since))return null;
+    return {action:value.action,deck_card_ids:ids,created_at:value.created_at,baseline,progress,since_battle_at:since,last_battle_at:last};
   };
   const pending=practice(value.pending_practice);
   const feedback=(Array.isArray(value.practice_feedback)?value.practice_feedback:[]).slice(0,3).map(item=>{
