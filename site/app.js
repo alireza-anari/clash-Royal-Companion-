@@ -123,7 +123,7 @@ function coachMemorySnapshot(){
     outcomes:{wins:g.wins,losses:g.losses,draws:g.draws,unknown:g.unknown},event_plays:g.event_plays
   }));
   var leaks=matched.map(e=>e.elixir_leaked).filter(n=>Number.isFinite(n)&&n>=0&&n<=1000);
-  var latest=matched.map(e=>e.raw_battle_time||e.battle_time).filter(x=>typeof x==="string"&&x.length<=40).sort().slice(-1)[0]||null;
+  var latest=matched.map(e=>e.battle_time).filter(x=>typeof x==="string"&&Number.isFinite(Date.parse(x))).sort().slice(-1)[0]||null;
   var allowedDeckSources=["profile-live","profile-import","profile-edited","manual","sample","battle-event-import","battle-import"];
   return {
     captured_at:new Date().toISOString(),source:profileSource==="live"?"live":"imported",
@@ -133,11 +133,80 @@ function coachMemorySnapshot(){
     deck_patterns:patterns,latest_battle_at:latest
   };
 }
+function coachMemoryUpdatePracticeProgress(tag,store){
+  if(!tag||!store||!battles||!window.CRCBattleIntelligence)return false;
+  var memory=store.read(tag),pending=memory&&memory.pending_practice;
+  if(!pending)return false;
+  var report=window.CRCBattleIntelligence.summarize(battles,tag,"all");
+  var deckKey=pending.deck_card_ids.slice().sort((a,b)=>a-b).join(":");
+  var watermark=pending.last_battle_at||pending.since_battle_at||pending.created_at;
+  var fresh=report.entries.filter(function(e){
+    return e.attribution==="matched_tag"&&e.deck&&Array.isArray(e.deck.card_ids)&&
+      e.deck.card_ids.slice().sort((a,b)=>a-b).join(":")===deckKey&&
+      typeof e.battle_time==="string"&&Date.parse(e.battle_time)>Date.parse(watermark)&&
+      ["win","loss","draw","unknown"].includes(e.outcome);
+  }).sort((a,b)=>a.battle_time.localeCompare(b.battle_time));
+  if(!fresh.length)return false;
+  var outcomes={wins:0,losses:0,draws:0,unknown:0};
+  fresh.forEach(function(e){outcomes[{win:"wins",loss:"losses",draw:"draws",unknown:"unknown"}[e.outcome]]++;});
+  return store.addPracticeProgress(tag,{matched_records:fresh.length,outcomes},fresh[fresh.length-1].battle_time);
+}
 function coachMemoryCapture(){
   var tag=coachMemoryTag(),store=coachMemoryStore();
   if(!tag||!store||!store.isEnabled(tag))return false;
   var snapshot=coachMemorySnapshot();
-  return snapshot?store.record(tag,snapshot):false;
+  var recorded=snapshot?store.record(tag,snapshot):false;
+  var progress=coachMemoryUpdatePracticeProgress(tag,store);
+  return recorded||progress;
+}
+function coachProgressOutcomeText(value){
+  if(!value)return "نمونه مبنا ثبت نشده است.";
+  var c=value.outcomes||{},known=(c.wins||0)+(c.losses||0)+(c.draws||0);
+  var rate=known?fmt(Math.round((c.wins||0)/known*100))+"٪":"قابل محاسبه نیست";
+  return fmt(value.matched_records)+" نبرد · "+fmt(c.wins||0)+" برد · "+fmt(c.losses||0)+" باخت · "+fmt(c.draws||0)+" مساوی · نرخ برد "+rate;
+}
+function renderProgressPanel(){
+  var el=$("crcProgressPanel");if(!el)return;
+  if(!player){el.innerHTML='<h2>رصد پیشرفت بازیکن</h2><p class="small">ابتدا پروفایل بازیکن را بارگذاری کن.</p>';return;}
+  if(!battles||!window.CRCBattleIntelligence){el.innerHTML='<h2>رصد پیشرفت بازیکن</h2><p class="small">برای شروع، Battle Log را از Backend دریافت یا فایل آن را وارد کن.</p>';return;}
+  var report=window.CRCBattleIntelligence.summarize(battles,player.tag,"all");
+  var matched=report.entries.filter(e=>e.attribution==="matched_tag");
+  var counts={wins:0,losses:0,draws:0,unknown:0};
+  matched.forEach(e=>{counts[{win:"wins",loss:"losses",draw:"draws",unknown:"unknown"}[e.outcome]]++;});
+  var known=counts.wins+counts.losses+counts.draws;
+  var rate=known?fmt(Math.round(counts.wins/known*100))+"٪":"—";
+  var same=deck.length===8&&deck.every(Number.isSafeInteger)?matched.filter(e=>e.deck&&e.deck.card_ids.slice().sort((a,b)=>a-b).join(":")===deck.slice().sort((a,b)=>a-b).join(":")):[];
+  var sameCounts={wins:0,losses:0,draws:0,unknown:0};
+  same.forEach(e=>{sameCounts[{win:"wins",loss:"losses",draw:"draws",unknown:"unknown"}[e.outcome]]++;});
+  var sameKnown=sameCounts.wins+sameCounts.losses+sameCounts.draws;
+  var sameRate=sameKnown?fmt(Math.round(sameCounts.wins/sameKnown*100))+"٪":"—";
+  var leaks=matched.map(e=>e.elixir_leaked).filter(n=>Number.isFinite(n)&&n>=0);
+  var leakAverage=leaks.length?fmt(Math.round(leaks.reduce((a,b)=>a+b,0)/leaks.length*100)/100):"—";
+  var tag=coachMemoryTag(),store=coachMemoryStore(),memory=store&&tag&&store.isEnabled(tag)?store.read(tag):null;
+  var pending=memory&&memory.pending_practice,actions={deck:"تحلیل دک",suggestions:"پیشنهاد تعویض",style:"تحلیل سبک بازی",overview:"برنامه پیشرفت"};
+  var task="";
+  if(pending){
+    task='<div class="crc-progress-task"><strong>پیگیری آخرین کار مربی: '+safe(actions[pending.action]||"تمرین")+'</strong>'+
+      '<div class="crc-progress-columns"><div><small>نمونه قبل از درخواست</small><p>'+safe(coachProgressOutcomeText(pending.baseline))+'</p></div>'+
+      '<div><small>نبردهای بعدی با همان ۸ کارت</small><p>'+safe(coachProgressOutcomeText(pending.progress))+'</p></div></div>'+
+      '<p class="small">فقط نبردهای قابل انتساب با همان ترکیب کارت و زمان جدیدتر از درخواست شمرده می‌شوند. این مقایسه اجرای پیشنهاد یا رابطه علت‌ومعلولی را ثابت نمی‌کند.</p></div>';
+  }else if(memory){
+    task='<p class="small">هنوز کار مربی برای پیگیری ثبت نشده است؛ از یکی از تحلیل‌های آماده مربی استفاده کن.</p>';
+  }else{
+    task='<p class="small">برای ثبت روند بین نشست‌ها، حافظه مربی را از منوی ابزارهای مربی به‌صورت اختیاری فعال کن.</p>';
+  }
+  var trend=matched.filter(e=>e.battle_time).sort((a,b)=>a.battle_time.localeCompare(b.battle_time)).slice(-20)
+    .map(e=>'<span class="'+(e.outcome==="win"?"win":e.outcome==="loss"?"loss":e.outcome==="draw"?"draw":"unknown")+'" title="'+safe(e.outcome)+'"></span>').join("");
+  el.innerHTML='<div class="crc-progress-heading"><div><h2>رصد پیشرفت بازیکن</h2><p class="small">بر اساس '+fmt(matched.length)+' نبرد قابل انتساب در داده فعلی</p></div><span class="data-pill">'+(battlesSource==="live"?"دریافت زنده":"فایل محلی")+'</span></div>'+
+    '<div class="crc-progress-metrics">'+
+    '<div class="crc-stat"><b>'+fmt(known)+'</b><small>نتیجه مشخص</small></div>'+
+    '<div class="crc-stat"><b>'+rate+'</b><small>نرخ برد نمونه فعلی</small></div>'+
+    '<div class="crc-stat"><b>'+fmt(same.length)+'</b><small>نبرد با دک انتخابی</small></div>'+
+    '<div class="crc-stat"><b>'+leakAverage+'</b><small>میانگین اکسیر هدررفته · '+fmt(leaks.length)+' نمونه</small></div></div>'+
+    '<div class="crc-progress-deck"><strong>نتیجه دک انتخابی</strong><span>'+fmt(sameKnown)+' نتیجه مشخص · '+fmt(sameCounts.wins)+' برد · '+fmt(sameCounts.losses)+' باخت · نرخ برد '+sameRate+'</span></div>'+
+    '<div class="crc-trend" aria-label="ترتیب ۲۰ نتیجه اخیر">'+(trend||'<span class="unknown"></span>')+'</div>'+
+    task+
+    '<p class="small">این نمونه، کل تاریخچه حساب نیست. نرخ برد فقط از نتایج مشخص محاسبه می‌شود؛ داده نامشخص از مخرج حذف شده و تغییر عملکرد، به‌تنهایی اثر مربی را اثبات نمی‌کند.</p>';
 }
 function refreshCoachMemoryUI(){
   var checkbox=$("crcCoachMemoryEnabled"),focus=$("crcCoachMemoryFocus"),clear=$("crcCoachMemoryClear"),status=$("crcCoachMemoryStatus"),feedback=$("crcCoachMemoryFeedback"),saveFeedback=$("crcCoachMemoryFeedbackSave");
@@ -298,7 +367,7 @@ async function askCoachChat(question,action){
     crcCoachPending(false);
     if(requestScope!==coachScope())return;
     requestSession.record(requestScope,text,reply.answer);
-    var practiceStore=coachMemoryStore();if(action&&practiceStore&&tag&&practiceStore.isEnabled(tag))practiceStore.recordPractice(tag,action,deck);
+    var practiceStore=coachMemoryStore();if(action&&practiceStore&&tag&&practiceStore.isEnabled(tag)){var taskSnapshot=coachMemorySnapshot();practiceStore.recordPractice(tag,action,deck,taskSnapshot&&taskSnapshot.selected_deck,taskSnapshot&&taskSnapshot.latest_battle_at);}
     refreshCoachMemoryUI();
     addCoachChatMessage("ai",reply.answer,reply.model+(reply.qualityStatus==="limited"?" · پاسخ محدودشده پس از بررسی":" · پاسخ تولیدشده توسط هوش مصنوعی"),reply.sources);
     $("coachAIStatus").textContent="پاسخ آنلاین دریافت شد.";
@@ -325,7 +394,7 @@ function setupCoachChat(){
   $("clearCoachChat").addEventListener("click",clearCoachChat);
   setupCoachMemory();
 }
-function renderCoach(){if(!coachBusy){$("coachAIStatus").textContent=coachAICap&&coachAICap.ai_coach_enabled===true?"مربی آنلاین آماده است؛ یک تحلیل آماده انتخاب کن یا سؤال خودت را بفرست.":"در حال بررسی دسترسی مربی آنلاین…";}refreshCoachMemoryUI();coachMemoryCapture();}
+function renderCoach(){if(!coachBusy){$("coachAIStatus").textContent=coachAICap&&coachAICap.ai_coach_enabled===true?"مربی آنلاین آماده است؛ یک تحلیل آماده انتخاب کن یا سؤال خودت را بفرست.":"در حال بررسی دسترسی مربی آنلاین…";}coachMemoryCapture();refreshCoachMemoryUI();renderProgressPanel();}
 function renderCatalog(){
 var q=$("cardSearch").value.trim().toLowerCase(),cst=$("cardCost").value;
 var list=catalog.filter(function(c){var own=crcOwn(c.id);if(crcFilter==="owned"&&!own)return false;if(crcFilter==="max"&&!(own&&Number.isInteger(own.level)&&Number.isInteger(own.maxLevel)&&own.level>=own.maxLevel))return false;if(q&&!c.name.toLowerCase().includes(q)&&!String(c.id).includes(q))return false;if(cst==="1-2"&&!(c.elixir>=1&&c.elixir<=2))return false;if(cst==="3-4"&&!(c.elixir>=3&&c.elixir<=4))return false;if(cst==="5+"&&!(c.elixir>=5))return false;return true;});
@@ -436,6 +505,7 @@ var owned=Array.isArray(player.cards)?player.cards.length:0;var support=Array.is
 var name=safe(player.name||"بدون نام"),tag=safe(player.tag||""),trophies=safe(player.trophies==null?"نامشخص":player.trophies),arena=safe(player.arena&&player.arena.name||"نامشخص");
 wrap.className="panel";wrap.innerHTML='<div class="panel-top"><div><div class="eyebrow">'+(profileSource==="live"?"LIVE PROFILE · SERVER-SIDE SUPERCELL":"IMPORTED PROFILE · LOCAL ONLY")+'</div><h2>'+name+'</h2><p dir="ltr">'+tag+'</p></div><span class="chip gold">مالکیت احراز نشده</span></div><div class="stat-inline"><div class="stat"><b>'+trophies+'</b><span>Trophies</span></div><div class="stat"><b>'+owned+'</b><span>کارت اصلی در فایل</span></div><div class="stat"><b>'+support+'</b><span>کارت پشتیبان</span></div><div class="stat"><b>'+arena+'</b><span>Arena</span></div></div><div class="message">'+safe(profileSource==="live"?"پاسخ از Backend با کلید سرور دریافت شده است؛ مالکیت حساب تأیید نشده و زمان دریافت: "+(liveFetchedAt||"نامشخص"):"این اطلاعات فقط از فایل واردشده خوانده شده‌اند. تازگی داده و مالکیت حساب مستقل از آن تأیید نشده است.")+'</div>'+(Array.isArray(player.currentDeck)&&player.currentDeck.length===8?'<button type="button" id="useProfileDeck" class="btn primary" style="margin-top:15px">بازکردن دک پروفایل در دک‌ساز ←</button>':"");
 var b=$("useProfileDeck");if(b)b.addEventListener("click",function(){var ids=player.currentDeck.map(function(c){return c.id;});if(new Set(ids).size===8){setDeck(ids,"profile-import");toPage("deck");}});
+  coachMemoryCapture();renderProgressPanel();
 }
 async function importBattles(file){
 try{var raw=await parseFile(file);if(!Array.isArray(raw)||raw.some(function(b){return !b||typeof b!=="object";})||raw.length>200)throw Error("این فایل قالب معتبر Battle Log ندارد یا خیلی بزرگ است.");battles=raw;battlesSource="file";mergeBattleCards(raw);renderBattles();renderCatalog();notify(raw.length+" نبرد از فایل به‌صورت محلی خوانده شد.");}
@@ -478,7 +548,7 @@ function renderBattles(){
   if(!module){$("battleList").textContent="ماژول تحلیل نبرد بارگذاری نشده است.";return;}
   var inputTag=player&&tagFormat(player.tag)||tagFormat($("playerTag").value);
   var report=module.summarize(battles,inputTag,$("battleFilter").value);
-  var rows=report.entries;crcRender();
+  var rows=report.entries;coachMemoryCapture();crcRender();renderProgressPanel();
   var stats=[
     [report.filtered_count,"نبرد در فیلتر"],
     [report.counts.win,"بردهای قابل تشخیص"],
