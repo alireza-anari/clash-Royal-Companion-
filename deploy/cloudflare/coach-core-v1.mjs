@@ -84,7 +84,22 @@ export function coachMemoryContext(value){
       latest_battle_at:typeof item.latest_battle_at==='string'&&item.latest_battle_at.length<=40?item.latest_battle_at:null
     });
   }
-  return {version:1,focus:focuses.has(value.focus)?value.focus:'balanced',snapshots};
+  const actions=new Set(['deck','suggestions','style','overview']);
+  const outcomes=new Set(['improved','same','worse','not_tried']);
+  const practice=value=>{
+    if(!value||typeof value!=='object'||!actions.has(value.action)||typeof value.created_at!=='string'||
+      value.created_at.length>40||!Number.isFinite(Date.parse(value.created_at)))return null;
+    const ids=Array.isArray(value.deck_card_ids)?value.deck_card_ids.slice(0,8):[];
+    return ids.length===8&&ids.every(id=>Number.isSafeInteger(id)&&id>0&&id<=1000000000)&&new Set(ids).size===8?
+      {action:value.action,deck_card_ids:ids,created_at:value.created_at}:null;
+  };
+  const pending=practice(value.pending_practice);
+  const feedback=(Array.isArray(value.practice_feedback)?value.practice_feedback:[]).slice(0,3).map(item=>{
+    const clean=practice(item);
+    return clean&&outcomes.has(item.outcome)&&typeof item.recorded_at==='string'&&item.recorded_at.length<=40&&Number.isFinite(Date.parse(item.recorded_at))?
+      {...clean,outcome:item.outcome,recorded_at:item.recorded_at}:null;
+  }).filter(Boolean);
+  return {version:1,focus:focuses.has(value.focus)?value.focus:'balanced',snapshots,pending_practice:pending,practice_feedback:feedback};
 }
 export function patchCoachCore(source){
   // Source transformation candidate; no deployment. Every anchor must match once.
