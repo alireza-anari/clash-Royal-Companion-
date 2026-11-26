@@ -58,7 +58,7 @@ export function coachQualityFacts(battles,personal){
     };
     const before=bundle(pending.baseline),after=bundle(pending.progress);
     if(before||after){
-      const parts=['پیگیری ساختاریافته پس از '+actionLabels[pending.action]+'؛ دک هدف: '+pending.deck_card_ids.join(', ')];
+      const parts=['پیگیری ساختاریافته پس از '+actionLabels[pending.action]+'؛ نوع دک: '+(pending.target_kind==='suggested_deck'?'دک پیشنهادی':'دک فعلی')+'؛ شناسه کارت‌ها: '+pending.deck_card_ids.join(', ')];
       if(before)parts.push('نمونه پیش از کار مربی: '+format(before.outcomes,'نبردهای همان دک'));
       if(after)parts.push('نبردهای جدیدتر با همان دک که پس از کار مربی در Battle Log مشاهده شدند: '+format(after.outcomes,'نمونه پس از کار مربی'));
       parts.push('این مقایسه فقط هم‌زمانی و ترکیب دک را ثبت می‌کند؛ اثبات اجرای پیشنهاد یا اثر علّی مربی نیست.');
