@@ -24,8 +24,10 @@ test('all prompts use synthetic, unverified evidence and a strict four-key respo
 test('each prompt declares only the fact keys sources and swap indices actually available',async()=>{
  const data=await loadCoachEval();
  const deck=coachEvalBuildMessages(data,data.scenarios.find(x=>x.id==='D04')).messages[1].content;
- assert.match(deck,/مقادیر دقیق و مجاز fact_keys برای همین سناریو: \[\]/);
- assert.match(deck,/شناسه‌های دقیق و مجاز source_ids برای همین سناریو: \["K01"\]/);
+ assert.match(deck,/مقادیر دقیق و مجاز fact_keys برای همین سناریو: \["elixir"\]/);
+ assert.match(deck,/شناسه‌های دقیق و مجاز source_ids برای همین سناریو: .*K01/);
+ const empty=coachEvalBuildMessages(data,data.scenarios.find(x=>x.id==='D12')).messages[1].content;
+ assert.match(empty,/مقادیر دقیق و مجاز fact_keys برای همین سناریو: \[\]/);
  const swap=coachEvalBuildMessages(data,data.scenarios.find(x=>x.id==='S01')).messages[1].content;
  assert.match(swap,/اندیس‌های مجاز swap_index برای همین سناریو: \[0,1,2,3\]/);
  const battle=coachEvalBuildMessages(data,data.scenarios.find(x=>x.id==='B01')).messages[1].content;
