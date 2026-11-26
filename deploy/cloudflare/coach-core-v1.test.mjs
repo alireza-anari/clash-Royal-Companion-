@@ -63,7 +63,7 @@ test('knowledge patch inserts retrieved context, citations and source metadata o
   '}'
  ].join('\n');
  const out=patchCoachKnowledge(source);
- assert.match(out,/coachRetrieve\(question,action,personal.deck_cards\)/);
+ assert.match(out,/coachRetrieve\(question,action\|\|coachPlan.intent,personal.deck_cards\)/);
  assert.match(out,/knowledge_sources:coachKnowledgeSources/);
  assert.match(out,/coachFormatAnswer/);
  assert.throws(()=>patchCoachKnowledge(out));
