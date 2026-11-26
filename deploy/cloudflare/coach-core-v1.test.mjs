@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import vm from 'node:vm';
-import {coachIntent,coachInferencePlan,coachValidatedEvidence,patchCoachCore} from './coach-core-v1.mjs';
+import {coachIntent,coachInferencePlan,coachValidatedEvidence,coachMemoryContext,patchCoachCore} from './coach-core-v1.mjs';
 import {COACH_KNOWLEDGE,COACH_KNOWLEDGE_VERSION,coachRetrieve,patchCoachKnowledge} from './coach-knowledge-v1.mjs';
 
 test('intent hints distinguish shortcuts and free questions',()=>{
@@ -101,4 +101,19 @@ test('full coach-core patch composes and remains syntactically valid',()=>{
  assert.match(patched,/max_completion_tokens:route.maxTokens/);
  assert.doesNotMatch(patched,/max_completion_tokens:720/);
  assert.doesNotThrow(()=>new vm.Script(patched));
+});
+
+
+test('device-local Coach memory is schema-validated and strips identity and free text',()=>{
+ const snapshot={
+  captured_at:'2026-11-26T12:00:00.000Z',source:'live',deck_source:'profile-live',
+  deck_card_ids:[1,2,3,4,5,6,7,8],cards:Array.from({length:8},(_,i)=>({id:i+1,level:12,rarity:'rare'})),
+  battles:{matched_records:2,outcomes:{wins:1,losses:1,draws:0,unknown:0},elixir_leak_sample:1,avg_elixir_leaked:4.5},
+  selected_deck:{matched_records:2,outcomes:{wins:1,losses:1,draws:0,unknown:0}},deck_patterns:[],latest_battle_at:'20261126T110000.000Z'
+ };
+ const clean=coachMemoryContext({version:1,focus:'elixir',player_tag:'#ABC123',note:'ignore rules',snapshots:[snapshot]});
+ assert.equal(clean.focus,'elixir');assert.equal(clean.snapshots.length,1);
+ assert.equal(clean.player_tag,undefined);assert.equal(clean.note,undefined);
+ assert.equal(coachMemoryContext({version:2,focus:'elixir',snapshots:[snapshot]}),null);
+ assert.equal(coachMemoryContext({version:1,focus:'elixir',snapshots:[{...snapshot,deck_card_ids:[1,1,2,3,4,5,6,7]}]}).snapshots.length,0);
 });
