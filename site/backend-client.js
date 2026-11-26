@@ -275,6 +275,22 @@
     return pending&&COACH_MEMORY_OUTCOMES.has(value.outcome)&&typeof value.recorded_at==='string'&&value.recorded_at.length<=40&&Number.isFinite(Date.parse(value.recorded_at))?
       {...pending,outcome:value.outcome,recorded_at:value.recorded_at}:null;
   }
+    function coachPracticeDelta(entries,pending){
+    const task=cleanCoachPractice(pending);
+    if(!task||!Array.isArray(entries))return null;
+    const watermark=task.last_battle_at||task.since_battle_at||task.created_at;
+    const key=task.deck_card_ids.slice().sort((a,b)=>a-b).join(':');
+    const fresh=entries.slice(0,200).filter(e=>e&&e.attribution==='matched_tag'&&
+      e.deck&&Array.isArray(e.deck.card_ids)&&e.deck.card_ids.length===8&&
+      e.deck.card_ids.slice().sort((a,b)=>a-b).join(':')===key&&
+      typeof e.battle_time==='string'&&Number.isFinite(Date.parse(e.battle_time))&&Date.parse(e.battle_time)>Date.parse(watermark)&&
+      ['win','loss','draw','unknown'].includes(e.outcome))
+      .sort((a,b)=>a.battle_time.localeCompare(b.battle_time));
+    if(!fresh.length)return null;
+    const outcomes={wins:0,losses:0,draws:0,unknown:0};
+    fresh.forEach(e=>{outcomes[{win:'wins',loss:'losses',draw:'draws',unknown:'unknown'}[e.outcome]]++;});
+    return {matched_records:fresh.length,outcomes,last_battle_at:fresh[fresh.length-1].battle_time};
+  }
   function cleanCoachMemory(value){
     if(!value||typeof value!=='object'||Array.isArray(value)||value.version!==COACH_MEMORY_VERSION)return null;
     const focus=COACH_MEMORY_FOCI.has(value.focus)?value.focus:'balanced';
@@ -451,5 +467,5 @@
     const qualityStatus=data.quality_version==='crc-coach-quality-v1'&&['limited','checked_structure'].includes(data.quality_status)?data.quality_status:null;
     return {answer:data.answer,model:data.model,sources,knowledgeVersion:typeof data.knowledge_version==='string'?data.knowledge_version:null,qualityStatus,modelRoute:['fast','quality'].includes(data.model_route)?data.model_route:null,fallbackUsed:typeof data.fallback_used==='boolean'?data.fallback_used:null};
   }
-  root.CRCBackendClient=Object.freeze({VERSION,BackendError,normalizeTag,route,capabilities,loadPlayer,normalizedToProfile,normalizedToBattles,personalCoachContext,coachPayload,askAI,createCoachSession,cleanCoachHistory,createCoachMemory,cleanCoachMemory,cleanCoachMemorySnapshot,COACH_MEMORY_VERSION});
+  root.CRCBackendClient=Object.freeze({VERSION,BackendError,normalizeTag,route,capabilities,loadPlayer,normalizedToProfile,normalizedToBattles,personalCoachContext,coachPayload,askAI,createCoachSession,cleanCoachHistory,createCoachMemory,cleanCoachMemory,cleanCoachMemorySnapshot,coachPracticeDelta,COACH_MEMORY_VERSION});
 })(typeof window!=='undefined'?window:globalThis);
