@@ -51,7 +51,7 @@ export function coachQualityNumericClaim(text){
 export function coachQualityPersonalStatsClaim(text){
   const s=String(text||'').replace(/[۰-۹]/g,c=>String(c.charCodeAt(0)-1776)).replace(/[٠-٩]/g,c=>String(c.charCodeAt(0)-1632)).replace(/ي/g,'ی').replace(/ك/g,'ک');
   const patterns=[
-    /(?:میانگین\s*اکسیر|average\s*elixir)[^\n]{0,45}[0-9]+|[0-9]+[^\n]{0,45}(?:میانگین\s*اکسیر|average\s*elixir)/i,
+    /(?:میانگین|average)[^\n]{0,50}[0-9]+|[0-9]+[^\n]{0,50}(?:میانگین|average)/i,
     /(?:برد|باخت|مساوی|wins?|losses?|draws?)[^\n]{0,18}[0-9]+|[0-9]+[^\n]{0,18}(?:برد|باخت|مساوی|wins?|losses?|draws?)/i,
     /(?:نبرد|بازی|matches?|battles?)[^\n]{0,18}[0-9]+|[0-9]+[^\n]{0,18}(?:نبرد|بازی|matches?|battles?)/i
   ];
