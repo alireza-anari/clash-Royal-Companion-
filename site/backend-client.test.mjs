@@ -321,3 +321,20 @@ test('coach client exposes only schema-valid server-checked card swap metadata',
  response.quality_swap={...response.quality_swap,add_id:'not-an-id'};
  assert.equal((await api.askAI(session,'پیشنهاد تعویض',null,null,{ai_coach_enabled:true},null)).swap,null);
 });
+
+test('Evolution and Hero bitfields are decoded independently and Collection Level is bounded',()=>{
+ const cards=[
+  {id:1,level:16,maxLevel:16,rarity:'common',maxEvolutionLevel:3,evolutionLevel:3},
+  {id:2,level:10,maxLevel:14,rarity:'rare',maxEvolutionLevel:1,evolutionLevel:1},
+  {id:3,level:8,maxLevel:8,rarity:'legendary'},
+  {id:4,level:6,maxLevel:6,rarity:'champion',maxEvolutionLevel:2,evolutionLevel:2}
+ ];
+ const forms=api.cardFormProgress(cards[0]);
+ assert.equal(forms.evolution_available,true);assert.equal(forms.hero_available,true);
+ assert.equal(forms.evolution_unlocked,true);assert.equal(forms.hero_unlocked,true);
+ const progress=api.collectionLevel({cards,supportCards:[{id:159000001,level:16,maxLevel:16,rarity:'common'}]});
+ assert.equal(progress.level,96);assert.equal(progress.base_levels,76);
+ assert.equal(progress.card_count,5);assert.equal(progress.evolutions,2);assert.equal(progress.heroes,2);
+ assert.equal(api.collectionLevel({cards:[{id:1,level:12,rarity:'unknown'}]}),null);
+ assert.equal(api.collectionLevel({cards:[{id:1,level:12,maxLevel:16,rarity:'common',evolutionLevel:4}]}),null);
+});
