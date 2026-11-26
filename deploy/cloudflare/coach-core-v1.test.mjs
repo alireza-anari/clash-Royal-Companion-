@@ -85,7 +85,7 @@ test('full coach-core patch composes and remains syntactically valid',()=>{
   '  ];',
   '  const generated=await env.AI.run(LIVE_AI_MODEL,{messages,max_completion_tokens:720});',
   '  let answer=generated.response;',
-  '  answer=answer.trim().slice(0,2900);',
+  '    answer=answer.trim().slice(0,2900);',
   '  return previewResponse({answer,model:LIVE_AI_MODEL,external_inference:true,replay_analyzed:false,evidence_status:"client_submitted_unverified"});',
   '}'
  ].join('\n');
