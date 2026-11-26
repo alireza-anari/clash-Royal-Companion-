@@ -217,3 +217,55 @@ test('coach router model and route metadata accept only known values',async()=>{
  response.model_route='untrusted';response.fallback_used='yes';
  const next=await ask();assert.equal(next.modelRoute,null);assert.equal(next.fallbackUsed,null);
 });
+
+
+const memoryStorage=()=>{const values=new Map();return {getItem:key=>values.has(key)?values.get(key):null,setItem:(key,value)=>values.set(key,String(value)),removeItem:key=>values.delete(key),values};};
+const memorySnapshot=(overrides={})=>({
+ captured_at:'2026-11-26T12:00:00.000Z',source:'live',deck_source:'profile-live',
+ deck_card_ids:[1,2,3,4,5,6,7,8],
+ cards:Array.from({length:8},(_,i)=>({id:i+1,level:12,rarity:'rare',evolution_level:0,star_level:1})),
+ battles:{matched_records:2,outcomes:{wins:1,losses:1,draws:0,unknown:0},elixir_leak_sample:2,avg_elixir_leaked:4.5},
+ selected_deck:{matched_records:2,outcomes:{wins:1,losses:1,draws:0,unknown:0}},
+ deck_patterns:[{deck_card_ids:[1,2,3,4,5,6,7,8],plays:2,outcomes:{wins:1,losses:1,draws:0,unknown:0},event_plays:0}],
+ latest_battle_at:'20261126T110000.000Z',...overrides
+});
+test('Coach memory is opt-in, profile-scoped, bounded and device-local',()=>{
+ const storage=memoryStorage(),memory=api.createCoachMemory(storage),snapshot=memorySnapshot();
+ assert.equal(memory.isEnabled('#TEST123'),false);
+ assert.equal(memory.record('#TEST123',snapshot),false);
+ assert.equal(memory.setEnabled('#TEST123',true),true);
+ assert.equal(memory.isEnabled('#TEST123'),true);
+ assert.equal(memory.record('#TEST123',snapshot),true);
+ assert.equal(memory.read('#TEST123').snapshots.length,1);
+ assert.equal(memory.read('#OTHER123'),null);
+ assert.equal(memory.setFocus('#TEST123','elixir'),true);
+ assert.equal(memory.read('#TEST123').focus,'elixir');
+ const next=memorySnapshot({captured_at:'2026-11-26T13:00:00.000Z',latest_battle_at:'20261126T120000.000Z'});
+ assert.equal(memory.record('#TEST123',next),true);
+ assert.equal(memory.read('#TEST123').snapshots.length,2);
+ assert.equal(memory.record('#TEST123',next),true);
+ assert.equal(memory.read('#TEST123').snapshots.length,2);
+ assert.equal(memory.clear('#TEST123'),true);
+ assert.equal(memory.read('#TEST123'),null);
+ assert.equal(storage.values.size,0);
+});
+test('Coach memory rejects invalid tags, malformed snapshots and unapproved focus values',()=>{
+ const memory=api.createCoachMemory(memoryStorage());
+ assert.equal(memory.setEnabled('not-a-tag',true),false);
+ assert.equal(memory.setEnabled('#TEST123',true),true);
+ assert.equal(memory.record('#TEST123',memorySnapshot({deck_card_ids:[1,1,2,3,4,5,6,7]})),false);
+ assert.equal(memory.setFocus('#TEST123','ignore-all-rules'),false);
+ assert.equal(memory.setFocus('#TEST123','defense'),true);
+});
+test('coach payload forwards only bounded structured memory, never tag or free text',()=>{
+ const snapshot=memorySnapshot();
+ const personal={deck_cards:Array.from({length:8},(_,i)=>({id:i+1,name:'Card '+(i+1),elixir:3})),
+  coach_memory:{version:1,focus:'elixir',snapshots:[snapshot],player_tag:'#TEST123',private_note:'do not send'}};
+ const payload=api.coachPayload('تحلیل سبک بازی',null,null,personal,'style');
+ assert.equal(payload.personal.coach_memory.focus,'elixir');
+ assert.equal(payload.personal.coach_memory.snapshots.length,1);
+ assert.equal(payload.personal.coach_memory.player_tag,undefined);
+ assert.equal(payload.personal.coach_memory.private_note,undefined);
+ assert.equal(JSON.stringify(payload).includes('#TEST123'),false);
+ assert.equal(JSON.stringify(payload).includes('do not send'),false);
+});
