@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import vm from 'node:vm';
 import {coachIntent,coachInferencePlan,coachValidatedEvidence,patchCoachCore} from './coach-core-v1.mjs';
 import {COACH_KNOWLEDGE,COACH_KNOWLEDGE_VERSION,coachRetrieve,patchCoachKnowledge} from './coach-knowledge-v1.mjs';
 
@@ -69,4 +70,27 @@ test('knowledge patch inserts retrieved context, citations and source metadata o
  assert.match(out,/knowledge_sources:coachKnowledgeSources/);
  assert.match(out,/coachFormatAnswer/);
  assert.throws(()=>patchCoachKnowledge(out));
+});
+
+test('full coach-core patch composes and remains syntactically valid',()=>{
+ const fixture=String.raw\`const LIVE_AI_MODEL="test";
+async function previewChat(request,env) {
+  const evidence={};
+  const personal=personalCoachEvidence(data.personal);
+  if(action)personal.style_summary=guidedStyleEvidence(data.personal&&data.personal.style);
+  const messages=[
+    {role:"system",content:"allowed_single_swaps selected_deck_results فارسی، تیتر ساده بدون Markdown، حداکثر ۲۴۰ کلمه."},
+    {role:"user",content:(action?"ابزار انتخاب‌شده: "+action+"\\nوظیفه ثابت سرور: ":"سؤال: ")+question+"\\nاین داده‌ها ارسالی از مرورگر و از نظر مالکیت تایید نشده‌اند."}
+  ];
+  const generated=await env.AI.run(LIVE_AI_MODEL,{messages,max_completion_tokens:720});
+  let answer=generated.response;
+  answer=answer.trim().slice(0,2900);
+  return previewResponse({answer,model:LIVE_AI_MODEL,external_inference:true,replay_analyzed:false,evidence_status:"client_submitted_unverified"});
+}\`;
+ const patched=patchCoachCore(fixture);
+ assert.match(patched,/coachRetrieve\\(question,action\\|\\|coachPlan.intent,personal.deck_cards\\)/);
+ assert.match(patched,/knowledge_sources:coachKnowledgeSources/);
+ assert.match(patched,/max_completion_tokens:coachPlan.maxTokens/);
+ assert.doesNotMatch(patched,/max_completion_tokens:720/);
+ assert.doesNotThrow(()=>new vm.Script(patched));
 });
