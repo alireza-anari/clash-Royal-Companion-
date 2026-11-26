@@ -249,11 +249,27 @@
       deck_patterns:cleanPatterns,latest_battle_at:latest
     };
   }
+  const COACH_MEMORY_ACTIONS=new Set(['deck','suggestions','style','overview']);
+  const COACH_MEMORY_OUTCOMES=new Set(['improved','same','worse','not_tried']);
+  function cleanCoachPractice(value){
+    if(!value||typeof value!=='object'||!COACH_MEMORY_ACTIONS.has(value.action)||
+      typeof value.created_at!=='string'||value.created_at.length>40||!Number.isFinite(Date.parse(value.created_at)))return null;
+    const ids=Array.isArray(value.deck_card_ids)?value.deck_card_ids.slice(0,8):[];
+    return ids.length===8&&ids.every(id=>Number.isSafeInteger(id)&&id>0&&id<=1000000000)&&new Set(ids).size===8?
+      {action:value.action,deck_card_ids:ids,created_at:value.created_at}:null;
+  }
+  function cleanCoachFeedback(value){
+    const pending=cleanCoachPractice(value);
+    return pending&&COACH_MEMORY_OUTCOMES.has(value.outcome)&&typeof value.recorded_at==='string'&&value.recorded_at.length<=40&&Number.isFinite(Date.parse(value.recorded_at))?
+      {...pending,outcome:value.outcome,recorded_at:value.recorded_at}:null;
+  }
   function cleanCoachMemory(value){
     if(!value||typeof value!=='object'||Array.isArray(value)||value.version!==COACH_MEMORY_VERSION)return null;
     const focus=COACH_MEMORY_FOCI.has(value.focus)?value.focus:'balanced';
     const snapshots=(Array.isArray(value.snapshots)?value.snapshots:[]).slice(0,2).map(cleanCoachMemorySnapshot).filter(Boolean);
-    return {version:COACH_MEMORY_VERSION,focus,snapshots};
+    const pending=cleanCoachPractice(value.pending_practice);
+    const feedback=(Array.isArray(value.practice_feedback)?value.practice_feedback:[]).slice(0,3).map(cleanCoachFeedback).filter(Boolean);
+    return {version:COACH_MEMORY_VERSION,focus,snapshots,pending_practice:pending,practice_feedback:feedback};
   }
   function createCoachMemory(storage){
     const validTag=value=>normalizeTag(value);
@@ -265,7 +281,8 @@
         const value=JSON.parse(raw);
         if(!value||value.version!==COACH_MEMORY_VERSION||typeof value.enabled!=='boolean')return null;
         return {version:COACH_MEMORY_VERSION,enabled:value.enabled,focus:COACH_MEMORY_FOCI.has(value.focus)?value.focus:'balanced',
-          snapshots:(Array.isArray(value.snapshots)?value.snapshots:[]).slice(0,3).map(cleanCoachMemorySnapshot).filter(Boolean)};
+          snapshots:(Array.isArray(value.snapshots)?value.snapshots:[]).slice(0,3).map(cleanCoachMemorySnapshot).filter(Boolean),
+          pending_practice:cleanCoachPractice(value.pending_practice),practice_feedback:(Array.isArray(value.practice_feedback)?value.practice_feedback:[]).slice(0,3).map(cleanCoachFeedback).filter(Boolean)};
       }catch{return null;}
     };
     const write=(tag,value)=>{
@@ -276,12 +293,12 @@
       isEnabled(tag){return readStored(tag)?.enabled===true;},
       setEnabled(tag,enabled){
         if(!validTag(tag)||typeof enabled!=='boolean')return false;
-        const old=readStored(tag)||{version:COACH_MEMORY_VERSION,enabled:false,focus:'balanced',snapshots:[]};
+        const old=readStored(tag)||{version:COACH_MEMORY_VERSION,enabled:false,focus:'balanced',snapshots:[],pending_practice:null,practice_feedback:[]};
         return write(tag,{...old,enabled});
       },
       read(tag){
         const value=readStored(tag);if(!value?.enabled)return null;
-        return cleanCoachMemory({version:COACH_MEMORY_VERSION,focus:value.focus,snapshots:value.snapshots});
+        return cleanCoachMemory({version:COACH_MEMORY_VERSION,focus:value.focus,snapshots:value.snapshots,pending_practice:value.pending_practice,practice_feedback:value.practice_feedback});
       },
       setFocus(tag,focus){
         if(!COACH_MEMORY_FOCI.has(focus))return false;
@@ -294,6 +311,17 @@
         const fingerprint=value=>JSON.stringify({...value,captured_at:null});
         if(old.snapshots[0]&&fingerprint(old.snapshots[0])===fingerprint(clean))return true;
         return write(tag,{...old,snapshots:[clean,...old.snapshots].slice(0,3)});
+      },
+      recordPractice(tag,action,deckCardIds){
+        const old=readStored(tag);if(!old?.enabled||!COACH_MEMORY_ACTIONS.has(action))return false;
+        const clean=cleanCoachPractice({action,deck_card_ids:deckCardIds,created_at:new Date().toISOString()});
+        return clean?write(tag,{...old,pending_practice:clean}):false;
+      },
+      submitPracticeFeedback(tag,outcome){
+        const old=readStored(tag);if(!old?.enabled||!COACH_MEMORY_OUTCOMES.has(outcome)||!old.pending_practice)return false;
+        const feedback=cleanCoachFeedback({...old.pending_practice,outcome,recorded_at:new Date().toISOString()});
+        if(!feedback)return false;
+        return write(tag,{...old,pending_practice:null,practice_feedback:[feedback,...old.practice_feedback].slice(0,3)});
       },
       clear(tag){
         if(!validTag(tag)||!storage||typeof storage.removeItem!=='function')return false;
