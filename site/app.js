@@ -380,15 +380,15 @@ async function askCoachChat(question,action){
     var tag=(player&&player.tag)||$("playerTag").value;
     var evidence=window.CRCBattleEvidence?window.CRCBattleEvidence.evidence(battles,tag,$("coachBattleScope").value,deck):null;
     var personal=currentPersonalCoachContext(facts);
-    var requestScope=coachScope(),requestSession=coachSession();
+    var requestScope=coachScope(),requestSession=coachSession(),requestTag=coachMemoryTag(),requestDeck=deck.slice();
     personal.chat_history=requestSession.history(requestScope);
     coachMemoryCapture();
-    var memoryStore=coachMemoryStore();if(memoryStore&&tag)personal.coach_memory=memoryStore.read(tag);
+    var memoryStore=coachMemoryStore();if(memoryStore&&requestTag)personal.coach_memory=memoryStore.read(requestTag);
     var reply=await window.CRCBackendClient.askAI(window.CRCBetaSession,text,facts,evidence,coachAICap,personal,action);
     crcCoachPending(false);
     if(requestScope!==coachScope())return;
     requestSession.record(requestScope,text,reply.answer);
-    var practiceStore=coachMemoryStore();if(action&&reply.qualityStatus==="checked_structure"&&(action!=="suggestions"||reply.swap)&&practiceStore&&tag&&practiceStore.isEnabled(tag)){var trackingDeck=deck.slice(),targetKind="current_deck";if(action==="suggestions"&&reply.swap&&trackingDeck.includes(reply.swap.remove_id)&&!trackingDeck.includes(reply.swap.add_id)){trackingDeck=trackingDeck.map(id=>id===reply.swap.remove_id?reply.swap.add_id:id);targetKind="suggested_deck";}var taskStats=coachPracticeDeckStats(trackingDeck);practiceStore.recordPractice(tag,action,trackingDeck,taskStats&&taskStats.baseline,taskStats&&taskStats.latest_battle_at,targetKind);}
+    var practiceStore=coachMemoryStore();if(action&&reply.qualityStatus==="checked_structure"&&(action!=="suggestions"||reply.swap)&&practiceStore&&requestTag&&practiceStore.isEnabled(requestTag)){var trackingDeck=requestDeck.slice(),targetKind="current_deck";if(action==="suggestions"&&reply.swap&&trackingDeck.includes(reply.swap.remove_id)&&!trackingDeck.includes(reply.swap.add_id)){trackingDeck=trackingDeck.map(id=>id===reply.swap.remove_id?reply.swap.add_id:id);targetKind="suggested_deck";}var taskStats=coachPracticeDeckStats(trackingDeck);practiceStore.recordPractice(requestTag,action,trackingDeck,taskStats&&taskStats.baseline,taskStats&&taskStats.latest_battle_at,targetKind);}
     refreshCoachMemoryUI();renderProgressPanel();
     addCoachChatMessage("ai",reply.answer,reply.model+(reply.qualityStatus==="limited"?" · پاسخ محدودشده پس از بررسی":" · پاسخ تولیدشده توسط هوش مصنوعی"),reply.sources);
     $("coachAIStatus").textContent="پاسخ آنلاین دریافت شد.";
