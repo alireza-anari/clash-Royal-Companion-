@@ -327,10 +327,11 @@
       recordPractice(tag,action,deckCardIds,baseline,sinceBattleAt){
         const old=readStored(tag);if(!old?.enabled||!COACH_MEMORY_ACTIONS.has(action))return false;
         const zero={wins:0,losses:0,draws:0,unknown:0};
+        const createdAt=new Date().toISOString();
         const clean=cleanCoachPractice({
-          action,deck_card_ids:deckCardIds,created_at:new Date().toISOString(),
+          action,deck_card_ids:deckCardIds,created_at:createdAt,
           baseline:baseline&&baseline.outcomes?baseline:null,
-          progress:{matched_records:0,outcomes:zero},since_battle_at:sinceBattleAt||null,last_battle_at:sinceBattleAt||null
+          progress:{matched_records:0,outcomes:zero},since_battle_at:sinceBattleAt||null,last_battle_at:createdAt
         });
         return clean?write(tag,{...old,pending_practice:clean}):false;
       },
