@@ -62,12 +62,47 @@
     if(Number.isInteger(value.level_raw))c.level=value.level_raw;
     if(Number.isInteger(value.max_level_raw))c.maxLevel=value.max_level_raw;
     if(Number.isInteger(value.evolution_level))c.evolutionLevel=value.evolution_level;
+    if(Number.isInteger(value.max_evolution_level))c.maxEvolutionLevel=value.max_evolution_level;
     if(Number.isInteger(value.star_level))c.starLevel=value.star_level;
     if(Number.isInteger(value.count))c.count=value.count;
     if(typeof value.rarity==='string')c.rarity=value.rarity;
-    if(typeof value.icon_url==='string'&&value.icon_url.startsWith('https://api-assets.clashroyale.com/'))
-      c.iconUrls={medium:value.icon_url};
+    const icons={};
+    const safeAsset=(url,prefix)=>typeof url==='string'&&url.startsWith('https://api-assets.clashroyale.com/'+prefix+'/')?url:null;
+    const medium=safeAsset(value.icon_url,'cards');
+    const hero=safeAsset(value.hero_icon_url,'cardheroes');
+    const evolution=safeAsset(value.evolution_icon_url,'cardevolutions');
+    if(medium)icons.medium=medium;
+    if(hero)icons.heroMedium=hero;
+    if(evolution)icons.evolutionMedium=evolution;
+    if(Object.keys(icons).length)c.iconUrls=icons;
     return c;
+  }
+  function cardFormProgress(card){
+    const available=Number.isInteger(card?.maxEvolutionLevel)&&card.maxEvolutionLevel>=0&&card.maxEvolutionLevel<=3?card.maxEvolutionLevel:0;
+    const unlocked=Number.isInteger(card?.evolutionLevel)&&card.evolutionLevel>=0&&card.evolutionLevel<=3?card.evolutionLevel:0;
+    return {
+      evolution_available:(available&1)!==0,hero_available:(available&2)!==0,
+      evolution_unlocked:(unlocked&1)!==0,hero_unlocked:(unlocked&2)!==0
+    };
+  }
+  function collectionLevel(profile){
+    const cards=[...(Array.isArray(profile?.cards)?profile.cards:[]),...(Array.isArray(profile?.supportCards)?profile.supportCards:[])];
+    const unique=[...new Map(cards.filter(c=>c&&Number.isSafeInteger(c.id)).map(c=>[c.id,c])).values()];
+    if(!unique.length)return null;
+    const caps={common:16,rare:14,epic:11,legendary:8,champion:6};
+    let base=0,evolutions=0,heroes=0;
+    for(const card of unique){
+      const rarity=typeof card.rarity==='string'?card.rarity.toLowerCase():'';
+      const max=Number.isInteger(card.maxLevel)?card.maxLevel:caps[rarity];
+      if(!Number.isInteger(card.level)||card.level<1||!Number.isInteger(max)||![6,8,11,14,16].includes(max)||card.level>max)return null;
+      if(card.maxEvolutionLevel!=null&&(!Number.isInteger(card.maxEvolutionLevel)||card.maxEvolutionLevel<0||card.maxEvolutionLevel>3))return null;
+      if(card.evolutionLevel!=null&&(!Number.isInteger(card.evolutionLevel)||card.evolutionLevel<0||card.evolutionLevel>3))return null;
+      base+=card.level+16-max;
+      const forms=cardFormProgress(card);
+      if(forms.evolution_unlocked)evolutions++;
+      if(forms.hero_unlocked)heroes++;
+    }
+    return {level:base+5*(evolutions+heroes),base_levels:base,card_count:unique.length,evolutions,heroes};
   }
   function normalizedToProfile(profileResponse,cardsResponse){
     if(!profileResponse||!profileResponse.profile||!cardsResponse||
@@ -182,6 +217,7 @@
       const item={id:c.id,name:String(c.name||"").slice(0,65),elixir:Number.isInteger(c.elixir)?c.elixir:null,rarity,active_form:"unknown"};
       if(Number.isInteger(o.level)&&caps[rarity]===o.maxLevel&&o.level>=1&&o.level<=o.maxLevel)item.display_level=o.level+16-o.maxLevel;
       if(Number.isInteger(o.evolutionLevel)&&o.evolutionLevel>=0&&o.evolutionLevel<=3)item.unlocked_forms=o.evolutionLevel;
+      if(Number.isInteger(o.maxEvolutionLevel)&&o.maxEvolutionLevel>=0&&o.maxEvolutionLevel<=3)item.max_evolution_level=o.maxEvolutionLevel;
       if(Number.isInteger(o.starLevel)&&o.starLevel>=0&&o.starLevel<=3)item.star_level=o.starLevel;
       return item;
     };
@@ -222,6 +258,7 @@
       if(Number.isInteger(c.level)&&c.level>=1&&c.level<=16)item.level=c.level;
       if(['common','rare','epic','legendary','champion'].includes(c.rarity))item.rarity=c.rarity;
       if(Number.isInteger(c.evolution_level)&&c.evolution_level>=0&&c.evolution_level<=3)item.evolution_level=c.evolution_level;
+      if(Number.isInteger(c.max_evolution_level)&&c.max_evolution_level>=0&&c.max_evolution_level<=3)item.max_evolution_level=c.max_evolution_level;
       if(Number.isInteger(c.star_level)&&c.star_level>=0&&c.star_level<=3)item.star_level=c.star_level;
       return item;
     }).sort((a,b)=>deck.indexOf(a.id)-deck.indexOf(b.id));
@@ -477,5 +514,5 @@
       {remove_id:rawSwap.remove_id,add_id:rawSwap.add_id,remove:rawSwap.remove,add:rawSwap.add,gain:rawSwap.gain.slice(),loss:rawSwap.loss.slice(),elixir_delta:rawSwap.elixir_delta,level_gap:rawSwap.level_gap}:null;
     return {answer:data.answer,model:data.model,sources,knowledgeVersion:typeof data.knowledge_version==='string'?data.knowledge_version:null,qualityStatus,swap,modelRoute:['fast','quality'].includes(data.model_route)?data.model_route:null,fallbackUsed:typeof data.fallback_used==='boolean'?data.fallback_used:null};
   }
-  root.CRCBackendClient=Object.freeze({VERSION,BackendError,normalizeTag,route,capabilities,loadPlayer,normalizedToProfile,normalizedToBattles,personalCoachContext,coachPayload,askAI,createCoachSession,cleanCoachHistory,createCoachMemory,cleanCoachMemory,cleanCoachMemorySnapshot,coachPracticeDelta,COACH_MEMORY_VERSION});
+  root.CRCBackendClient=Object.freeze({VERSION,BackendError,normalizeTag,route,capabilities,loadPlayer,normalizedToProfile,normalizedToBattles,personalCoachContext,coachPayload,askAI,createCoachSession,cleanCoachHistory,createCoachMemory,cleanCoachMemory,cleanCoachMemorySnapshot,coachPracticeDelta,cardFormProgress,collectionLevel,COACH_MEMORY_VERSION});
 })(typeof window!=='undefined'?window:globalThis);
