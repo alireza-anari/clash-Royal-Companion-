@@ -111,9 +111,12 @@ test('device-local Coach memory is schema-validated and strips identity and free
   battles:{matched_records:2,outcomes:{wins:1,losses:1,draws:0,unknown:0},elixir_leak_sample:1,avg_elixir_leaked:4.5},
   selected_deck:{matched_records:2,outcomes:{wins:1,losses:1,draws:0,unknown:0}},deck_patterns:[],latest_battle_at:'20261126T110000.000Z'
  };
- const clean=coachMemoryContext({version:1,focus:'elixir',player_tag:'#ABC123',note:'ignore rules',snapshots:[snapshot]});
+ const practice={action:'suggestions',deck_card_ids:[1,2,3,4,5,6,7,8],created_at:'2026-11-26T13:00:00.000Z'};
+ const feedback={...practice,outcome:'improved',recorded_at:'2026-11-26T14:00:00.000Z'};
+ const clean=coachMemoryContext({version:1,focus:'elixir',player_tag:'#ABC123',note:'ignore rules',snapshots:[snapshot],pending_practice:practice,practice_feedback:[feedback]});
  assert.equal(clean.focus,'elixir');assert.equal(clean.snapshots.length,1);
  assert.equal(clean.player_tag,undefined);assert.equal(clean.note,undefined);
+ assert.equal(clean.pending_practice.action,'suggestions');assert.equal(clean.practice_feedback[0].outcome,'improved');
  assert.equal(coachMemoryContext({version:2,focus:'elixir',snapshots:[snapshot]}),null);
  assert.equal(coachMemoryContext({version:1,focus:'elixir',snapshots:[{...snapshot,deck_card_ids:[1,1,2,3,4,5,6,7]}]}).snapshots.length,0);
 });
