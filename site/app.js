@@ -146,7 +146,7 @@ function refreshCoachMemoryUI(){
   checkbox.checked=enabled;checkbox.disabled=!tag||!store;
   if(focus){focus.disabled=!enabled;focus.value=memory&&memory.focus||"balanced";}
   if(clear)clear.disabled=!tag||!store;
-  if(feedback)feedback.disabled=!enabled||!pending;
+  if(feedback){if(!pending)feedback.value="";feedback.disabled=!enabled||!pending;}
   if(saveFeedback)saveFeedback.disabled=!enabled||!pending||!feedback||!feedback.value;
   if(status)status.textContent=!tag?"برای استفاده از حافظه، ابتدا یک پروفایل با Player Tag بارگذاری کن.":enabled?"حافظه فعال است؛ "+(memory?memory.snapshots.length:0)+" ثبت تاریخی روی همین دستگاه."+(pending?" نتیجه آخرین تمرین در انتظار ثبت است.":""):"حافظه خاموش است؛ داده‌های قبلی تا پاک‌کردن دستی فقط روی همین دستگاه می‌مانند و ارسال نمی‌شوند.";
 }
