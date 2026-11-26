@@ -52,8 +52,8 @@ export function coachQualityPersonalStatsClaim(text){
   const s=String(text||'').replace(/[۰-۹]/g,c=>String(c.charCodeAt(0)-1776)).replace(/[٠-٩]/g,c=>String(c.charCodeAt(0)-1632)).replace(/ي/g,'ی').replace(/ك/g,'ک');
   const patterns=[
     /(?:میانگین|average)[^\n]{0,50}[0-9]+|[0-9]+[^\n]{0,50}(?:میانگین|average)/i,
-    /(?:برد|باخت|مساوی|wins?|losses?|draws?)[^\n]{0,18}[0-9]+|[0-9]+[^\n]{0,18}(?:برد|باخت|مساوی|wins?|losses?|draws?)/i,
-    /(?:نبرد|بازی|matches?|battles?)[^\n]{0,18}[0-9]+|[0-9]+[^\n]{0,18}(?:نبرد|بازی|matches?|battles?)/i
+    /(?:برد|باخت|مساوی|wins?|losses?|draws?)\s*[:=]?\s*[0-9]+|[0-9]+\s*(?:برد|باخت|مساوی|wins?|losses?|draws?)/i,
+    /(?:نبرد|matches?|battles?)\s*[:=]?\s*[0-9]+|[0-9]+\s*(?:نبرد|matches?|battles?)/i
   ];
   return patterns.some(pattern=>pattern.test(s));
 }
