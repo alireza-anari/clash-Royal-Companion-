@@ -110,3 +110,14 @@ test('validated suggested swaps are tracked against the recommended deck, not fa
   assert.match(app,/previousTag!==incomingTag\)\{battles=null/);
   assert.match(app,/نبردهای بعدی با دک پیشنهادی/);
 });
+
+test('card collection UI exposes raw levels, Evolution/Hero unlocks and guarded Collection Level estimate',()=>{
+  const app=fs.readFileSync(new URL('./app.js',import.meta.url),'utf8');
+  const client=fs.readFileSync(new URL('./backend-client.js',import.meta.url),'utf8');
+  assert.match(app,/function crcFormBadges/);
+  assert.match(app,/Evolution ✓/);assert.match(app,/Hero ✓/);
+  assert.match(app,/تخمین Collection Level/);
+  assert.match(client,/function cardFormProgress/);
+  assert.match(client,/function collectionLevel/);
+  assert.match(client,/maxEvolutionLevel/);
+});
