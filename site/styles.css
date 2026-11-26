@@ -688,3 +688,10 @@ body.crc-coach-view .content > .footer{display:none!important}
 .crc-progress-task .small{line-height:1.8;margin:10px 0 0}
 .crc-progress-panel>.small{line-height:1.8;margin:10px 0 0}
 @media(max-width:580px){.crc-progress-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.crc-progress-columns{grid-template-columns:1fr}.crc-progress-heading{align-items:center}}
+
+
+.crc-form-badges{display:inline-flex;flex-wrap:wrap;gap:4px;margin-top:4px}
+.crc-form-chip{display:inline-flex;align-items:center;border:1px solid #53628b;border-radius:999px;padding:2px 6px;font-size:9px;line-height:1.4;color:#c7d4f5;background:#182343}
+.crc-form-chip.evo{border-color:#795cbd;color:#e3d2ff;background:#261b45}
+.crc-form-chip.hero{border-color:#9b793d;color:#ffe4a5;background:#3a2b16}
+.crc-form-stat .crc-form-badges{display:flex;justify-content:center;margin:0 0 5px}
