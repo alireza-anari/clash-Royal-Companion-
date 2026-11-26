@@ -29,6 +29,8 @@ test('candidate patch refuses unknown worker sources',()=>assert.throws(()=>patc
 test('official knowledge retrieval ranks current Giant and Mirror mechanics',()=>{
  const giant=coachRetrieve('قابلیت Evolution غول چیست؟',null,[]);
  assert.equal(giant[0].id,'K04');
+ const giantDeck=coachRetrieve('قابلیت Evolution غول چیست؟','deck',[]);
+ assert.ok(!giantDeck.some(x=>x.id==='K05'));
  const mirror=coachRetrieve('How does Mirror evolution work?',null,[]);
  assert.equal(mirror[0].id,'K04');
  const ew=coachRetrieve('Hero Electro Wizard ability',null,[]);
