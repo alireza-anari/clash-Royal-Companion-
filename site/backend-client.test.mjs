@@ -223,7 +223,7 @@ const memoryStorage=()=>{const values=new Map();return {getItem:key=>values.has(
 const memorySnapshot=(overrides={})=>({
  captured_at:'2026-11-26T12:00:00.000Z',source:'live',deck_source:'profile-live',
  deck_card_ids:[1,2,3,4,5,6,7,8],
- cards:Array.from({length:8},(_,i)=>({id:i+1,level:12,rarity:'rare',evolution_level:0,star_level:1})),
+ cards:Array.from({length:8},(_,i)=>({id:i+1,level:12,rarity:'rare',evolution_level:0,max_evolution_level:3,star_level:1})),
  battles:{matched_records:2,outcomes:{wins:1,losses:1,draws:0,unknown:0},elixir_leak_sample:2,avg_elixir_leaked:4.5},
  selected_deck:{matched_records:2,outcomes:{wins:1,losses:1,draws:0,unknown:0}},
  deck_patterns:[{deck_card_ids:[1,2,3,4,5,6,7,8],plays:2,outcomes:{wins:1,losses:1,draws:0,unknown:0},event_plays:0}],
