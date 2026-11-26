@@ -173,10 +173,10 @@ function renderProgressPanel(){
   var leaks=matched.map(e=>e.elixir_leaked).filter(n=>Number.isFinite(n)&&n>=0);
   var leakAverage=leaks.length?fmt(Math.round(leaks.reduce((a,b)=>a+b,0)/leaks.length*100)/100):"—";
   var tag=coachMemoryTag(),store=coachMemoryStore(),memory=store&&tag&&store.isEnabled(tag)?store.read(tag):null;
-  var pending=memory&&memory.pending_practice,actions={deck:"تحلیل دک",suggestions:"پیشنهاد تعویض",style:"تحلیل سبک بازی",overview:"برنامه پیشرفت"};
+  var pending=memory&&(memory.pending_practice||(memory.practice_feedback&&memory.practice_feedback[0])),actions={deck:"تحلیل دک",suggestions:"پیشنهاد تعویض",style:"تحلیل سبک بازی",overview:"برنامه پیشرفت"},feedbackLabels={improved:"بهتر شد",same:"تفاوتی نداشت",worse:"بدتر شد",not_tried:"هنوز امتحان نکردم"};
   var task="";
   if(pending){
-    task='<div class="crc-progress-task"><strong>پیگیری آخرین کار مربی: '+safe(actions[pending.action]||"تمرین")+'</strong>'+
+    task='<div class="crc-progress-task"><strong>پیگیری آخرین کار مربی: '+safe(actions[pending.action]||"تمرین")+(pending.outcome?' · بازخورد ثبت‌شده: '+safe(feedbackLabels[pending.outcome]||"نامشخص"):"")+'</strong>'+
       '<div class="crc-progress-columns"><div><small>نمونه قبل از درخواست</small><p>'+safe(coachProgressOutcomeText(pending.baseline))+'</p></div>'+
       '<div><small>نبردهای بعدی با همان ۸ کارت</small><p>'+safe(coachProgressOutcomeText(pending.progress))+'</p></div></div>'+
       '<p class="small">فقط نبردهای قابل انتساب با همان ترکیب کارت و زمان جدیدتر از درخواست شمرده می‌شوند. این مقایسه اجرای پیشنهاد یا رابطه علت‌ومعلولی را ثابت نمی‌کند.</p></div>';
