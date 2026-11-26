@@ -11,7 +11,7 @@ export const COACH_EVAL_MODELS=Object.freeze([
 export const COACH_EVAL_MAX_CASES=60;
 export const COACH_EVAL_MAX_ESTIMATED_USD=0.10;
 const OUTPUT_TOKENS=384;
-const ABSTENTION=/نمی‌توان|نمی‌توانم|قابل تأیید نیست|قابل تایید نیست|تأیید نشده|تایید نشده|اطلاعات کافی نیست|داده زنده|داده به.?روز|در دسترس نیست|cannot verify|not available|no live data|insufficient data/i;
+const ABSTENTION=/نمی‌توان|نمی‌توانم|قابل تأیید نیست|قابل تایید نیست|تأیید نشده|تایید نشده|اطلاعات کافی نیست|داده زنده|داده به.?روز|در دسترس نیست|قابل تشخیص نیست|امکان(?: بررسی| تشخیص| تأیید| تایید)?.{0,30}(?:نیست|وجود ندارد)|وجود ندارد|cannot verify|cannot determine|not available|no live data|insufficient data/i;
 
 export async function loadCoachEval(){
   const raw=await readFile(new URL('./coach-eval-cases-v1.json',import.meta.url),'utf8');
