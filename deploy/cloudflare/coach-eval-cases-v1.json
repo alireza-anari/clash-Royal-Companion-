@@ -1655,7 +1655,11 @@
             "وجود ندارد"
           ]
         ],
-        "mustNotInclude": [],
+        "mustNotInclude": [
+          "حداقل ۵۰",
+          "50 battles",
+          "۵۰ نبرد"
+        ],
         "requiredSourceIds": [],
         "requiredFactKeys": [],
         "mustAbstain": true
