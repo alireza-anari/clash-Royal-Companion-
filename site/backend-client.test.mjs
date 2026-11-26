@@ -338,3 +338,16 @@ test('Evolution and Hero bitfields are decoded independently and Collection Leve
  assert.equal(api.collectionLevel({cards:[{id:1,level:12,rarity:'unknown'}]}),null);
  assert.equal(api.collectionLevel({cards:[{id:1,level:12,maxLevel:16,rarity:'common',evolutionLevel:4}]}),null);
 });
+
+test('normalized profile retains max Evolution/Hero capability and trusted form icons',()=>{
+ const profile=api.normalizedToProfile(
+  {profile:{tag:'#TEST123',display_name:'Test',trophies:1000}},
+  {items:[{id:26000000,name:'Knight',level_raw:14,max_level_raw:16,evolution_level:3,max_evolution_level:3,star_level:2,count:10,rarity:'common',
+    icon_url:'https://api-assets.clashroyale.com/cards/300/base.png',
+    hero_icon_url:'https://api-assets.clashroyale.com/cardheroes/300/hero.png',
+    evolution_icon_url:'https://api-assets.clashroyale.com/cardevolutions/300/evo.png'}],support_items:[]}
+ );
+ assert.equal(profile.cards[0].maxEvolutionLevel,3);assert.equal(profile.cards[0].evolutionLevel,3);
+ assert.equal(profile.cards[0].iconUrls.heroMedium,'https://api-assets.clashroyale.com/cardheroes/300/hero.png');
+ assert.equal(profile.cards[0].iconUrls.evolutionMedium,'https://api-assets.clashroyale.com/cardevolutions/300/evo.png');
+});
