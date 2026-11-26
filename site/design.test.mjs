@@ -96,7 +96,7 @@ test('player progress dashboard separates current samples from same-deck post-ta
   assert.match(app,/function renderProgressPanel\(\)/);
   assert.match(app,/coachMemoryUpdatePracticeProgress/);
   assert.match(app,/attribution==="matched_tag"/);
-  assert.match(app,/e\.battle_time\)>Date\.parse\(watermark\)/);
+  assert.match(app,/coachPracticeDelta\(report\.entries,pending\)/);
   assert.match(app,/نبردهای بعدی با همان ۸ کارت/);
   assert.match(app,/رابطه علت‌ومعلولی را ثابت نمی‌کند/);
   assert.match(app,/addPracticeProgress/);
