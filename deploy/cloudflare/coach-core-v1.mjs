@@ -58,6 +58,7 @@ export function coachMemoryContext(value){
       if(Number.isInteger(c.level)&&c.level>=1&&c.level<=16)out.level=c.level;
       if(['common','rare','epic','legendary','champion'].includes(c.rarity))out.rarity=c.rarity;
       if(Number.isInteger(c.evolution_level)&&c.evolution_level>=0&&c.evolution_level<=3)out.evolution_level=c.evolution_level;
+      if(Number.isInteger(c.max_evolution_level)&&c.max_evolution_level>=0&&c.max_evolution_level<=3)out.max_evolution_level=c.max_evolution_level;
       if(Number.isInteger(c.star_level)&&c.star_level>=0&&c.star_level<=3)out.star_level=c.star_level;
       return out;
     });
