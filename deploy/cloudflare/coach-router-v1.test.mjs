@@ -16,6 +16,12 @@ test('fast route is limited to exact trivial messages and an allowlisted explici
  assert.equal(coachModelPlan('سلام',plan('deck'),null,fastEnv,GEMMA).route,'quality');
  assert.equal(coachModelPlan('سلام',plan('general'),null,{COACH_FAST_MODEL:'@cf/unknown/model'},GEMMA).primary,GEMMA);
 });
+test('model execution requests provider JSON mode and keeps reasoning disabled',async()=>{
+ let options=null;const env={AI:{run:async(_model,value)=>{options=value;return {response:'{"answer":"ok","swap_index":null,"fact_keys":[],"source_ids":[]}'};}}};
+ const route={primary:GEMMA,fallback:null,maxTokens:240,route:'quality',retryOnQuality:false};
+ await coachModelExecute(env,route,[],{},()=>({status:'checked_structure',answer:'ok'}));
+ assert.deepEqual(options.response_format,{type:'json_object'});assert.equal(options.chat_template_kwargs.enable_thinking,false);
+});
 test('only one allowlisted fallback is attempted after a primary upstream failure',async()=>{
  const calls=[];const env={AI:{run:async model=>{calls.push(model);if(model===COACH_FAST_MODEL_ID)throw new Error('temporary');return {response:'{"answer":"ok"}'};}}};
  const route=coachModelPlan('سلام',plan('general'),null,fastEnv,GEMMA);
