@@ -6,7 +6,7 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 
 const filename=path.join(path.dirname(fileURLToPath(import.meta.url)),'backend-client.js');
-const ctx={TextEncoder};
+const ctx={TextEncoder,URL};
 vm.runInNewContext(fs.readFileSync(filename,'utf8'),ctx);
 const api=ctx.CRCBackendClient;
 assert.ok(api);
