@@ -48,6 +48,15 @@ export function coachQualityNumericClaim(text){
   const rate=/نرخ\s*برد|درصد\s*برد|احتمال\s*برد|win[\s-]*rate|win[\s-]*chance|winning[\s-]*percentage/i;
   return percent.test(s)&&rate.test(s);
 }
+export function coachQualityPersonalStatsClaim(text){
+  const s=String(text||'').replace(/[۰-۹]/g,c=>String(c.charCodeAt(0)-1776)).replace(/[٠-٩]/g,c=>String(c.charCodeAt(0)-1632)).replace(/ي/g,'ی').replace(/ك/g,'ک');
+  const patterns=[
+    /(?:میانگین\s*اکسیر|average\s*elixir)[^\n]{0,45}[0-9]+|[0-9]+[^\n]{0,45}(?:میانگین\s*اکسیر|average\s*elixir)/i,
+    /(?:برد|باخت|مساوی|wins?|losses?|draws?)[^\n]{0,18}[0-9]+|[0-9]+[^\n]{0,18}(?:برد|باخت|مساوی|wins?|losses?|draws?)/i,
+    /(?:نبرد|بازی|matches?|battles?)[^\n]{0,18}[0-9]+|[0-9]+[^\n]{0,18}(?:نبرد|بازی|matches?|battles?)/i
+  ];
+  return patterns.some(pattern=>pattern.test(s));
+}
 export function coachQualityEvaluate(raw,context={}){
   const {battles,personal,docs,intent}=context;
   const facts=coachQualityFacts(battles,personal);
@@ -65,6 +74,7 @@ export function coachQualityEvaluate(raw,context={}){
     if(intent!=='suggestions'||!(swap=coachQualitySwap(personal,v.swap_index)))return fallback('INVALID_SWAP');
   }
   if(!['suggestions','meta','vision'].includes(intent)&&coachQualityNumericClaim(v.answer))return fallback('UNVERIFIED_RATE_IN_PROSE');
+  if(!['suggestions','meta','vision'].includes(intent)&&coachQualityPersonalStatsClaim(v.answer))return fallback('UNVERIFIED_PERSONAL_STATS_IN_PROSE');
   const sources=v.source_ids.map(id=>known.get(id));
   // The RAG source list says which documents were selected, not that every claim is verified.
   let answer=v.answer.trim().replace(/\[(K\d{2})\]/g,(m,id)=>v.source_ids.includes(id)?m:'');
@@ -84,7 +94,7 @@ export function coachQualityEvaluate(raw,context={}){
 export function patchCoachQuality(source){
   let s=source;
   const once=(old,nu)=>{if(s.split(old).length!==2)throw new Error('Coach quality anchor mismatch: '+old.slice(0,80));s=s.replace(old,()=>nu);};
-  const declarations=['const QUALITY_VERSION='+JSON.stringify(QUALITY_VERSION)+';',coachQualityFacts.toString(),coachQualitySwap.toString(),coachQualityNumericClaim.toString(),coachQualityEvaluate.toString()].join('\n');
+  const declarations=['const QUALITY_VERSION='+JSON.stringify(QUALITY_VERSION)+';',coachQualityFacts.toString(),coachQualitySwap.toString(),coachQualityNumericClaim.toString(),coachQualityPersonalStatsClaim.toString(),coachQualityEvaluate.toString()].join('\n');
   once('async function previewChat(request,env) {',declarations+'\nasync function previewChat(request,env) {');
   once('CRC_COACH_IDENTITY_V1','CRC_COACH_IDENTITY_V1. قالب خروجی الزامی: فقط یک شیء JSON معتبر، بدون Markdown یا کدبلاک بیرونی، با چهار کلید answer (متن ساده حداکثر ۱۵۰۰ نویسه)، swap_index (null یا اندیس صفر تا سه از allowed_single_swaps فقط برای پیشنهاد تعویض)، fact_keys (آرایه حداکثر سه کلید از overall,selected,elixir فقط اگر داده موجود است)، source_ids (آرایه حداکثر سه شناسه منبع بازیابی‌شده که واقعاً استفاده کردی). اعداد شخصی و نرخ برد را در answer ننویس؛ سرور آن‌ها را محاسبه می‌کند. پیشنهاد تعویض فقط با اندیس، نه متن. اگر شواهد ناکافی است answer را کوتاه و صادقانه بنویس. مثال ساختاری: '+JSON.stringify({answer:'سلام!',swap_index:null,fact_keys:[],source_ids:[]}).replaceAll('"','\\"')+'.');
   once('    answer=coachFormatAnswer(answer,retrievedKnowledge).trim().slice(0,2900);','    const quality=coachQualityEvaluate(answer,{battles:evidence,personal,docs:retrievedKnowledge,intent:coachPlan.intent});\n    answer=quality.answer;');
