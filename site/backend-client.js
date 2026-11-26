@@ -74,6 +74,7 @@
     if(medium)icons.medium=medium;
     if(hero)icons.heroMedium=hero;
     if(evolution)icons.evolutionMedium=evolution;
+    if(value.max_evolution_level==null&&(hero||evolution))c.maxEvolutionLevel=(evolution?1:0)|(hero?2:0);
     if(Object.keys(icons).length)c.iconUrls=icons;
     return c;
   }
