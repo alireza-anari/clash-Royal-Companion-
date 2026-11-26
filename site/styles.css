@@ -566,3 +566,67 @@ body{font-family:"CRC Yekan Bakh",Vazirmatn,Tahoma,Arial,sans-serif;background:r
 
 /* Online-only coach: no local advice mode or per-message approval controls. */
 .coach-chat-toolbar{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid #33436a;margin-bottom:12px}.coach-chat-toolbar label{font-size:13px;color:#c7d4ee;white-space:nowrap}.coach-chat-toolbar .text-field{max-width:260px;min-height:42px}.coach-chat-mode{color:#74f1c2}.coach-chat-message.is-status{background:#302342;border:1px solid #76518f;margin-inline:auto;max-width:95%}.coach-chat-message.is-status .coach-chat-speaker{color:#e9c7ff}.crc-coach-hero #crcCoachDataNotice{max-width:740px;margin:12px auto 0;line-height:1.9;color:#b9c9e8}.coach-chat-footer{display:flex;align-items:center;justify-content:space-between;gap:12px}.coach-chat-footer p{font-size:12px;line-height:1.8}@media(max-width:870px){.coach-chat-toolbar .text-field{max-width:none;flex:1}.coach-chat-footer{align-items:flex-start;flex-direction:column}}
+
+/* Coach-only chat layout: fixed viewport shell, scrollable conversation, persistent composer. */
+body.crc-coach-view{overflow:hidden}
+body.crc-coach-view .app-shell{height:var(--crc-chat-viewport,100dvh);min-height:0;overflow:hidden}
+body.crc-coach-view .main{display:flex;flex-direction:column;height:100%;min-height:0;overflow:hidden}
+body.crc-coach-view .topbar{flex:none}
+body.crc-coach-view .content{display:flex;flex:1;min-height:0;width:100%;padding:0 24px;margin:0 auto}
+#page-coach.active{display:flex;flex-direction:column;width:100%;height:100%;min-height:0;max-width:900px;margin:0 auto;animation:none}
+#page-coach .crc-chat-header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 0;border-bottom:1px solid #293658;flex:none}
+#page-coach .crc-chat-heading{display:flex;align-items:center;gap:10px;min-width:0}
+#page-coach .crc-chat-heading h1{font-size:19px;line-height:1.4;margin:0}
+#page-coach #coachAIStatus{font-size:11px;line-height:1.5;color:#a8cdbf;margin:3px 0 0;overflow-wrap:anywhere}
+#page-coach .crc-chat-avatar{width:44px;height:44px;flex:none;border-radius:50%;display:grid;place-items:center;background:#251451 url("/icon.svg#coach") center/cover no-repeat;border:1px solid #9a5be7;color:transparent}
+#page-coach .crc-chat-reset{font-size:12px;flex:none;display:flex;align-items:center;gap:5px;padding:5px 10px}
+#page-coach .coach-chat{display:flex;flex-direction:column;flex:1;min-height:0;max-width:none;width:100%;margin:0;padding:0;border:0;border-radius:0;background:transparent;box-shadow:none}
+#page-coach .crc-chat-scroll{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;display:flex;flex-direction:column;padding:12px 3px;scrollbar-width:thin}
+#page-coach .crc-chat-welcome{margin:auto 0;padding:12px 0 22px}
+#page-coach .crc-coach-hero{padding:0 0 8px}
+#page-coach .crc-coach-hero h2{font-size:clamp(19px,3vw,26px);margin:14px 0 4px}
+#page-coach .crc-coach-hero p{font-size:13px;margin:0 auto;color:#b9c9e8}
+#page-coach .crc-coach-art{width:110px;height:110px;margin:8px auto 14px}
+#page-coach .coach-action-grid{grid-template-columns:repeat(2,minmax(0,1fr));max-width:480px;gap:8px;margin:12px auto 0}
+#page-coach .coach-action{min-height:48px;display:flex;flex-direction:row;align-items:center;justify-content:flex-start;text-align:right;gap:8px;padding:8px 12px;border:1px solid #51466f;background:#151b37;box-shadow:none;border-radius:13px}
+#page-coach .coach-action:hover,#page-coach .coach-action:focus-visible{border-color:#b581f9;background:#25204b}
+#page-coach .coach-action .action-icon{width:22px;height:22px;min-width:22px;padding:0;margin:0;color:#cb9aff}
+#page-coach .coach-action .action-icon svg{width:20px;height:20px}
+#page-coach .coach-action .action-text strong{font-size:13px;font-weight:600}
+#page-coach .coach-chat-messages{flex:none;min-height:0;max-height:none;overflow:visible;background:transparent;padding:0;border:0;margin:0;gap:15px}
+#page-coach .coach-chat-messages:empty{display:none}
+#page-coach .coach-chat-message{max-width:min(86%,680px);padding:11px 15px;overflow-wrap:anywhere;white-space:normal;animation:crcChatAppear .18s ease-out}
+#page-coach .coach-chat-message.is-user{align-self:flex-start;border-radius:18px 5px 18px 18px;background:#362463;border-color:#6946a3}
+#page-coach .coach-chat-message.is-coach{align-self:flex-end;border-radius:5px 18px 18px 18px;background:#151e3c;border-color:#39466d}
+#page-coach .coach-chat-message p{white-space:pre-wrap;line-height:1.9}
+#page-coach .crc-chat-dock{flex:none;position:relative;padding:8px 0 max(10px,env(safe-area-inset-bottom));background:#0b1029}
+#page-coach .coach-chat-form{position:static;display:flex;align-items:center;gap:8px;padding:6px;margin:0;background:#131a38;border:1px solid #64538f;border-radius:22px}
+#page-coach .coach-chat-form .text-field{min-width:0;flex:1;width:auto;background:transparent;border:0;border-radius:12px;padding:8px;font-size:16px;box-shadow:none}
+#page-coach .coach-chat-form .btn{width:44px;height:44px;min-width:44px;min-height:44px;flex:none;padding:0;display:grid;place-items:center;border-radius:15px}
+#page-coach .coach-chat-form .btn svg{width:23px;height:23px}
+#page-coach .crc-chat-tool-toggle[aria-expanded=true]{background:#35245c;border-color:#c08bff}
+#page-coach #crcCoachDataNotice{font-size:10px;line-height:1.6;color:#aebbd7;margin:5px 5px 0;text-align:center}
+#page-coach .crc-chat-tools{position:absolute;inset-inline-start:0;bottom:calc(100% - 5px);z-index:5;width:min(290px,100%);max-height: min(320px,45dvh);overflow:auto;background:#18213e;border:1px solid #765ba9;box-shadow:0 12px 32px #0008;border-radius:17px;padding:8px}
+#page-coach .crc-chat-tools-title{font-size:12px;color:#bfb0e8;padding:4px 10px}
+#page-coach .crc-chat-tool{display:flex;align-items:center;gap:10px;width:100%;min-height:44px;border:0;border-radius:10px;background:transparent;color:#f6f1ff;font:inherit;text-align:right;padding:8px 10px;cursor:pointer}
+#page-coach .crc-chat-tool span{color:#c797ff;font-size:18px;width:22px;text-align:center}
+#page-coach .crc-chat-tool:hover,#page-coach .crc-chat-tool:focus-visible{background:#302650;outline-offset:-2px}
+#page-coach .crc-chat-scope{border-top:1px solid #3a4163;padding:8px 5px 2px;display:flex;flex-direction:column;gap:4px;font-size:11px;color:#b7c4e0}
+#page-coach .crc-chat-scope select{width:100%;min-height:44px;font-size:13px}
+@keyframes crcChatAppear{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+@media(max-width:870px){
+ body.crc-coach-view .content{padding:0 12px calc(81px + env(safe-area-inset-bottom))}
+ body.crc-coach-view.crc-chat-keyboard .content{padding-bottom:0}
+ body.crc-coach-view.crc-chat-keyboard .bottom-nav{display:none}
+ #page-coach .crc-chat-header{padding:9px 0}
+ #page-coach .crc-chat-heading h1{font-size:16px}
+ #page-coach .crc-chat-reset{padding:5px;min-width:44px;justify-content:center}
+ #page-coach .crc-chat-reset span{display:none}
+ #page-coach .crc-chat-welcome{padding:6px 0 12px}
+ #page-coach .crc-coach-art{width:92px;height:92px}
+ #page-coach .coach-action{padding:8px;gap:5px}
+ #page-coach .coach-action .action-text strong{font-size:12px}
+ #page-coach .crc-chat-dock{padding-bottom:5px}
+ #page-coach .coach-chat-message{max-width:91%}
+}
+@media(prefers-reduced-motion:reduce){#page-coach .coach-chat-message{animation:none}}

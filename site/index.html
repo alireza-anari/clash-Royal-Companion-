@@ -63,29 +63,36 @@
 </section>
 
 <section class="page" id="page-coach" aria-labelledby="coach-title">
-<div class="crc-coach-hero"><div class="crc-crown crc-coach-art"><span aria-hidden="true">♛</span><small>AI</small></div><h1 id="coach-title">مربی هوشمند <em>شما</em></h1><p>مربی آنلاین هوش مصنوعی Clash Royale</p><h2 class="coach-question-heading">چه کمکی از من می‌خواهی؟</h2><p id="crcCoachDataNotice" class="small">با انتخاب تحلیل یا ارسال پیام، سؤال، اطلاعات دک و کارت‌های موجود و آمار تجمیعی نبردها برای پردازش آنلاین به Cloudflare Workers AI ارسال می‌شوند. نام و Player Tag در داده مربی ارسال نمی‌شوند. تأیید جداگانه لازم نیست؛ انتخاب تحلیل یا ارسال پیام، شروع درخواست آنلاین است.</p></div>
-<div class="coach-action-grid" aria-label="تحلیل‌های آماده"><button class="coach-action" type="button" data-coach-jump="coachMetrics" aria-controls="coachChatPanel" aria-pressed="false"><span class="action-icon"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="4" y="3" width="12" height="16" rx="2"/><path d="M19 7h1v14H8"/></svg></span><span class="action-text"><strong>تحلیل دک</strong><small>ترکیب و نقاط قابل بررسی</small></span><span class="action-arrow" aria-hidden="true">‹</span></button>
-<button class="coach-action" type="button" data-coach-jump="coachOwnedOptions" aria-controls="coachChatPanel" aria-pressed="false"><span class="action-icon"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/></svg></span><span class="action-text"><strong>پیشنهاد دک بهتر</strong><small>متناسب با کارت‌های شما</small></span><span class="action-arrow" aria-hidden="true">‹</span></button>
-<button class="coach-action" type="button" data-coach-jump="coachBattleReport" aria-controls="coachChatPanel" aria-pressed="false"><span class="action-icon"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m3 3 8 8-3 3-5-5zM21 3l-8 8 3 3 5-5zM5 19l14-14M19 19 5 5M3 21l4-4m14 4-4-4"/></svg></span><span class="action-text"><strong>تحلیل سبک بازی</strong><small>بررسی نقاط قوت و ضعف</small></span><span class="action-arrow" aria-hidden="true">‹</span></button>
-<button class="coach-action" type="button" data-coach-jump="coachReport" aria-controls="coachChatPanel" aria-pressed="true"><span class="action-icon"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 20V12m5 8V8m5 12V4m5 16v-8"/></svg></span><span class="action-text"><strong>برنامه پیشرفت</strong><small>گزارش و اولویت بهبود</small></span><span class="action-arrow" aria-hidden="true">‹</span></button></div>
-<details class="panel coach-chat" id="coachChatPanel" open><summary id="coachChatTitle">گفت‌وگو با مربی آنلاین</summary>
-  <div class="coach-chat-header"><div><p>تمام پاسخ‌ها مستقیماً از مربی آنلاین دریافت می‌شوند.</p></div><span class="coach-chat-mode"><span aria-hidden="true">●</span> آنلاین · Gemma</span></div>
-  <p id="coachAIStatus" role="status" class="small">در حال بررسی دسترسی مربی آنلاین…</p>
-  <div class="coach-chat-toolbar"><label for="coachBattleScope">مبنای نبردها</label><select id="coachBattleScope" class="text-field"><option value="all">همه نبردها</option><option value="event">نبردهای رویدادی</option><option value="other">سایر / نامشخص</option></select></div>
-  <div id="coachChatMessages" class="coach-chat-messages" role="log" aria-live="polite" aria-relevant="additions" aria-label="گفت‌وگو با مربی آنلاین"></div>
-  <div class="coach-chat-suggestions" aria-label="پرسش‌های پیشنهادی">
-    <button type="button" class="coach-chat-prompt" data-coach-question="میانگین اکسیر و نقش هر هشت کارت دک فعلی من را بررسی کن.">✧ تحلیل دک</button>
-    <button type="button" class="coach-chat-prompt" data-coach-question="با توجه به کارت‌های موجود و سطح و کمیابی آن‌ها بهترین تغییر دک را پیشنهاد بده.">✦ پیشنهاد دک بهتر</button>
-    <button type="button" class="coach-chat-prompt" data-coach-question="سبک بازی و عملکردم را بر اساس نبردهای ثبت‌شده تحلیل کن.">⚔ تحلیل سبک بازی</button>
-    <button type="button" class="coach-chat-prompt" data-coach-question="برای پیشرفت در بازی یک برنامه عملی متناسب با وضعیت من ارائه کن.">◈ برنامه پیشرفت</button>
+<div class="crc-chat-header"><div class="crc-chat-heading"><span class="crc-chat-avatar" aria-hidden="true">♛</span><div><h1 id="coach-title">مربی هوشمند</h1><p id="coachAIStatus" role="status">در حال بررسی اتصال…</p></div></div><button id="clearCoachChat" class="btn ghost crc-chat-reset" type="button" aria-label="گفت‌وگوی جدید" title="گفت‌وگوی جدید"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span>گفت‌وگوی جدید</span></button></div>
+<div class="coach-chat" id="coachChatPanel">
+  <div class="crc-chat-scroll" id="crcChatScroll">
+    <div id="crcChatWelcome" class="crc-chat-welcome">
+      <div class="crc-coach-hero"><div class="crc-crown crc-coach-art"><span aria-hidden="true">♛</span><small>AI</small></div><h2>سلام! من مربی هوشمند تو هستم.</h2><p>برای بهتر بازی کردن چه کمکی از من می‌خواهی؟</p></div>
+      <div class="coach-action-grid" aria-label="تحلیل‌های آماده"><button class="coach-action" type="button" data-coach-jump="coachMetrics" aria-controls="coachChatPanel"><span class="action-icon"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="4" y="3" width="12" height="16" rx="2"/><path d="M19 7h1v14H8"/></svg></span><span class="action-text"><strong>تحلیل دک</strong></span><span class="action-arrow" aria-hidden="true">‹</span></button>
+<button class="coach-action" type="button" data-coach-jump="coachOwnedOptions" aria-controls="coachChatPanel"><span class="action-icon"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/></svg></span><span class="action-text"><strong>پیشنهاد دک بهتر</strong></span><span class="action-arrow" aria-hidden="true">‹</span></button>
+<button class="coach-action" type="button" data-coach-jump="coachBattleReport" aria-controls="coachChatPanel"><span class="action-icon"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m3 3 8 8-3 3-5-5zM21 3l-8 8 3 3 5-5zM5 19l14-14M19 19 5 5M3 21l4-4m14 4-4-4"/></svg></span><span class="action-text"><strong>تحلیل سبک بازی</strong></span><span class="action-arrow" aria-hidden="true">‹</span></button>
+<button class="coach-action" type="button" data-coach-jump="coachReport" aria-controls="coachChatPanel"><span class="action-icon"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 20V12m5 8V8m5 12V4m5 16v-8"/></svg></span><span class="action-text"><strong>برنامه پیشرفت</strong></span><span class="action-arrow" aria-hidden="true">‹</span></button></div>
+    </div>
+    <div id="coachChatMessages" class="coach-chat-messages" role="log" aria-live="polite" aria-relevant="additions" aria-label="گفت‌وگو با مربی آنلاین"></div>
   </div>
-  <form id="coachChatForm" class="coach-chat-form">
-    <label class="visually-hidden" for="coachChatQuestion">سؤال از مربی آنلاین</label>
-    <input id="coachChatQuestion" class="text-field" name="coachQuestion" type="text" required maxlength="280" autocomplete="off" placeholder="سؤال خود را از مربی آنلاین بپرس…">
-    <button class="btn primary" type="submit">ارسال <span aria-hidden="true">←</span></button>
-  </form>
-  <div class="coach-chat-footer"><p>اگر سرویس آنلاین موقتاً در دسترس نباشد، خطای اتصال نمایش داده می‌شود و پاسخ جایگزین محلی ارائه نخواهد شد. تحلیل Replay هنوز فعال نیست.</p><button id="clearCoachChat" class="btn ghost" type="button">پاک‌کردن گفت‌وگو</button></div>
-</details>
+  <div class="crc-chat-dock">
+    <div id="crcCoachTools" class="crc-chat-tools" hidden aria-label="ابزارهای مربی">
+      <div class="crc-chat-tools-title">ابزارهای تحلیل</div>
+      <button type="button" class="crc-chat-tool" data-coach-jump="coachMetrics" aria-controls="coachChatPanel"><span aria-hidden="true">▣</span>تحلیل دک</button>
+<button type="button" class="crc-chat-tool" data-coach-jump="coachOwnedOptions" aria-controls="coachChatPanel"><span aria-hidden="true">⇄</span>پیشنهاد دک بهتر</button>
+<button type="button" class="crc-chat-tool" data-coach-jump="coachBattleReport" aria-controls="coachChatPanel"><span aria-hidden="true">⚔</span>تحلیل سبک بازی</button>
+<button type="button" class="crc-chat-tool" data-coach-jump="coachReport" aria-controls="coachChatPanel"><span aria-hidden="true">✧</span>برنامه پیشرفت</button>
+      <div class="crc-chat-scope"><label for="coachBattleScope">مبنای نبردها</label><select id="coachBattleScope" class="text-field"><option value="all">همه نبردها</option><option value="event">نبردهای رویدادی</option><option value="other">سایر / نامشخص</option></select></div>
+    </div>
+    <form id="coachChatForm" class="coach-chat-form">
+      <button type="button" id="crcCoachToolsToggle" class="btn ghost crc-chat-tool-toggle" aria-label="ابزارهای تحلیل" title="ابزارهای تحلیل" aria-expanded="false" aria-controls="crcCoachTools"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
+      <label class="visually-hidden" for="coachChatQuestion">سؤال از مربی آنلاین</label>
+      <input id="coachChatQuestion" class="text-field" name="coachQuestion" type="text" required maxlength="280" autocomplete="off" placeholder="از مربی بپرس…" aria-describedby="crcCoachDataNotice">
+      <button class="btn primary crc-chat-send" type="submit" aria-label="ارسال پیام" title="ارسال پیام"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5m-6 6 6-6 6 6"/></svg></button>
+    </form>
+    <p id="crcCoachDataNotice" class="small">با ارسال پیام یا انتخاب تحلیل، سؤال و داده‌های دک، کارت‌ها و آمار نبردها برای پردازش آنلاین به Cloudflare Workers AI ارسال می‌شوند؛ نام و تگ حساب در داده‌های ساختاریافته ارسال نمی‌شوند.</p>
+  </div>
+</div>
 </section>
 
 <section class="page" id="page-cards" aria-labelledby="cards-title">

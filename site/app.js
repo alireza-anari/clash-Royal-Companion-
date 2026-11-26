@@ -15,7 +15,7 @@ function crcSaveDecks(v){try{localStorage.setItem("crc.savedDecks",JSON.stringif
 function crcDeckTab(tab){["crcActiveDeck","crcEditDeck","crcSavedDecks"].forEach(id=>$(id).setAttribute("aria-pressed",String(id===tab)));$("crcDeckEditor").hidden=tab!=="crcEditDeck";$("crcSavedList").hidden=tab!=="crcSavedDecks";if(tab==="crcSavedDecks")crcRenderSaved();}
 function crcRenderSaved(){var items=crcSaved(),el=$("crcSavedList");el.innerHTML=items.length?items.map((d,i)=>'<div class="crc-saved-row"><div class="crc-battle-cards">'+d.map(id=>art(getCard(id))).join("")+'</div><button type="button" class="btn ghost" data-saved-load="'+i+'">باز کردن</button><button type="button" class="btn ghost" data-saved-remove="'+i+'">حذف</button></div>').join(""):'<p class="small">هنوز دکی ذخیره نشده است.</p>';el.querySelectorAll("[data-saved-load]").forEach(b=>b.addEventListener("click",()=>{setDeck(items[Number(b.dataset.savedLoad)],"manual");crcDeckTab("crcEditDeck");}));el.querySelectorAll("[data-saved-remove]").forEach(b=>b.addEventListener("click",()=>{if(crcSaveDecks(items.filter((_,i)=>i!==Number(b.dataset.savedRemove))))crcRenderSaved();}));}
 function crcOpenOnboard(){if(crcLiveBusy)return;var d=$("crcOnboard");crcStep(0);$("crcTag").value="";$("crcError").textContent="";if(!d.open)d.showModal();}
-function crcQuickAction(key){if(coachBusy)return;var action={coachMetrics:"deck",coachOwnedOptions:"suggestions",coachBattleReport:"style",coachReport:"overview"}[key]||"overview";var question={deck:"دک فعلی و نقش هر هشت کارت من را با توجه به داده‌های واقعی تحلیل کن.",suggestions:"با توجه به کارت‌های موجود، سطح، کمیابی و فرم‌های بازشده بهترین تغییر دک را پیشنهاد بده.",style:"سبک بازی و عملکرد من را فقط بر اساس شواهد قابل انتساب نبردها تحلیل کن.",overview:"برای پیشرفت من برنامه عملی اولویت‌بندی‌شده ارائه کن."}[action];$("coachChatPanel").open=true;askCoachChat(question,action);$("coachChatPanel").scrollIntoView({block:"nearest",behavior:"smooth"});}
+function crcQuickAction(key){if(coachBusy)return;var action={coachMetrics:"deck",coachOwnedOptions:"suggestions",coachBattleReport:"style",coachReport:"overview"}[key]||"overview";var question={deck:"دک فعلی و نقش هر هشت کارت من را با توجه به داده‌های واقعی تحلیل کن.",suggestions:"با توجه به کارت‌های موجود، سطح، کمیابی و فرم‌های بازشده بهترین تغییر دک را پیشنهاد بده.",style:"سبک بازی و عملکرد من را فقط بر اساس شواهد قابل انتساب نبردها تحلیل کن.",overview:"برای پیشرفت من برنامه عملی اولویت‌بندی‌شده ارائه کن."}[action];crcCoachToolsOpen(false);askCoachChat(question,action);}
 function crcOwn(id){return player&&Array.isArray(player.cards)?player.cards.find(c=>c.id===id):null;}
 function crcLevel(id){var c=crcOwn(id);return c&&Number.isInteger(c.level)?'<span class="crc-level">سطح ثبت‌شده '+safe(c.level)+'</span>':"";}
 function crcRarity(id){var c=crcOwn(id),r=c&&String(c.rarity||"").toLowerCase();return ["common","rare","epic","legendary","champion"].includes(r)?r:"unknown";}
@@ -33,7 +33,7 @@ function validIcon(url){try{var u=new URL(url);return u.protocol==="https:"&&(u.
 function art(card){if(card&&validIcon(card.icon)){return '<img class="card-img" loading="lazy" alt="" src="'+safe(card.icon)+'">';}return '<span class="emoji-img" aria-hidden="true">'+safe(card&&card.emoji||"🃏")+'</span>';}
 function notify(text){var el=$("toast");el.textContent=text;el.classList.add("show");if(toastTimer)clearTimeout(toastTimer);toastTimer=setTimeout(function(){el.classList.remove("show");},3400);}
 function fmt(n){return typeof n==="number"&&Number.isFinite(n)?new Intl.NumberFormat("fa-IR",{maximumFractionDigits:3}).format(n):"نامشخص";}
-function view(name){var p=PAGE_IDS.includes(name)?name:"home";document.querySelectorAll(".page").forEach(function(el){el.classList.toggle("active",el.id==="page-"+p);});document.querySelectorAll("[data-nav]").forEach(function(el){var current=el.getAttribute("data-nav")===p;el.classList.toggle("active",current);if(current)el.setAttribute("aria-current","page");else el.removeAttribute("aria-current");});$("pageTitle").textContent=pageNames[p];if(p==="coach")renderCoach();if(p==="cards")renderCatalog();if(p==="deck"){renderDeck();crcRender();}if(p==="battles")renderBattles();window.scrollTo({top:0,behavior:"auto"});}
+function view(name){var p=PAGE_IDS.includes(name)?name:"home";document.querySelectorAll(".page").forEach(function(el){el.classList.toggle("active",el.id==="page-"+p);});document.querySelectorAll("[data-nav]").forEach(function(el){var current=el.getAttribute("data-nav")===p;el.classList.toggle("active",current);if(current)el.setAttribute("aria-current","page");else el.removeAttribute("aria-current");});$("pageTitle").textContent=pageNames[p];document.body.classList.toggle("crc-coach-view",p==="coach");if(p==="coach"){renderCoach();crcChatViewport();}else crcCoachToolsOpen(false);if(p==="cards")renderCatalog();if(p==="deck"){renderDeck();crcRender();}if(p==="battles")renderBattles();window.scrollTo({top:0,behavior:"auto"});}
 function toPage(p){location.hash=p;view(p);}
 function readDeck(){try{var raw=JSON.parse(localStorage.getItem("crc.deck")||"null");if(Array.isArray(raw)&&raw.length===8&&raw.every(function(id){return Number.isSafeInteger(id);})&&new Set(raw).size===8){return raw;}}catch(e){}return null;}
 function saveDeck(){try{localStorage.setItem("crc.deck",JSON.stringify(deck));}catch(e){}}
@@ -88,9 +88,12 @@ function addCoachChatMessage(role,message,source){
   var body=document.createElement("p");body.textContent=String(message==null?"":message);
   row.append(heading,body);
   if(source){var evidence=document.createElement("small");evidence.className="coach-chat-evidence";evidence.textContent=source;row.appendChild(evidence);}
-  transcript.appendChild(row);while(transcript.children.length>20)transcript.firstElementChild.remove();transcript.scrollTop=transcript.scrollHeight;
+  transcript.appendChild(row);while(transcript.children.length>20)transcript.firstElementChild.remove();crcChatScrollBottom();
 }
-function clearCoachChat(){if(coachBusy)return;$("coachChatMessages").replaceChildren();}
+function crcChatScrollBottom(){var scroll=$("crcChatScroll");if(scroll)scroll.scrollTop=scroll.scrollHeight;}
+function crcCoachToolsOpen(open){var menu=$("crcCoachTools"),toggle=$("crcCoachToolsToggle");if(!menu||!toggle)return;menu.hidden=!open;toggle.setAttribute("aria-expanded",String(open));}
+function crcChatViewport(){var viewport=window.visualViewport;var height=viewport?viewport.height:window.innerHeight;document.body.style.setProperty("--crc-chat-viewport",height+"px");document.body.classList.toggle("crc-chat-keyboard",!!viewport&&window.innerHeight-height>130);}
+function clearCoachChat(){if(coachBusy)return;$("coachChatMessages").replaceChildren();$("crcChatWelcome").hidden=false;crcCoachToolsOpen(false);$("coachChatQuestion").value="";crcChatScrollBottom();renderCoach();}
 function currentPersonalCoachContext(f){
   const scope=$("coachBattleScope").value;
   const entries=window.CRCBattleIntelligence&&player?window.CRCBattleIntelligence.summarize(battles,player.tag,scope).entries:[];
@@ -100,6 +103,7 @@ function currentPersonalCoachContext(f){
 async function askCoachChat(question,action){
   var text=String(question==null?"":question).trim().slice(0,280);
   if(!text||coachBusy)return;
+  $("crcChatWelcome").hidden=true;crcCoachToolsOpen(false);
   addCoachChatMessage("user",text);
   if(!window.CRCBetaSession||!coachAICap||coachAICap.ai_coach_enabled!==true||!window.CRCBackendClient){
     var unavailable="مربی آنلاین در حال حاضر در دسترس نیست. اتصال را بررسی کن و کمی بعد دوباره تلاش کن.";
@@ -107,7 +111,7 @@ async function askCoachChat(question,action){
   }
   coachBusy=true;
   var input=$("coachChatQuestion");
-  var controls=Array.from(document.querySelectorAll("#coachChatForm button,[data-coach-question],#clearCoachChat,[data-coach-jump]"));
+  var controls=Array.from(document.querySelectorAll("#coachChatForm button,#clearCoachChat,[data-coach-jump]"));
   controls.forEach(b=>b.disabled=true);input.disabled=true;
   $("coachAIStatus").textContent="در حال دریافت پاسخ از مربی آنلاین…";
   try{
@@ -130,7 +134,12 @@ function setupCoachChat(){
   var form=$("coachChatForm"),input=$("coachChatQuestion");if(!form||!input)return;
   clearCoachChat();
   form.addEventListener("submit",function(event){event.preventDefault();var text=input.value.trim();if(!text)return;input.value="";askCoachChat(text);input.focus();});
-  document.querySelectorAll("[data-coach-question]").forEach(function(button){button.addEventListener("click",function(){askCoachChat(button.getAttribute("data-coach-question"));});});
+  var toggle=$("crcCoachToolsToggle"),menu=$("crcCoachTools");
+  toggle.addEventListener("click",function(){crcCoachToolsOpen(menu.hidden);});
+  document.addEventListener("click",function(event){if(!menu.hidden&&!menu.contains(event.target)&&!toggle.contains(event.target))crcCoachToolsOpen(false);});
+  document.addEventListener("keydown",function(event){if(event.key==="Escape"&&!menu.hidden){crcCoachToolsOpen(false);toggle.focus();}});
+  if(window.visualViewport){window.visualViewport.addEventListener("resize",crcChatViewport);window.visualViewport.addEventListener("scroll",crcChatViewport);}
+  window.addEventListener("resize",crcChatViewport);
   $("clearCoachChat").addEventListener("click",clearCoachChat);
 }
 function renderCoach(){if(!coachBusy){$("coachAIStatus").textContent=coachAICap&&coachAICap.ai_coach_enabled===true?"مربی آنلاین آماده است؛ یک تحلیل آماده انتخاب کن یا سؤال خودت را بفرست.":"در حال بررسی دسترسی مربی آنلاین…";}}
