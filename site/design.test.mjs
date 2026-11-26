@@ -26,7 +26,7 @@ test('design system has readable surfaces, mobile controls and reduced-motion su
 
 test('theme and service worker cache are refreshed for the new CSS', () => {
   assert.match(html, /name="theme-color" content="#080f1e"/);
-  assert.match(sw, /crc-mvp-static-v16/);
+  assert.match(sw, /crc-mvp-static-v17/);
 });
 
 test('coach is online-only and no per-message approval or local fallback is exposed',()=>{
@@ -55,7 +55,7 @@ test('onboarding has a single profile-fetch path and prepares the online coach w
 });
 test('battle evidence is shipped as a support module, not an offline coach',()=>{
   assert.match(html,/src="\/battle-evidence\.js"/);assert.doesNotMatch(html,/offline-coach\.js|coach-chat\.js/);
-  assert.match(sw,/crc-mvp-static-v16/);assert.match(sw,/\/battle-evidence\.js/);assert.doesNotMatch(sw,/offline-coach\.js|coach-chat\.js/);
+  assert.match(sw,/crc-mvp-static-v17/);assert.match(sw,/\/battle-evidence\.js/);assert.doesNotMatch(sw,/offline-coach\.js|coach-chat\.js/);
 });
 
 test('minimal coach keeps composer and tools separate from the welcome state',()=>{const app=fs.readFileSync(new URL('./app.js',import.meta.url),'utf8');for(const id of ['crcChatWelcome','crcChatScroll','crcCoachToolsToggle','crcCoachTools','coachChatQuestion','clearCoachChat'])assert.ok(html.includes('id="'+id+'"'),id);assert.match(html,/aria-expanded="false" aria-controls="crcCoachTools"/);assert.match(app,/\$\("crcChatWelcome"\)\.hidden=true/);assert.match(app,/\$\("crcChatWelcome"\)\.hidden=false/);assert.match(css,/body\.crc-coach-view/);assert.match(css,/\.crc-chat-scroll\{[^}]*overflow:auto/);});
@@ -63,3 +63,18 @@ test('minimal coach keeps composer and tools separate from the welcome state',()
 test('global footer never competes for coach conversation width',()=>{assert.match(css,/body\.crc-coach-view \.content > \.footer\{display:none!important\}/);assert.match(css,/body\.crc-coach-view \.content\{flex-direction:column;min-width:0\}/);assert.match(html,/<footer class="footer">/);});
 
 test('online coach pending indicator follows actual request lifecycle',()=>{const app=fs.readFileSync(new URL('./app.js',import.meta.url),'utf8');const ask=app.match(/async function askCoachChat\(question,action\)\{[\s\S]*?\n\}/)?.[0];assert.ok(ask);assert.ok(ask.indexOf('crcCoachPending(true)')<ask.indexOf('await window.CRCBackendClient.askAI'));assert.match(ask,/crcCoachPending\(false\);\s*addCoachChatMessage\("ai"/);assert.match(ask,/catch\(e\)\{\s*crcCoachPending\(false\)/);assert.match(ask,/finally\{\s*crcCoachPending\(false\)/);assert.match(css,/@keyframes crcPendingOrbit/);assert.match(css,/@keyframes crcPendingDot/);});
+
+test('coach presentation preserves untrusted text and selects only known card images',()=>{
+  const app=fs.readFileSync(new URL('./app.js',import.meta.url),'utf8');
+  const source=app.slice(app.indexOf('function crcCoachPresentation('),app.indexOf('function crcRenderCoachAnswer('));
+  const present=Function(source+';return crcCoachPresentation;')();
+  const safe='https://api-assets.clashroyale.com/cards/300/card.png';
+  const cards=[{id:1,name:'Knight',icon:safe},{id:2,name:'Musketeer',icon:safe},{id:3,name:'Mega Knight',icon:safe},{id:4,name:'Fake Card',icon:'https://evil.example/cards/fake.png'}];
+  const result=present('**پیشنهاد**\n- Mega Knight\nMusketeer <script>alert(1)</script> Fake Card',cards);
+  assert.equal(result.lines[0].kind,'heading');
+  assert.equal(result.lines[1].kind,'bullet');
+  assert.ok(result.lines[2].text.includes('<script>'));
+  assert.deepEqual(result.cards.map(c=>c.id),[3,2]);
+  assert.equal(present('hello',cards).cards.length,0);
+  assert.doesNotMatch(app.slice(app.indexOf('function crcRenderCoachAnswer('),app.indexOf('function crcCoachPending(')),/innerHTML|insertAdjacentHTML/);
+});

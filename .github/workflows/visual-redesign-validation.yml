@@ -1,5 +1,7 @@
 name: CRC visual redesign validation
 on:
+  pull_request:
+    branches: [feat/approved-visual-redesign-20261125]
   push:
     branches: [feat/approved-visual-redesign-20261125]
 permissions:

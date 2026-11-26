@@ -650,3 +650,6 @@ body.crc-coach-view .content > .footer{display:none!important}
 @keyframes crcPendingOrbit{to{transform:rotate(360deg)}}
 @keyframes crcPendingDot{0%,60%,100%{opacity:.42;transform:translateY(0)}30%{opacity:1;transform:translateY(-3px)}}
 @media(prefers-reduced-motion:reduce){#page-coach .crc-pending-emblem:after,#page-coach .crc-pending-dots i{animation:none}}
+
+/* Coach response presentation: text first, optional catalog visuals. */
+.crc-answer-body{min-width:0;line-height:1.9;overflow-wrap:anywhere;font-size:inherit}.crc-answer-line{display:block;white-space:pre-wrap;min-height:.4em}.crc-answer-heading{margin-top:8px;color:#e3ddff}.crc-answer-icon{display:inline-block;margin-inline-end:7px;color:#c0a3ff}.crc-answer-bullet{padding-inline-start:6px}.crc-answer-cards{margin-top:12px;padding-top:9px;border-top:1px solid #39466d}.crc-answer-cards small{color:#b9c9e8}.crc-answer-card-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}.crc-answer-card{width:74px;max-width:100%;display:flex;flex-direction:column;align-items:center;text-align:center;gap:4px;font-size:11px;line-height:1.4}.crc-answer-card img{width:54px;height:68px;object-fit:contain}.crc-answer-card span{overflow-wrap:anywhere}

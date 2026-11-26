@@ -79,13 +79,63 @@ $("deckLibrary").querySelectorAll("[data-card]").forEach(function(b){b.addEventL
 function renderHome(){var w=$("homeDeck");if(!w)return;w.innerHTML=deck.map(function(id,i){return slotHtml(getCard(id),i,true);}).join("");w.querySelectorAll("[data-slot]").forEach(function(b){b.addEventListener("click",function(){activeSlot=Number(b.dataset.slot);toPage("deck");});});var f=calcFacts();$("homeDeckElixir").textContent=f.average==null?"اکسیر نامشخص":fmt(f.average)+" اکسیر";$("homeDeckSource").textContent=deckSource==="sample"?"دک نمونه":deckSource==="profile-import"?"داده واردشده":deckSource==="profile-live"?"دک بازیکن":"دک ویرایش‌شده";}
 // Online-only coach. A user message or analysis shortcut directly starts the AI request.
 var coachAICap=null,coachBusy=false;
+// Treat model output as untrusted text; never interpret it as HTML or URLs.
+function crcCoachPresentation(message,cards){
+  const text=String(message??"");
+  const lines=text.split(/\r?\n/).map(line=>{
+    const clean=line.trim();
+    const heading=clean.match(/^(?:#{1,4}\s+(.+)|\*\*(.+?)\*\*[:：]?)$/);
+    if(heading)return {kind:"heading",text:heading[1]||heading[2]};
+    const bullet=clean.match(/^[-*•]\s+(.+)$/);
+    return {kind:bullet?"bullet":"text",text:bullet?bullet[1]:line};
+  });
+  const found=[], lower=text.toLowerCase();
+  for(const card of [...(cards||[])].sort((a,b)=>String(b?.name||"").length-String(a?.name||"").length)){
+    if(!card||!Number.isSafeInteger(card.id)||typeof card.name!=="string"||card.name.length<3||typeof card.icon!=="string")continue;
+    let url;try{url=new URL(card.icon);}catch{continue;}
+    if(url.origin!=="https://api-assets.clashroyale.com"||url.username||url.password||!url.pathname.startsWith("/cards/"))continue;
+    const name=card.name.toLowerCase();
+    let pos=-1,matched=false;
+    while((pos=lower.indexOf(name,pos+1))!==-1){
+      if(!/[a-z0-9]/.test(lower[pos-1]||"")&&!/[a-z0-9]/.test(lower[pos+name.length]||"")){matched=true;break;}
+    }
+    if(!matched||found.some(c=>c.id===card.id||c.name.toLowerCase().includes(name)))continue;
+    found.push({id:card.id,name:card.name,icon:url.href});
+    if(found.length===4)break;
+  }
+  return {lines,cards:found};
+}
+function crcRenderCoachAnswer(body,message){
+  const presentation=crcCoachPresentation(message,catalog);
+  for(const line of presentation.lines){
+    const el=document.createElement(line.kind==="heading"?"strong":"span");
+    el.className="crc-answer-line crc-answer-"+line.kind;
+    if(line.kind==="heading"||line.kind==="bullet"){
+      const icon=document.createElement("span");icon.className="crc-answer-icon";icon.setAttribute("aria-hidden","true");icon.textContent=line.kind==="heading"?"✦":"•";el.appendChild(icon);
+    }
+    el.appendChild(document.createTextNode(line.text));body.appendChild(el);
+  }
+  if(presentation.cards.length){
+    const group=document.createElement("div");group.className="crc-answer-cards";
+    const label=document.createElement("small");label.textContent="کارت‌های اشاره‌شده در پاسخ";group.appendChild(label);
+    const list=document.createElement("div");list.className="crc-answer-card-list";
+    for(const card of presentation.cards){
+      const item=document.createElement("div");item.className="crc-answer-card";
+      const image=document.createElement("img");image.src=card.icon;image.alt="";image.loading="lazy";image.referrerPolicy="no-referrer";image.addEventListener("error",()=>image.remove(),{once:true});
+      const name=document.createElement("span");name.textContent=card.name;item.append(image,name);list.appendChild(item);
+    }
+    group.appendChild(list);body.appendChild(group);
+  }
+}
+
 function addCoachChatMessage(role,message,source){
   var transcript=$("coachChatMessages");if(!transcript)return;
   var row=document.createElement("article");
   row.className="coach-chat-message "+(role==="user"?"is-user":role==="ai"?"is-coach":"is-status");
   var heading=document.createElement("span");heading.className="coach-chat-speaker";
   heading.textContent=role==="user"?"شما":role==="ai"?"مربی آنلاین · AI":"وضعیت اتصال";
-  var body=document.createElement("p");body.textContent=String(message==null?"":message);
+  var body=document.createElement(role==="ai"?"div":"p");
+  if(role==="ai"){body.className="crc-answer-body";crcRenderCoachAnswer(body,message);}else body.textContent=String(message==null?"":message);
   row.append(heading,body);
   if(source){var evidence=document.createElement("small");evidence.className="coach-chat-evidence";evidence.textContent=source;row.appendChild(evidence);}
   transcript.appendChild(row);while(transcript.children.length>20)transcript.firstElementChild.remove();crcChatScrollBottom();
