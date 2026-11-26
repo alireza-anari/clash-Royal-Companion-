@@ -268,7 +268,9 @@
     const since=validDate(value.since_battle_at),last=validDate(value.last_battle_at);
     if(value.since_battle_at!=null&&!since||value.last_battle_at!=null&&!last)return null;
     if(last&&since&&Date.parse(last)<Date.parse(since))return null;
-    return {action:value.action,deck_card_ids:ids,created_at:value.created_at,baseline,progress,since_battle_at:since,last_battle_at:last};
+    const targetKind=value.target_kind==='suggested_deck'&&value.action==='suggestions'?'suggested_deck':'current_deck';
+    if(value.target_kind!=null&&!['current_deck','suggested_deck'].includes(value.target_kind)||value.target_kind==='suggested_deck'&&value.action!=='suggestions')return null;
+    return {action:value.action,target_kind:targetKind,deck_card_ids:ids,created_at:value.created_at,baseline,progress,since_battle_at:since,last_battle_at:last};
   }
   function cleanCoachFeedback(value){
     const pending=cleanCoachPractice(value);
@@ -340,12 +342,12 @@
         if(old.snapshots[0]&&fingerprint(old.snapshots[0])===fingerprint(clean))return true;
         return write(tag,{...old,snapshots:[clean,...old.snapshots].slice(0,3)});
       },
-      recordPractice(tag,action,deckCardIds,baseline,sinceBattleAt){
+      recordPractice(tag,action,deckCardIds,baseline,sinceBattleAt,targetKind){
         const old=readStored(tag);if(!old?.enabled||!COACH_MEMORY_ACTIONS.has(action))return false;
         const zero={wins:0,losses:0,draws:0,unknown:0};
         const createdAt=new Date().toISOString();
         const clean=cleanCoachPractice({
-          action,deck_card_ids:deckCardIds,created_at:createdAt,
+          action,target_kind:targetKind||'current_deck',deck_card_ids:deckCardIds,created_at:createdAt,
           baseline:baseline&&baseline.outcomes?baseline:null,
           progress:{matched_records:0,outcomes:zero},since_battle_at:sinceBattleAt||null,last_battle_at:sinceBattleAt&&Date.parse(sinceBattleAt)>Date.parse(createdAt)?sinceBattleAt:createdAt
         });
