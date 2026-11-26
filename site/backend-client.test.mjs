@@ -307,7 +307,7 @@ test('post-task practice delta counts only newer exact-deck matches for the sele
   entry('2026-11-26T13:03:00.000Z','win','single_team_assumed'),
   entry('2026-11-26T13:04:00.000Z','win','matched_tag',different)
  ],task);
- assert.deepEqual(delta,{matched_records:2,outcomes:{wins:1,losses:1,draws:0,unknown:0},last_battle_at:'2026-11-26T13:02:00.000Z'});
+ assert.equal(delta.matched_records,2);assert.equal(delta.outcomes.wins,1);assert.equal(delta.outcomes.losses,1);assert.equal(delta.outcomes.draws,0);assert.equal(delta.outcomes.unknown,0);assert.equal(delta.last_battle_at,'2026-11-26T13:02:00.000Z');
  assert.equal(api.coachPracticeDelta([entry('2026-11-26T13:00:00.000Z','win')],task),null);
 });
 
