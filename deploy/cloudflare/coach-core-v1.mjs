@@ -104,7 +104,9 @@ export function coachMemoryContext(value){
     const since=validDate(value.since_battle_at),last=validDate(value.last_battle_at);
     if(value.since_battle_at!=null&&!since||value.last_battle_at!=null&&!last)return null;
     if(last&&since&&Date.parse(last)<Date.parse(since))return null;
-    return {action:value.action,deck_card_ids:ids,created_at:value.created_at,baseline,progress,since_battle_at:since,last_battle_at:last};
+    if(value.target_kind!=null&&!['current_deck','suggested_deck'].includes(value.target_kind)||value.target_kind==='suggested_deck'&&value.action!=='suggestions')return null;
+    const target_kind=value.target_kind==='suggested_deck'?'suggested_deck':'current_deck';
+    return {action:value.action,target_kind,deck_card_ids:ids,created_at:value.created_at,baseline,progress,since_battle_at:since,last_battle_at:last};
   };
   const pending=practice(value.pending_practice);
   const feedback=(Array.isArray(value.practice_feedback)?value.practice_feedback:[]).slice(0,3).map(item=>{
