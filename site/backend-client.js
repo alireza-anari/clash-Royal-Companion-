@@ -62,7 +62,7 @@
     if(Number.isInteger(value.level_raw))c.level=value.level_raw;
     if(Number.isInteger(value.max_level_raw))c.maxLevel=value.max_level_raw;
     if(Number.isInteger(value.evolution_level))c.evolutionLevel=value.evolution_level;
-    if(Number.isInteger(value.max_evolution_level))c.maxEvolutionLevel=value.max_evolution_level;
+    if(Number.isInteger(value.max_evolution_level)&&value.max_evolution_level>=0&&value.max_evolution_level<=3)c.maxEvolutionLevel=value.max_evolution_level;
     if(Number.isInteger(value.star_level))c.starLevel=value.star_level;
     if(Number.isInteger(value.count))c.count=value.count;
     if(typeof value.rarity==='string')c.rarity=value.rarity;
