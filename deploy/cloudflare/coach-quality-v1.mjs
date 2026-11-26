@@ -21,6 +21,27 @@ export function coachQualityFacts(battles,personal){
     const costs=deck.map(c=>c.elixir);
     out.elixir='میانگین اکسیر ثبت‌شده: '+(costs.reduce((s,c)=>s+c,0)/8).toFixed(2)+'؛ هزینه چهار کارت ارزان‌تر: '+costs.sort((a,b)=>a-b).slice(0,4).reduce((s,c)=>s+c,0);
   }
+  const memory=personal?.coach_memory;
+  if(memory&&memory.version===1&&Array.isArray(memory.snapshots)&&memory.snapshots.length){
+    const snapshot=memory.snapshots[0],focusLabels={balanced:'بدون اولویت خاص',cycle:'چرخه کارت',elixir:'مدیریت اکسیر',defense:'دفاع',pressure:'فشار و ضدحمله',deck:'تعادل دک'};
+    const ids=Array.isArray(snapshot.deck_card_ids)&&snapshot.deck_card_ids.length===8&&snapshot.deck_card_ids.every(id=>Number.isSafeInteger(id)&&id>0)?snapshot.deck_card_ids:null;
+    const battle=snapshot.battles,selectedMemory=snapshot.selected_deck;
+    const countsOk=x=>x&&keys.every(k=>count(x[k]))&&keys.reduce((sum,k)=>sum+x[k],0)<=200;
+    if(ids&&battle&&Number.isInteger(battle.matched_records)&&battle.matched_records>=0&&battle.matched_records<=200&&countsOk(battle.outcomes)&&
+      selectedMemory&&Number.isInteger(selectedMemory.matched_records)&&selectedMemory.matched_records>=0&&selectedMemory.matched_records<=battle.matched_records&&countsOk(selectedMemory.outcomes)){
+      const historical=['حافظه تاریخی محلی (غیرزنده و مالکیت تأییدنشده)؛ آخرین ثبت: '+String(snapshot.captured_at||'نامشخص'),
+        'تمرکز تمرین انتخابی: '+(focusLabels[memory.focus]||focusLabels.balanced),
+        'دک ذخیره‌شده با شناسه کارت‌ها: '+ids.join(', '),
+        'نبردهای قابل انتساب در آن ثبت: '+battle.matched_records+'؛ برد: '+battle.outcomes.wins+'؛ باخت: '+battle.outcomes.losses+'؛ مساوی: '+battle.outcomes.draws+'؛ نامشخص: '+battle.outcomes.unknown,
+        'نتیجه همان دک در ثبت تاریخی: '+selectedMemory.matched_records+' نبرد؛ برد: '+selectedMemory.outcomes.wins+'؛ باخت: '+selectedMemory.outcomes.losses+'؛ مساوی: '+selectedMemory.outcomes.draws+'؛ نامشخص: '+selectedMemory.outcomes.unknown];
+      if(Number.isInteger(battle.elixir_leak_sample)&&battle.elixir_leak_sample>0&&typeof battle.avg_elixir_leaked==='number'&&Number.isFinite(battle.avg_elixir_leaked))
+        historical.push('میانگین اکسیر هدررفته گزارش‌شده در آن ثبت: '+battle.avg_elixir_leaked+' از نمونه '+battle.elixir_leak_sample+' نبرد؛ علت تاکتیکی را ثابت نمی‌کند.');
+      const previous=memory.snapshots[1];
+      if(previous&&Array.isArray(previous.deck_card_ids)&&previous.deck_card_ids.length===8&&previous.deck_card_ids.every(Number.isSafeInteger)&&previous.deck_card_ids.join(':')!==ids.join(':'))
+        historical.push('ترکیب دک در دو ثبت محلی متفاوت است؛ این تفاوت به‌تنهایی بهبود یا افت عملکرد را ثابت نمی‌کند.');
+      out.memory=historical.join('؛ ');
+    }
+  }
   return out;
 }
 export function coachQualitySwap(personal,index){
