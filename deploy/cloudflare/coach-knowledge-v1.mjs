@@ -112,7 +112,6 @@ function coachKnowledgePrompt(docs){
 function coachFormatAnswer(answer,docs){
   const allowed=new Set((Array.isArray(docs)?docs:[]).map(d=>d.id));
   let clean=String(answer||'').replace(/\[(K\d{2})\]/g,(match,id)=>allowed.has(id)?match:'');
-  if(allowed.size&&!/\[(K\d{2})\]/.test(clean))clean=clean.trim()+'\n\nمنابع: '+[...allowed].map(id=>'['+id+']').join(' ');
   return clean;
 }
 function coachKnowledgeSources(docs){
