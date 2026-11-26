@@ -49,7 +49,7 @@ test('knowledge patch inserts retrieved context, citations and source metadata o
   '  const coachPlan=coachInferencePlan(question,action);',
   '  const messages=[',
   '    {role:"system",content:"CRC_COACH_IDENTITY_V1"},',
-  '    {role:"user",content:personal+"\\\\nاین داده‌ها ارسالی از مرورگر و از نظر مالکیت تایید نشده‌اند."}',
+  '    {role:"user",content:personal+"\\nاین داده‌ها ارسالی از مرورگر و از نظر مالکیت تایید نشده‌اند."}',
   '  ];',
   '  try {',
   '    answer=answer.trim().slice(0,2900);',
