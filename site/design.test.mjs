@@ -87,5 +87,5 @@ test('Coach memory is opt-in, profile-scoped, separately clearable and feedback-
   assert.match(html,/پیش‌فرض خاموش/);assert.match(html,/Battle Log خام ذخیره نمی‌شوند/);
   assert.match(app,/createCoachMemory/);assert.match(app,/coachMemoryTag/);assert.match(app,/recordPractice/);assert.match(app,/submitPracticeFeedback/);
   const clear=app.match(/function clearCoachChat\(\)\{[\s\S]*?\n\}/)?.[0]||'';
-  assert.ok(clear);assert.doesNotMatch(clear,/coachMemoryStore|crcCoachMemoryClear|\.clear\(/);
+  assert.ok(clear);assert.doesNotMatch(clear,/coachMemory|crcCoachMemoryClear/);
 });
