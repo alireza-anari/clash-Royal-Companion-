@@ -253,7 +253,7 @@
     if(!value||typeof value!=='object'||Array.isArray(value)||value.version!==COACH_MEMORY_VERSION)return null;
     const focus=COACH_MEMORY_FOCI.has(value.focus)?value.focus:'balanced';
     const snapshots=(Array.isArray(value.snapshots)?value.snapshots:[]).slice(0,2).map(cleanCoachMemorySnapshot).filter(Boolean);
-    return snapshots.length?{version:COACH_MEMORY_VERSION,focus,snapshots}:null;
+    return {version:COACH_MEMORY_VERSION,focus,snapshots};
   }
   function createCoachMemory(storage){
     const validTag=value=>normalizeTag(value);
