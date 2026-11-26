@@ -46,6 +46,25 @@ export function coachQualityFacts(battles,personal){
       out.memory=historical.join('؛ ');
     }
   }
+  const memory=personal?.coach_memory;
+  const pending=memory&&memory.version===1?memory.pending_practice:null;
+  const actionLabels={deck:'تحلیل دک',suggestions:'پیشنهاد تعویض',style:'تحلیل سبک بازی',overview:'برنامه پیشرفت'};
+  if(pending&&actionLabels[pending.action]&&Array.isArray(pending.deck_card_ids)&&pending.deck_card_ids.length===8&&
+    pending.deck_card_ids.every(id=>Number.isSafeInteger(id)&&id>0)&&new Set(pending.deck_card_ids).size===8){
+    const bundle=(x)=>{
+      if(!x||!Number.isInteger(x.matched_records)||x.matched_records<0||x.matched_records>200||!valid(x.outcomes)||
+        keys.reduce((sum,k)=>sum+x.outcomes[k],0)!==x.matched_records)return null;
+      return x;
+    };
+    const before=bundle(pending.baseline),after=bundle(pending.progress);
+    if(before||after){
+      const parts=['پیگیری ساختاریافته پس از '+actionLabels[pending.action]+'؛ دک هدف: '+pending.deck_card_ids.join(', ')];
+      if(before)parts.push('نمونه پیش از کار مربی: '+format(before.outcomes,'نبردهای همان دک'));
+      if(after)parts.push('نبردهای جدیدتر با همان دک که پس از کار مربی در Battle Log مشاهده شدند: '+format(after.outcomes,'نمونه پس از کار مربی'));
+      parts.push('این مقایسه فقط هم‌زمانی و ترکیب دک را ثبت می‌کند؛ اثبات اجرای پیشنهاد یا اثر علّی مربی نیست.');
+      out.practice=parts.join('؛ ');
+    }
+  }
   return out;
 }
 export function coachQualitySwap(personal,index){
