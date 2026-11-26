@@ -331,7 +331,7 @@
         const clean=cleanCoachPractice({
           action,deck_card_ids:deckCardIds,created_at:createdAt,
           baseline:baseline&&baseline.outcomes?baseline:null,
-          progress:{matched_records:0,outcomes:zero},since_battle_at:sinceBattleAt||null,last_battle_at:createdAt
+          progress:{matched_records:0,outcomes:zero},since_battle_at:sinceBattleAt||null,last_battle_at:sinceBattleAt&&Date.parse(sinceBattleAt)>Date.parse(createdAt)?sinceBattleAt:createdAt
         });
         return clean?write(tag,{...old,pending_practice:clean}):false;
       },
