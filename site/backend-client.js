@@ -315,21 +315,53 @@
     return pending&&COACH_MEMORY_OUTCOMES.has(value.outcome)&&typeof value.recorded_at==='string'&&value.recorded_at.length<=40&&Number.isFinite(Date.parse(value.recorded_at))?
       {...pending,outcome:value.outcome,recorded_at:value.recorded_at}:null;
   }
-    function coachPracticeDelta(entries,pending){
+  // Timestamp-based conservative deduplication; a timestamp is not a battle ID.
+  function coachDistinctBattles(entries){
+    const groups=new Map(),conflicts=new Set();
+    for(const e of (Array.isArray(entries)?entries:[]).slice(0,200)){
+      if(!e||e.attribution!=='matched_tag'||typeof e.battle_time!=='string'||
+        !Number.isFinite(Date.parse(e.battle_time))||!['win','loss','draw','unknown'].includes(e.outcome))continue;
+      const stamp=new Date(Date.parse(e.battle_time)).toISOString();
+      const ids=e.deck?.card_ids;
+      const key=Array.isArray(ids)&&ids.length===8&&ids.every(id=>Number.isSafeInteger(id)&&id>0)&&new Set(ids).size===8?ids.slice().sort((a,b)=>a-b).join(':'):null;
+      const fingerprint=JSON.stringify([key,e.outcome,e.classification??null,e.game_mode??null,e.elixir_leaked??null]);
+      if(groups.has(stamp)&&groups.get(stamp).fingerprint!==fingerprint)conflicts.add(stamp);
+      else if(!groups.has(stamp))groups.set(stamp,{fingerprint,entry:{...e,battle_time:stamp}});
+    }
+    return [...groups].filter(([stamp])=>!conflicts.has(stamp)).map(([,value])=>value.entry).sort((a,b)=>a.battle_time.localeCompare(b.battle_time));
+  }
+  function coachPracticeDelta(entries,pending){
     const task=cleanCoachPractice(pending);
     if(!task||!Array.isArray(entries))return null;
-    const watermark=task.last_battle_at||task.since_battle_at||task.created_at;
+    const watermark=Math.max(...[task.created_at,task.since_battle_at,task.last_battle_at].filter(Boolean).map(Date.parse));
     const key=task.deck_card_ids.slice().sort((a,b)=>a-b).join(':');
-    const fresh=entries.slice(0,200).filter(e=>e&&e.attribution==='matched_tag'&&
+    const remaining=200-task.progress.matched_records;
+    if(remaining<=0)return null;
+    const fresh=coachDistinctBattles(entries).filter(e=>
       e.deck&&Array.isArray(e.deck.card_ids)&&e.deck.card_ids.length===8&&
-      e.deck.card_ids.slice().sort((a,b)=>a-b).join(':')===key&&
-      typeof e.battle_time==='string'&&Number.isFinite(Date.parse(e.battle_time))&&Date.parse(e.battle_time)>Date.parse(watermark)&&
-      ['win','loss','draw','unknown'].includes(e.outcome))
-      .sort((a,b)=>a.battle_time.localeCompare(b.battle_time));
+      e.deck.card_ids.slice().sort((a,b)=>a-b).join(':')===key&&Date.parse(e.battle_time)>watermark).slice(0,remaining);
     if(!fresh.length)return null;
     const outcomes={wins:0,losses:0,draws:0,unknown:0};
     fresh.forEach(e=>{outcomes[{win:'wins',loss:'losses',draw:'draws',unknown:'unknown'}[e.outcome]]++;});
     return {matched_records:fresh.length,outcomes,last_battle_at:fresh[fresh.length-1].battle_time};
+  }
+  // Five known results is a practice checkpoint, not statistical confidence.
+  function coachPracticePlan(memory){
+    const clean=cleanCoachMemory(memory);
+    if(!clean)return null;
+    const task=clean.pending_practice,feedback=clean.practice_feedback[0],focus=clean.focus;
+    const steps={
+      balanced:['با یک دک ثابت بازی کن و پس از هر نبرد یک نکته برای مرور انتخاب کن.','نتیجه را بدون نسبت دادن علت به مربی ثبت کن.'],
+      cycle:['یک کارت کلیدی حریف را انتخاب کن و چرخه آن را در طول بازی دنبال کن.','پیش از حمله، به در دسترس بودن پاسخ دفاعی توجه کن.'],
+      elixir:['پس از دفاع، قبل از سرمایه‌گذاری برای حمله اکسیر خود را بررسی کن.','اکسیر هدررفته گزارش‌شده را فقط در نبردهای دارای این داده مرور کن.'],
+      defense:['پاسخ دفاعی اصلی دک را برای تهدید مناسب نگه دار.','پس از دفاع موفق، فقط در صورت داشتن اکسیر کافی ضدحمله کن.'],
+      pressure:['شرط برد دک را با نیروهای باقی‌مانده از دفاع هماهنگ کن.','اگر دفاع کافی نداری، فشار را متوقف کن.'],
+      deck:['در هر دوره فقط یک تغییر تأییدشده را آزمایش کن؛ فرم‌های ویژه را بدون داده کافی عوض نکن.','اگر پیشنهادی معتبر نیست، همان دک را نگه دار و سؤال دقیق‌تر بپرس.']
+    };
+    const known=task?task.progress.outcomes.wins+task.progress.outcomes.losses+task.progress.outcomes.draws:0;
+    return {focus,steps:steps[focus].slice(),target:5,known,remaining:Math.max(0,5-known),
+      status:!task?'ready':known>=5?'review':'practice',
+      follow_up:feedback?.outcome==='worse'?'در بازبینی بعدی توضیح بده کدام بخش تمرین دشوار بود؛ این بازخورد به‌تنهایی افت عملکرد را اثبات نمی‌کند.':null};
   }
   function cleanCoachMemory(value){
     if(!value||typeof value!=='object'||Array.isArray(value)||value.version!==COACH_MEMORY_VERSION)return null;
@@ -381,7 +413,7 @@
         return write(tag,{...old,snapshots:[clean,...old.snapshots].slice(0,3)});
       },
       recordPractice(tag,action,deckCardIds,baseline,sinceBattleAt,targetKind){
-        const old=readStored(tag);if(!old?.enabled||!COACH_MEMORY_ACTIONS.has(action))return false;
+        const old=readStored(tag);if(!old?.enabled||old.pending_practice||!COACH_MEMORY_ACTIONS.has(action))return false;
         const zero={wins:0,losses:0,draws:0,unknown:0};
         const createdAt=new Date().toISOString();
         const clean=cleanCoachPractice({
@@ -397,8 +429,8 @@
         const clean=cleanCoachMemoryCounts(delta.outcomes,delta.matched_records);
         const stamp=typeof lastBattleAt==='string'&&lastBattleAt.length<=40&&Number.isFinite(Date.parse(lastBattleAt))?lastBattleAt:null;
         if(!clean||!stamp||pending.progress.matched_records+delta.matched_records>200)return false;
-        const watermark=pending.last_battle_at||pending.since_battle_at||pending.created_at;
-        if(Date.parse(stamp)<=Date.parse(watermark))return false;
+        const watermark=Math.max(...[pending.created_at,pending.since_battle_at,pending.last_battle_at].filter(Boolean).map(Date.parse));
+        if(Date.parse(stamp)<=watermark)return false;
         const outcomes=Object.fromEntries(['wins','losses','draws','unknown'].map(k=>[k,pending.progress.outcomes[k]+clean[k]]));
         const progress={matched_records:pending.progress.matched_records+delta.matched_records,outcomes};
         const next=cleanCoachPractice({...pending,progress,last_battle_at:stamp});
@@ -515,5 +547,5 @@
       {remove_id:rawSwap.remove_id,add_id:rawSwap.add_id,remove:rawSwap.remove,add:rawSwap.add,gain:rawSwap.gain.slice(),loss:rawSwap.loss.slice(),elixir_delta:rawSwap.elixir_delta,level_gap:rawSwap.level_gap}:null;
     return {answer:data.answer,model:data.model,sources,knowledgeVersion:typeof data.knowledge_version==='string'?data.knowledge_version:null,qualityStatus,swap,modelRoute:['fast','quality'].includes(data.model_route)?data.model_route:null,fallbackUsed:typeof data.fallback_used==='boolean'?data.fallback_used:null};
   }
-  root.CRCBackendClient=Object.freeze({VERSION,BackendError,normalizeTag,route,capabilities,loadPlayer,normalizedToProfile,normalizedToBattles,personalCoachContext,coachPayload,askAI,createCoachSession,cleanCoachHistory,createCoachMemory,cleanCoachMemory,cleanCoachMemorySnapshot,coachPracticeDelta,cardFormProgress,collectionLevel,COACH_MEMORY_VERSION});
+  root.CRCBackendClient=Object.freeze({VERSION,BackendError,normalizeTag,route,capabilities,loadPlayer,normalizedToProfile,normalizedToBattles,personalCoachContext,coachPayload,askAI,createCoachSession,cleanCoachHistory,createCoachMemory,cleanCoachMemory,cleanCoachMemorySnapshot,coachDistinctBattles,coachPracticeDelta,coachPracticePlan,cardFormProgress,collectionLevel,COACH_MEMORY_VERSION});
 })(typeof window!=='undefined'?window:globalThis);

@@ -69,3 +69,8 @@ Not stored:
 - Practice follow-up: only newer exact-eight-card matched-tag battles are counted; timestamps advance to prevent duplicate counting; the dashboard labels the comparison as descriptive rather than causal.
 - Quality: historical facts appear only when selected and self-reported feedback is labelled as such.
 - Production Worker and authentication configuration are unchanged.
+
+## RC hardening
+- Same-time identical records are counted once; conflicting records sharing a timestamp and invalid dates are excluded. A timestamp is not a guaranteed unique battle ID. Late arrivals older than the watermark are deliberately not counted.
+- Use the maximum of task creation, baseline and last counted timestamps; stop at 200 observations. A pending task is never silently replaced by another response. Record its outcome (including not tried) before starting a new task.
+- Only structurally checked replies can start tracked tasks; suggestions require a validated swap. The selected focus yields a short local drill and review after five known outcomes, not a statistical or causal claim. No additional inference is needed.

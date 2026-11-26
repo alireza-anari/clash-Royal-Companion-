@@ -26,7 +26,7 @@ test('design system has readable surfaces, mobile controls and reduced-motion su
 
 test('theme and service worker cache are refreshed for the new CSS', () => {
   assert.match(html, /name="theme-color" content="#080f1e"/);
-  assert.match(sw, /crc-mvp-static-v24/);
+  assert.match(sw, /crc-mvp-static-v25/);
 });
 
 test('coach is online-only and no per-message approval or local fallback is exposed',()=>{
@@ -55,7 +55,7 @@ test('onboarding has a single profile-fetch path and prepares the online coach w
 });
 test('battle evidence is shipped as a support module, not an offline coach',()=>{
   assert.match(html,/src="\/battle-evidence\.js"/);assert.doesNotMatch(html,/offline-coach\.js|coach-chat\.js/);
-  assert.match(sw,/crc-mvp-static-v24/);assert.match(sw,/\/battle-evidence\.js/);assert.doesNotMatch(sw,/offline-coach\.js|coach-chat\.js/);
+  assert.match(sw,/crc-mvp-static-v25/);assert.match(sw,/\/battle-evidence\.js/);assert.doesNotMatch(sw,/offline-coach\.js|coach-chat\.js/);
 });
 
 test('minimal coach keeps composer and tools separate from the welcome state',()=>{const app=fs.readFileSync(new URL('./app.js',import.meta.url),'utf8');for(const id of ['crcChatWelcome','crcChatScroll','crcCoachToolsToggle','crcCoachTools','coachChatQuestion','clearCoachChat'])assert.ok(html.includes('id="'+id+'"'),id);assert.match(html,/aria-expanded="false" aria-controls="crcCoachTools"/);assert.match(app,/\$\("crcChatWelcome"\)\.hidden=true/);assert.match(app,/\$\("crcChatWelcome"\)\.hidden=false/);assert.match(css,/body\.crc-coach-view/);assert.match(css,/\.crc-chat-scroll\{[^}]*overflow:auto/);});
@@ -95,7 +95,7 @@ test('player progress dashboard separates current samples from same-deck post-ta
   assert.match(html,/id="crcProgressPanel"/);
   assert.match(app,/function renderProgressPanel\(\)/);
   assert.match(app,/coachMemoryUpdatePracticeProgress/);
-  assert.match(app,/attribution==="matched_tag"/);
+  assert.match(app,/coachDistinctBattles\(report\.entries\)/);
   assert.match(app,/coachPracticeDelta\(report\.entries,pending\)/);
   assert.match(app,/نبردهای بعدی با همان ۸ کارت/);
   assert.match(app,/رابطه علت‌ومعلولی را ثابت نمی‌کند/);
@@ -120,4 +120,12 @@ test('card collection UI exposes raw levels, Evolution/Hero unlocks and guarded 
   assert.match(client,/function cardFormProgress/);
   assert.match(client,/function collectionLevel/);
   assert.match(client,/maxEvolutionLevel/);
+});
+
+test('RC practice plan is bounded, requires validated responses and preserves player control',()=>{
+ const app=fs.readFileSync(new URL('./app.js',import.meta.url),'utf8');
+ assert.match(app,/coachPracticePlan\(memory\)/);
+ assert.match(app,/reply\.qualityStatus==="checked_structure"/);
+ assert.match(app,/۵ نتیجه مشخص فقط نقطه مرور تمرین است/);
+ assert.match(app,/var raw=player&&player\.tag;/);
 });

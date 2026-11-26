@@ -351,3 +351,37 @@ test('normalized profile retains max Evolution/Hero capability and trusted form 
  assert.equal(profile.cards[0].iconUrls.heroMedium,'https://api-assets.clashroyale.com/cardheroes/300/hero.png');
  assert.equal(profile.cards[0].iconUrls.evolutionMedium,'https://api-assets.clashroyale.com/cardevolutions/300/evo.png');
 });
+
+
+test('practice evidence deduplicates timestamps, excludes conflicts and rejects pre-task observations',()=>{
+ const deck=[1,2,3,4,5,6,7,8],zero={wins:0,losses:0,draws:0,unknown:0};
+ const row=(battle_time,outcome,ids=deck,attribution='matched_tag')=>({battle_time,outcome,deck:{card_ids:ids},attribution});
+ const task={action:'style',deck_card_ids:deck,created_at:'2026-11-26T13:00:00Z',since_battle_at:'2026-11-26T12:00:00Z',last_battle_at:'2026-11-26T12:30:00Z',progress:{matched_records:0,outcomes:zero}};
+ const rows=[row('2026-11-26T12:55:00Z','win'),row('2026-11-26T13:01:00Z','win'),row('2026-11-26T13:01:00.000Z','win'),
+ row('2026-11-26T13:02:00Z','loss'),row('2026-11-26T13:02:00Z','win'),row('2026-11-26T13:03:00Z','draw'),row('bad','win'),
+ row('2026-11-26T13:04:00Z','win',deck,'single_team_assumed')];
+ const delta=api.coachPracticeDelta(rows,task);
+ assert.equal(delta.matched_records,2);assert.equal(delta.outcomes.wins,1);assert.equal(delta.outcomes.draws,1);
+ assert.equal(delta.last_battle_at,'2026-11-26T13:03:00.000Z');
+ assert.equal(api.coachPracticeDelta(rows,{...task,last_battle_at:delta.last_battle_at}),null);
+ const capped=api.coachPracticeDelta(rows,{...task,progress:{matched_records:199,outcomes:{...zero,wins:199}}});
+ assert.equal(capped.matched_records,1);
+ assert.equal(api.coachPracticeDelta(rows,{...task,progress:{matched_records:200,outcomes:{...zero,wins:200}}}),null);
+});
+test('pending practice is not overwritten and review checkpoint is not a performance claim',()=>{
+ const storage=memoryStorage(),memory=api.createCoachMemory(storage),tag='#TEST123',deck=[1,2,3,4,5,6,7,8];
+ assert.equal(api.coachPracticePlan(null),null);
+ assert.equal(memory.setEnabled(tag,true),true);assert.equal(memory.setFocus(tag,'elixir'),true);
+ assert.equal(api.coachPracticePlan(memory.read(tag)).status,'ready');
+ assert.equal(memory.recordPractice(tag,'style',deck,null,null),true);
+ assert.equal(memory.recordPractice(tag,'deck',deck,null,null),false);
+ assert.equal(memory.read(tag).pending_practice.action,'style');
+ assert.equal(memory.addPracticeProgress(tag,{matched_records:6,outcomes:{wins:2,losses:2,draws:1,unknown:1}},'2090-01-01T00:00:00Z'),true);
+ const plan=api.coachPracticePlan(memory.read(tag));
+ assert.equal(plan.known,5);assert.equal(plan.status,'review');assert.equal(plan.remaining,0);
+ assert.match(plan.steps[0],/اکسیر/);
+ assert.equal(memory.submitPracticeFeedback(tag,'worse'),true);
+ assert.match(api.coachPracticePlan(memory.read(tag)).follow_up,/اثبات نمی‌کند/);
+ assert.equal(memory.recordPractice(tag,'deck',deck,null,null),true);
+ assert.equal(memory.read('#OTHER123'),null);
+});

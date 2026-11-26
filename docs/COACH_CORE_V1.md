@@ -78,3 +78,8 @@ Read-only Cloudflare inspection found a single system message containing existin
 - The Coach memory stores both the unlocked-form bitfield and the maximum supported-form bitfield; the Worker independently validates each as an integer from 0 to 3.
 - Tests cover bitfield decoding, mixed-rarity Collection Level arithmetic, missing/invalid data fail-closed behavior, trusted form-icon URLs, and UI display.
 - Supercell's current support material describes separate Evolution and Hero deck slots and Collection Level as card levels plus five per unlocked Evolution/Hero. The API's maxEvolutionLevel bitfield mapping is documented against observed API card objects; it is not guessed from rarity or card ID.
+
+## RC readiness hardening (stage 8/9 integration)
+- Integrated existing progress and card-form work; fixed duplicate/contradictory timestamps, pre-task watermark checks, bounded progression, pending-task preservation and explicit local training drills with a five-known-result review checkpoint.
+- Memory controls require a loaded profile; limited replies and unvalidated swaps cannot start tracking. Progress panel refreshes after feedback, focus and clear. No changes to the provider, backend authentication, quotas or deployment settings.
+- See docs/COACH_RC_CHECKLIST.md for outstanding release gates.

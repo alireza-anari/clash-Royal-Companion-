@@ -22,6 +22,7 @@ try{
     await page.locator('#page-'+view+'.active').waitFor();
     assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+2),'horizontal overflow: '+view+' '+name);
     assert.equal(await page.locator('.content > .footer').isVisible(),view!=='coach','footer visibility: '+view);
+    if(view==='player'){assert.ok(await page.locator('#crcProgressPanel').isVisible());assert.match(await page.locator('#crcProgressPanel').textContent(),/رصد پیشرفت/);}
     if(view==='coach')assert.ok(await page.locator('#page-coach').evaluate(el=>{const r=el.getBoundingClientRect();const p=el.parentElement;const cs=getComputedStyle(p);return Math.abs(r.width-Math.min(900,p.clientWidth-parseFloat(cs.paddingLeft)-parseFloat(cs.paddingRight)))<=2;}),'coach uses full available width: '+name);
     await page.screenshot({path:'visual-check/'+name+'-'+view+'.png',fullPage:true});
   }
@@ -35,6 +36,7 @@ try{
   assert.equal(await page.locator('#coachChatMessages .is-user').count(),1);assert.equal(await welcome.isVisible(),false);
   assert.equal(await page.locator('#coachChatMessages .is-status').count(),1);
   await toggle.click();assert.equal(await menu.isVisible(),true);assert.equal(await toggle.getAttribute('aria-expanded'),'true');
+  assert.equal(await menu.locator('#crcCoachMemoryEnabled').isChecked(),false);assert.equal(await menu.locator('#crcCoachMemoryEnabled').isDisabled(),true);
   await page.screenshot({path:'visual-check/'+name+'-coach-tools.png'});
   await page.keyboard.press('Escape');assert.equal(await menu.isVisible(),false);
   await toggle.click();await menu.locator('[data-coach-jump="coachReport"]').click();
