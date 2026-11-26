@@ -46,7 +46,6 @@ export function coachQualityFacts(battles,personal){
       out.memory=historical.join('؛ ');
     }
   }
-  const memory=personal?.coach_memory;
   const pending=memory&&memory.version===1?memory.pending_practice:null;
   const actionLabels={deck:'تحلیل دک',suggestions:'پیشنهاد تعویض',style:'تحلیل سبک بازی',overview:'برنامه پیشرفت'};
   if(pending&&actionLabels[pending.action]&&Array.isArray(pending.deck_card_ids)&&pending.deck_card_ids.length===8&&
