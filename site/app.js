@@ -437,6 +437,7 @@ if(Number.isInteger(c.count)&&c.count>=0)out.count=c.count;
 if(typeof c.rarity==="string"&&["common","rare","epic","legendary","champion"].includes(c.rarity.toLowerCase()))out.rarity=c.rarity.toLowerCase();
 if(validIcon(icons.heroMedium))out.heroIcon=icons.heroMedium;
 if(validIcon(icons.evolutionMedium))out.evolutionIcon=icons.evolutionMedium;
+if(out.maxEvolutionLevel==null&&(out.heroIcon||out.evolutionIcon))out.maxEvolutionLevel=(out.evolutionIcon?1:0)|(out.heroIcon?2:0);
 return out;
 }
 function mergeProfileCards(data){
