@@ -291,3 +291,21 @@ test('coach payload forwards only bounded structured memory, never tag or free t
  assert.equal(JSON.stringify(payload).includes('#TEST123'),false);
  assert.equal(JSON.stringify(payload).includes('do not send'),false);
 });
+
+test('post-task practice delta counts only newer exact-deck matches for the selected tag',()=>{
+ const task={action:'suggestions',deck_card_ids:[1,2,3,4,5,6,7,8],created_at:'2026-11-26T13:00:00.000Z',
+  since_battle_at:'2026-11-26T12:00:00.000Z',last_battle_at:'2026-11-26T13:00:00.000Z',
+  baseline:{matched_records:2,outcomes:{wins:1,losses:1,draws:0,unknown:0}},
+  progress:{matched_records:0,outcomes:{wins:0,losses:0,draws:0,unknown:0}}};
+ const exact=[1,2,3,4,5,6,7,8],different=[1,2,3,4,5,6,7,9];
+ const entry=(time,outcome,attribution='matched_tag',ids=exact)=>({battle_time:time,outcome,attribution,deck:{card_ids:ids}});
+ const delta=api.coachPracticeDelta([
+  entry('2026-11-26T13:01:00.000Z','win'),
+  entry('2026-11-26T13:02:00.000Z','loss'),
+  entry('2026-11-26T12:59:00.000Z','win'),
+  entry('2026-11-26T13:03:00.000Z','win','single_team_assumed'),
+  entry('2026-11-26T13:04:00.000Z','win','matched_tag',different)
+ ],task);
+ assert.deepEqual(delta,{matched_records:2,outcomes:{wins:1,losses:1,draws:0,unknown:0},last_battle_at:'2026-11-26T13:02:00.000Z'});
+ assert.equal(api.coachPracticeDelta([entry('2026-11-26T13:00:00.000Z','win')],task),null);
+});
