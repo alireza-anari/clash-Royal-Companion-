@@ -31,6 +31,8 @@
     for(const card of owned){
       if(seen.has(card.id)||deckSet.has(card.id))continue;
       seen.add(card.id);
+      // Do not propose cards with unlocked special forms until slot-aware deck building exists.
+      if(Number.isInteger(card.evolutionLevel)&&card.evolutionLevel>0)continue;
       const c=cardIndex.get(card.id);
       if(!c||c.type==='support'||!Array.isArray(c.roles)||!c.roles.length||!Number.isInteger(c.elixir)||c.elixir<0)continue;
       const reasons=[];
