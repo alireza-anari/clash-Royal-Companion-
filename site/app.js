@@ -138,18 +138,8 @@ function coachMemoryUpdatePracticeProgress(tag,store){
   var memory=store.read(tag),pending=memory&&memory.pending_practice;
   if(!pending)return false;
   var report=window.CRCBattleIntelligence.summarize(battles,tag,"all");
-  var deckKey=pending.deck_card_ids.slice().sort((a,b)=>a-b).join(":");
-  var watermark=pending.last_battle_at||pending.since_battle_at||pending.created_at;
-  var fresh=report.entries.filter(function(e){
-    return e.attribution==="matched_tag"&&e.deck&&Array.isArray(e.deck.card_ids)&&
-      e.deck.card_ids.slice().sort((a,b)=>a-b).join(":")===deckKey&&
-      typeof e.battle_time==="string"&&Date.parse(e.battle_time)>Date.parse(watermark)&&
-      ["win","loss","draw","unknown"].includes(e.outcome);
-  }).sort((a,b)=>a.battle_time.localeCompare(b.battle_time));
-  if(!fresh.length)return false;
-  var outcomes={wins:0,losses:0,draws:0,unknown:0};
-  fresh.forEach(function(e){outcomes[{win:"wins",loss:"losses",draw:"draws",unknown:"unknown"}[e.outcome]]++;});
-  return store.addPracticeProgress(tag,{matched_records:fresh.length,outcomes},fresh[fresh.length-1].battle_time);
+  var delta=window.CRCBackendClient.coachPracticeDelta(report.entries,pending);
+  return delta?store.addPracticeProgress(tag,{matched_records:delta.matched_records,outcomes:delta.outcomes},delta.last_battle_at):false;
 }
 function coachMemoryCapture(){
   var tag=coachMemoryTag(),store=coachMemoryStore();
