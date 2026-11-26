@@ -45,6 +45,25 @@ try{
   assert.equal(await page.locator('.content > .footer').isVisible(),false);
   assert.ok(await page.locator('#coachChatForm').evaluate(el=>Math.abs(el.getBoundingClientRect().width-document.querySelector('#page-coach').getBoundingClientRect().width)<=2),'composer takes full coach width');
   await page.screenshot({path:'visual-check/'+name+'-coach-chat.png'});
+  assert.equal(await page.locator('#crcCoachPending').count(),0,'no spinner for unavailable coach');
+  // Test pending, success and failure with a deferred mock of the online coach.
+  const injected=await fs.readFile(path.join(root,'app.js'),'utf8');
+  const harness=injected.replace(/\}\)\(\);\s*$/, "window.__crcPendingTest={run:async function(fail){coachAICap={ai_coach_enabled:true};window.CRCBetaSession={enabled:true,fetch:()=>new Promise((resolve,reject)=>{window.__crcPendingTest.finish=()=>fail?reject(new Error(\"test failure\")):resolve({ok:true,json:async()=>({answer:\"پاسخ آزمایشی\",model:\"@cf/google/gemma-4-26b-a4b-it\",external_inference:true,replay_analyzed:false,evidence_status:\"client_submitted_unverified\"})});})};return askCoachChat(\"تست انتظار\",\"overview\");}};})();");
+  const loadingPage=await browser.newPage({viewport});
+  await loadingPage.route('**/*',route=>route.request().url().endsWith('/app.js')?route.fulfill({contentType:'application/javascript',body:harness}):route.request().url().startsWith('http://127.0.0.1:')?route.continue():route.abort());
+  await loadingPage.goto('http://127.0.0.1:'+server.address().port+'/#coach');
+  await loadingPage.locator('#crcChatWelcome').waitFor();
+  for(const fail of [false,true]){
+    await loadingPage.evaluate(f=>{window.__crcPendingTest.run(f);},fail);
+    await loadingPage.locator('#crcCoachPending').waitFor();
+    assert.equal(await loadingPage.locator('.crc-pending-dots i').count(),3);
+    await loadingPage.waitForFunction(()=>typeof window.__crcPendingTest.finish==='function');
+    if(!fail)await loadingPage.screenshot({path:'visual-check/'+name+'-coach-loading.png'});
+    await loadingPage.evaluate(()=>{const finish=window.__crcPendingTest.finish;delete window.__crcPendingTest.finish;finish();});
+    await loadingPage.locator('#crcCoachPending').waitFor({state:'detached'});
+    assert.ok(await loadingPage.locator(fail?'#coachChatMessages .is-status':'#coachChatMessages .is-coach').count());
+  }
+  await loadingPage.close();
   await page.locator('#clearCoachChat').click();assert.equal(await welcome.isVisible(),true);assert.equal(await page.locator('#coachChatMessages .is-user').count(),0);
   await page.evaluate(()=>location.hash='player');await page.locator('#page-player.active').waitFor();await page.locator('#crcChangeAccount').click();await page.locator('#crcNext').click();await page.locator('#crcNext2').click();await page.locator('#crcConnect').click();assert.ok(await page.locator('#crcError').textContent());
   await page.screenshot({path:'visual-check/'+name+'-onboarding.png'});

@@ -636,3 +636,17 @@ body.crc-coach-view .content{flex-direction:column;min-width:0}
 body.crc-coach-view .content > .footer{display:none!important}
 #page-coach.active{flex:1 1 auto;min-width:0}
 @media(max-width:870px){body.crc-coach-view .content{max-width:none}#page-coach.active{max-width:none}}
+
+/* Indeterminate online-coach response indicator, scoped to the chat. */
+#page-coach .coach-chat-message.crc-coach-pending{display:flex;flex-direction:row;align-items:center;gap:12px;width:max-content;max-width:100%;padding:11px 15px;border-color:#60438e;background:linear-gradient(120deg,#171d3a,#22163c);box-shadow:0 0 15px #8f45d51a;flex:none}
+#page-coach .crc-pending-emblem{position:relative;display:grid;place-items:center;flex:none;width:38px;height:38px;border-radius:50%;border:1px solid #8758ba;background:#241a46;color:#e5c4ff;font-size:25px;line-height:1}
+#page-coach .crc-pending-emblem:after{content:"";position:absolute;inset:-3px;border:2px solid transparent;border-top-color:#c988ff;border-inline-end-color:#e4b85c;border-radius:50%;animation:crcPendingOrbit 1.8s linear infinite}
+#page-coach .crc-pending-content{display:flex;flex-direction:column;gap:7px;min-width:0}
+#page-coach .crc-pending-label{color:#e8dcff;font-size:13px;font-weight:600;line-height:1.6}
+#page-coach .crc-pending-dots{display:flex;align-items:center;gap:5px;height:12px}
+#page-coach .crc-pending-dots i{width:7px;height:7px;border-radius:50%;background:#c78aff;box-shadow:0 0 7px #b674ff80;animation:crcPendingDot 1.2s ease-in-out infinite}
+#page-coach .crc-pending-dots i:nth-child(2){animation-delay:.16s}
+#page-coach .crc-pending-dots i:nth-child(3){animation-delay:.32s}
+@keyframes crcPendingOrbit{to{transform:rotate(360deg)}}
+@keyframes crcPendingDot{0%,60%,100%{opacity:.42;transform:translateY(0)}30%{opacity:1;transform:translateY(-3px)}}
+@media(prefers-reduced-motion:reduce){#page-coach .crc-pending-emblem:after,#page-coach .crc-pending-dots i{animation:none}}

@@ -90,6 +90,20 @@ function addCoachChatMessage(role,message,source){
   if(source){var evidence=document.createElement("small");evidence.className="coach-chat-evidence";evidence.textContent=source;row.appendChild(evidence);}
   transcript.appendChild(row);while(transcript.children.length>20)transcript.firstElementChild.remove();crcChatScrollBottom();
 }
+function crcCoachPending(active){
+  var transcript=$("coachChatMessages"),existing=$("crcCoachPending");
+  if(!active){if(existing)existing.remove();return;}
+  if(existing||!transcript)return;
+  var row=document.createElement("article");
+  row.id="crcCoachPending";row.className="coach-chat-message is-coach crc-coach-pending";
+  row.setAttribute("role","status");
+  var emblem=document.createElement("span");emblem.className="crc-pending-emblem";emblem.setAttribute("aria-hidden","true");emblem.textContent="✧";
+  var content=document.createElement("div");content.className="crc-pending-content";
+  var label=document.createElement("span");label.className="crc-pending-label";label.textContent="مربی در حال تحلیل است…";
+  var dots=document.createElement("span");dots.className="crc-pending-dots";dots.setAttribute("aria-hidden","true");
+  for(var i=0;i<3;i++)dots.appendChild(document.createElement("i"));
+  content.append(label,dots);row.append(emblem,content);transcript.appendChild(row);crcChatScrollBottom();
+}
 function crcChatScrollBottom(){var scroll=$("crcChatScroll");if(scroll)scroll.scrollTop=scroll.scrollHeight;}
 function crcCoachToolsOpen(open){var menu=$("crcCoachTools"),toggle=$("crcCoachToolsToggle");if(!menu||!toggle)return;menu.hidden=!open;toggle.setAttribute("aria-expanded",String(open));}
 function crcChatViewport(){var viewport=window.visualViewport;var height=viewport?viewport.height:window.innerHeight;document.body.style.setProperty("--crc-chat-viewport",height+"px");document.body.classList.toggle("crc-chat-keyboard",!!viewport&&window.innerHeight-height>130);}
@@ -115,19 +129,22 @@ async function askCoachChat(question,action){
   controls.forEach(b=>b.disabled=true);input.disabled=true;
   $("coachAIStatus").textContent="در حال دریافت پاسخ از مربی آنلاین…";
   try{
+    crcCoachPending(true);
     var facts=calcFacts();
     var tag=(player&&player.tag)||$("playerTag").value;
     var evidence=window.CRCBattleEvidence?window.CRCBattleEvidence.evidence(battles,tag,$("coachBattleScope").value,deck):null;
     var personal=currentPersonalCoachContext(facts);
     var reply=await window.CRCBackendClient.askAI(window.CRCBetaSession,text,facts,evidence,coachAICap,personal,action);
+    crcCoachPending(false);
     addCoachChatMessage("ai",reply.answer,reply.model+" · پاسخ تولیدشده توسط هوش مصنوعی");
     $("coachAIStatus").textContent="پاسخ آنلاین دریافت شد.";
   }catch(e){
+    crcCoachPending(false);
     var message=(e&&e.message)||"مربی آنلاین موقتاً در دسترس نیست.";
     if(e&&e.code)message+=" ("+e.code+")";
     $("coachAIStatus").textContent=message;addCoachChatMessage("status",message);
   }finally{
-    coachBusy=false;controls.forEach(b=>b.disabled=false);input.disabled=false;
+    crcCoachPending(false);coachBusy=false;controls.forEach(b=>b.disabled=false);input.disabled=false;
   }
 }
 function setupCoachChat(){
