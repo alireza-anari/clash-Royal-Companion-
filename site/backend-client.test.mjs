@@ -246,8 +246,9 @@ test('Coach memory is opt-in, profile-scoped, bounded and device-local',()=>{
  assert.equal(memory.record('#TEST123',next),true);
  assert.equal(memory.read('#TEST123').snapshots.length,2);
  const baseline={matched_records:2,outcomes:{wins:1,losses:1,draws:0,unknown:0}};
- assert.equal(memory.recordPractice('#TEST123','suggestions',[1,2,3,4,5,6,7,8],baseline,'2026-11-26T12:00:00.000Z'),true);
+ assert.equal(memory.recordPractice('#TEST123','suggestions',[1,2,3,4,5,6,7,8],baseline,'2026-11-26T12:00:00.000Z','suggested_deck'),true);
  assert.equal(memory.read('#TEST123').pending_practice.action,'suggestions');
+ assert.equal(memory.read('#TEST123').pending_practice.target_kind,'suggested_deck');
  assert.equal(memory.read('#TEST123').pending_practice.baseline.matched_records,2);
  const delta={matched_records:2,outcomes:{wins:1,losses:1,draws:0,unknown:0}};
  assert.equal(memory.addPracticeProgress('#TEST123',delta,'2030-01-01T12:00:00.000Z'),true);
