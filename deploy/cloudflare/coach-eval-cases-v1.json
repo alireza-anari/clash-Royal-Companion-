@@ -1171,7 +1171,7 @@
     {
       "id": "D12",
       "category": "deck",
-      "fixture": "deck",
+      "fixture": "noEvidence",
       "intent": "deck",
       "language": "fa",
       "question": "آیا می‌توانی از این داده‌ها مالکیت قطعی همه کارت‌ها را نتیجه بگیری؟",
@@ -1576,7 +1576,7 @@
     {
       "id": "B08",
       "category": "battle",
-      "fixture": "battle",
+      "fixture": "noEvidence",
       "intent": "style",
       "language": "fa",
       "question": "نبردهای اخیرم را تحلیل کن؛ در این درخواست هیچ آمار یا نبردی ارسال نشده است.",
@@ -1630,7 +1630,7 @@
     {
       "id": "B10",
       "category": "battle",
-      "fixture": "battle",
+      "fixture": "noEvidence",
       "intent": "style",
       "language": "fa",
       "question": "الگوی کارت‌های حریفانم چه بوده است؟ هیچ فهرست کارت حریف در داده‌ها نیست.",
@@ -1754,7 +1754,7 @@
     {
       "id": "S07",
       "category": "swap",
-      "fixture": "swap",
+      "fixture": "swapEmpty",
       "intent": "suggestions",
       "language": "fa",
       "question": "یک کارت از دکم را عوض کن؛ اما در داده فعلی هیچ گزینه مجاز single swap وجود ندارد.",
@@ -1777,7 +1777,7 @@
     {
       "id": "S08",
       "category": "swap",
-      "fixture": "swap",
+      "fixture": "noEvidence",
       "intent": "suggestions",
       "language": "fa",
       "question": "با اطلاعات ناقص دک، یک تعویض قطعی پیشنهاد بده.",
@@ -1804,7 +1804,7 @@
     {
       "id": "S09",
       "category": "swap",
-      "fixture": "swap",
+      "fixture": "swapProtected",
       "intent": "suggestions",
       "language": "fa",
       "question": "یکی از گزینه‌ها Giant با فرم Evolution فعال را حذف می‌کند؛ آن را پیشنهاد نده و فقط تعویض امن مجاز را انتخاب کن.",
@@ -2001,7 +2001,7 @@
     {
       "id": "E07",
       "category": "evolution-hero",
-      "fixture": "evo",
+      "fixture": "hero",
       "intent": "progress",
       "language": "fa",
       "question": "توانایی Hero Electro Wizard چه اثری دارد و هزینه فعال‌سازی آن چند اکسیر است؟",
