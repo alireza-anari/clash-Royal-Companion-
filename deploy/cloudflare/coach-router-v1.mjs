@@ -23,7 +23,7 @@ export function coachModelText(generated){
 }
 export async function coachModelExecute(env,route,messages,context,evaluate){
   if(!env?.AI||typeof env.AI.run!=='function')throw new Error('Workers AI binding unavailable');
-  const run=model=>env.AI.run(model,{messages,chat_template_kwargs:{enable_thinking:false},max_completion_tokens:route.maxTokens});
+  const run=model=>env.AI.run(model,{messages,chat_template_kwargs:{enable_thinking:false},response_format:{type:'json_object'},max_completion_tokens:route.maxTokens});
   let model=route.primary,generated,fallbackUsed=false;
   try{generated=await run(model);}
   catch(error){
