@@ -251,6 +251,11 @@ test('Coach memory is opt-in, profile-scoped, bounded and device-local',()=>{
  assert.equal(memory.read('#TEST123').pending_practice,null);
  assert.equal(memory.read('#TEST123').practice_feedback[0].outcome,'improved');
  assert.equal(memory.submitPracticeFeedback('#TEST123','invented'),false);
+ assert.equal(memory.setEnabled('#TEST123',false),true);
+ assert.equal(memory.read('#TEST123'),null);
+ assert.equal(memory.record('#TEST123',snapshot),false);
+ assert.equal(memory.setEnabled('#TEST123',true),true);
+ assert.equal(memory.read('#TEST123').snapshots.length,2);
  assert.equal(memory.clear('#TEST123'),true);
  assert.equal(memory.read('#TEST123'),null);
  assert.equal(storage.values.size,0);
