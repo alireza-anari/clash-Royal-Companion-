@@ -17,7 +17,7 @@ test('computed facts separate selected deck and overall and exclude unknown outc
 });
 test('valid swap is rendered by server, not from hallucinated model advice',()=>{
  const result=coachQualityEvaluate(payload({answer:'Swap for an invented card',swap_index:0,fact_keys:['selected']}),ctx);
- assert.equal(result.status,'checked_structure');assert.match(result.answer,/حذف: Card 1/);assert.match(result.answer,/افزودن: Musketeer/);assert.doesNotMatch(result.answer,/invented/);assert.match(result.answer,/66\.7/);
+ assert.equal(result.status,'checked_structure');assert.equal(result.swap.remove_id,1);assert.equal(result.swap.add_id,20);assert.match(result.answer,/حذف: Card 1/);assert.match(result.answer,/افزودن: Musketeer/);assert.doesNotMatch(result.answer,/invented/);assert.match(result.answer,/66\.7/);
 });
 test('reject invalid swap indices, duplicate cards, protected forms and excessive level gap',()=>{
  for(const index of [-1,1,4,0.5])assert.equal(coachQualityEvaluate(payload({swap_index:index}),ctx).status,'limited');
