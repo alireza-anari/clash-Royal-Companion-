@@ -1,6 +1,6 @@
 import {readFile,writeFile} from 'node:fs/promises';
 import {pathToFileURL} from 'node:url';
-import {coachQualityEvaluate} from './coach-quality-v1.mjs';
+import {coachQualityEvaluate,coachQualityFacts,coachQualitySwap} from './coach-quality-v1.mjs';
 import {coachRetrieve} from './coach-knowledge-v1.mjs';
 import {NEW_TAIL} from './coach-identity-v1.mjs';
 
@@ -25,6 +25,9 @@ export function coachEvalFixture(data,scenario){
 export function coachEvalBuildMessages(data,scenario){
   const {battles,personal}=coachEvalFixture(data,scenario);
   const docs=coachRetrieve(scenario.question,scenario.intent,personal.deck_cards);
+  const availableFactKeys=Object.keys(coachQualityFacts(battles,personal));
+  const availableSourceIds=docs.map(d=>d.id);
+  const availableSwapIndices=scenario.intent==='suggestions'?[0,1,2,3].filter(i=>coachQualitySwap(personal,i)!==null):[];
   const knowledge=docs.length?docs.map(d=>'['+d.id+'] '+d.title+' | '+d.publisher+' | انتشار: '+(d.published_at||'تاریخ انتشار درج نشده')+' | بازبینی: '+d.verified_at+' | نوع: '+d.freshness+'\n'+d.content).join('\n\n').slice(0,5200):'هیچ منبع رسمی مرتبطی در این سناریو بازیابی نشد؛ درباره جزئیات جاری حدس نزن.';
   const identity=NEW_TAIL.replace(/\s*CRC_COACH_IDENTITY_V1\s*$/,'');
   const system=[
@@ -40,6 +43,9 @@ export function coachEvalBuildMessages(data,scenario){
     'نوع درخواست: '+scenario.intent,
     'سؤال بازیکن: '+scenario.question,
     'داده‌های آزمون (ساختگی): '+JSON.stringify(context),
+    'مقادیر دقیق و مجاز fact_keys برای همین سناریو: '+JSON.stringify(availableFactKeys)+'. اگر آرایه خالی است حتماً [] برگردان؛ هیچ کلید دیگری نساز.',
+    'شناسه‌های دقیق و مجاز source_ids برای همین سناریو: '+JSON.stringify(availableSourceIds)+'. فقط همین شناسه‌ها را استفاده کن؛ اگر خالی است حتماً [] برگردان.',
+    'اندیس‌های مجاز swap_index برای همین سناریو: '+JSON.stringify(availableSwapIndices)+'. فقط یکی از این اندیس‌ها یا null مجاز است؛ برای درخواست غیرتعویض فقط null.',
     'دانش رسمی بازیابی‌شده:\n'+knowledge,
     'فقط JSON مطابق قالب خواسته‌شده را برگردان.'
   ].join('\n\n');
