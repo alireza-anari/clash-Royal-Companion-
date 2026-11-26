@@ -151,3 +151,32 @@ test('offline meta builder deduplicates reversed participants and rejects contra
  assert.throws(()=>buildCoachMeta({...input,battles:[...records,{...dup,players:[{outcome:'win',cards:a},{outcome:'win',cards:b}]}]}));
  assert.equal(JSON.stringify(snapshot).includes('battle_key'),false);
 });
+
+import {COACH_EVENT_CATALOG,coachEventValidate,coachEventStatus,coachEventFit,coachEventAnswer} from './coach-events-v1.mjs';
+
+test('announced date ranges never assert live availability or exact hours',()=>{
+ const event=COACH_EVENT_CATALOG.find(e=>e.id==='beatdown'),now=Date.parse('2026-11-26T12:00:00Z');
+ assert.ok(COACH_EVENT_CATALOG.every(coachEventValidate));
+ assert.equal(coachEventStatus(event,now),'announced_window');
+ assert.equal(coachEventStatus(event,Date.parse('2026-11-20T00:00:00Z')),'announced_upcoming');
+ assert.equal(coachEventStatus(event,Date.parse('2026-12-03T00:00:00Z')),'announced_past');
+ assert.equal(coachEventStatus({...event,start:'2026-02-30'},now),'unknown');
+ assert.equal(coachEventStatus(COACH_EVENT_CATALOG.find(e=>e.id==='daily-puzzles-second'),now),'unknown');
+ const timed={...event,precision:'utc',start:'2026-11-26T10:00:00Z',end:'2026-11-26T11:00:00Z'};
+ assert.equal(coachEventStatus(timed,Date.parse(timed.start)-1),'scheduled_upcoming');
+ assert.equal(coachEventStatus(timed,Date.parse(timed.start)),'scheduled_window');
+ assert.equal(coachEventStatus(timed,Date.parse(timed.end)),'scheduled_ended');
+ assert.equal(coachEventValidate({...event,source_id:'evil'}),null);
+ const r=coachEventAnswer('Beatdown Challenge', {deck_cards:[{id:26000009,name:'Golem'}]},now);
+ assert.match(r.answer,/Golem/);assert.match(r.answer,/فعال بودن تأیید نشده/);assert.match(r.answer,/پیشنهاد دک قطعی ممکن نیست/);
+ assert.equal(r.sources[0].id,'K06');
+ assert.equal(coachEventFit(event,{}).eligibility,'unknown');
+});
+test('event guide refuses invented reward, current status or deck eligibility',()=>{
+ const r=coachQualityEvaluate(payload({answer:'100000 gems guaranteed today'}),{...ctx,intent:'events',question:'Daily Puzzles فعال است؟',personal:{event_catalog:[{reward:100000}]}});
+ assert.equal(r.status,'checked_structure');assert.doesNotMatch(r.answer,/100000|guaranteed/);
+ assert.match(r.answer,/ثابت نمی‌کند/);assert.ok(r.sources.some(s=>s.id==='K04'));
+ assert.match(coachEventAnswer('دریافت Hero و Evolution').answer,/موجودی/);
+ assert.match(coachEventAnswer('محدودیت Evolution در Event Deck').answer,/بعضی/);
+ assert.match(coachEventAnswer('Hero Electro Wizard رویداد فعال است؟').answer,/اکتبر/);
+});

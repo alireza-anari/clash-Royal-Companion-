@@ -134,3 +134,5 @@ test('explicit meta intent takes precedence over mode names',()=>{
 });
 
 test('explicit current deck ranking in English uses guarded meta route',()=>assert.equal(coachIntent('best deck right now'),'meta'));
+
+test('event and card acquisition intent routes to verified event guidance',()=>{assert.equal(coachIntent('Daily Puzzles فعال است؟'),'events');assert.equal(coachIntent('چطور Hero دریافت کنم؟'),'events');assert.equal(coachIntent('متای چالش بزرگ چیست؟'),'meta');});

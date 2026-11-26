@@ -58,7 +58,7 @@ export function coachEvalScore(data,scenario,raw){
   const built=coachEvalBuildMessages(data,scenario);
   let parsed=null;
   try{parsed=JSON.parse(String(raw??''));}catch{}
-  const quality=coachQualityEvaluate(raw,{...built.context,docs:built.docs,intent:scenario.intent});
+  const quality=coachQualityEvaluate(raw,{...built.context,docs:built.docs,intent:scenario.intent,question:scenario.question});
   const answer=String(quality.answer||'');
   const checks=[];
   const structural=quality.status==='checked_structure';
@@ -70,7 +70,7 @@ export function coachEvalScore(data,scenario,raw){
   const swapPass=!expectedSwap||parsed?.swap_index===scenario.rubric.expectedSwapIndex;
   checks.push({name:'safe_swap_selection',pass:swapPass});
   const requiredSources=scenario.rubric.requiredSourceIds||[];
-  const sourcePass=requiredSources.every(id=>Array.isArray(parsed?.source_ids)&&parsed.source_ids.includes(id)&&quality.sources?.some(s=>s.id===id));
+  const sourcePass=requiredSources.every(id=>quality.sources?.some(s=>s.id===id)&&(scenario.intent==='events'||Array.isArray(parsed?.source_ids)&&parsed.source_ids.includes(id)));
   checks.push({name:'source_attribution',pass:sourcePass});
   const includeGroups=scenario.rubric.mustIncludeAny||[];
   const includePass=includeGroups.every(group=>matchesAny(answer,group));

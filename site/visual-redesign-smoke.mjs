@@ -39,7 +39,7 @@ try{
   assert.equal(await menu.locator('#crcCoachMemoryEnabled').isChecked(),false);assert.equal(await menu.locator('#crcCoachMemoryEnabled').isDisabled(),true);
   await page.screenshot({path:'visual-check/'+name+'-coach-tools.png'});
   await page.keyboard.press('Escape');assert.equal(await menu.isVisible(),false);
-  await toggle.click();assert.equal(await menu.locator('[data-coach-jump="coachMeta"]').isVisible(),true);await menu.locator('[data-coach-jump="coachReport"]').click();
+  await toggle.click();assert.equal(await menu.locator('[data-coach-jump="coachMeta"]').isVisible(),true);assert.equal(await menu.locator('[data-coach-jump="coachEvents"]').isVisible(),true);await menu.locator('[data-coach-jump="coachReport"]').click();
   assert.equal(await menu.isVisible(),false);assert.equal(await page.locator('#coachChatMessages .is-user').count(),2);
   await page.locator('#coachChatQuestion').fill('تست گفتگو');await page.locator('#coachChatForm [type=submit]').click();
   assert.equal(await page.locator('#coachChatMessages .is-user').count(),3);

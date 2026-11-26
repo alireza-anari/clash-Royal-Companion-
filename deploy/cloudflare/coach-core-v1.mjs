@@ -10,7 +10,7 @@ export function coachIntent(question,action){
   if(/ریپلی|بازپخش|ویدیو|ویدئو|\breplay\b|\bvideo\b/.test(q))return 'vision';
   const terms=q.split(' ');
   if(/متا|محبوب.?ترین دک|بهترین دک (?:روز|امروز|الان)|\bmeta\b|\btop decks\b|\b(?:best|popular) decks? (?:today|right now|currently)\b/.test(q))return 'meta';
-  if(/ایونت|رویداد|چالش/.test(q)||terms.includes('event')||terms.includes('challenge'))return 'events';
+  if(/ایونت|رویداد|چالش|daily\s*puzzles?|پازل|معمای روزانه|royal market|beatdown challenge|siege\s*&\s*chip|\bevents?\b|\bchallenges?\b/.test(q)||(/دریافت|باز.?کردن|گرفتن|\bunlock\b|\bobtain\b/.test(q)&&/evolution|hero|هیرو|ایوو|تکامل|کارت|\bcard\b/.test(q)))return 'events';
   if(/ارتقا|آپگرید|\bupgrade\b/.test(q))return 'progress';
   if(/تعویض|جایگزین|بهبود دک|\bswap\b|\breplace\b/.test(q))return 'suggestions';
   if(/سبک بازی|نبرد|برد و باخت|\bbattle\b|\bmatchup\b/.test(q))return 'style';
