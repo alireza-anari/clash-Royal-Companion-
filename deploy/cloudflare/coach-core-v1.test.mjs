@@ -9,6 +9,8 @@ test('intent hints distinguish shortcuts and free questions',()=>{
  assert.equal(coachIntent('بهترین جایگزین برای کارت من چیست؟'),'suggestions');
  assert.equal(coachIntent('ریپلی من را نگاه کن'),'vision');
  assert.equal(coachIntent('بهترین دک متا الان چیست؟'),'meta');
+ assert.equal(coachIntent('meta deck win rates'),'meta');
+ assert.equal(coachIntent('event schedule'),'events');
  assert.equal(coachInferencePlan('سلام').maxTokens,240);
  assert.equal(coachInferencePlan('سلام، دک من را تحلیل کن').maxTokens,720);
 });
