@@ -245,6 +245,12 @@ test('Coach memory is opt-in, profile-scoped, bounded and device-local',()=>{
  assert.equal(memory.read('#TEST123').snapshots.length,2);
  assert.equal(memory.record('#TEST123',next),true);
  assert.equal(memory.read('#TEST123').snapshots.length,2);
+ assert.equal(memory.recordPractice('#TEST123','suggestions',[1,2,3,4,5,6,7,8]),true);
+ assert.equal(memory.read('#TEST123').pending_practice.action,'suggestions');
+ assert.equal(memory.submitPracticeFeedback('#TEST123','improved'),true);
+ assert.equal(memory.read('#TEST123').pending_practice,null);
+ assert.equal(memory.read('#TEST123').practice_feedback[0].outcome,'improved');
+ assert.equal(memory.submitPracticeFeedback('#TEST123','invented'),false);
  assert.equal(memory.clear('#TEST123'),true);
  assert.equal(memory.read('#TEST123'),null);
  assert.equal(storage.values.size,0);
@@ -260,12 +266,14 @@ test('Coach memory rejects invalid tags, malformed snapshots and unapproved focu
 test('coach payload forwards only bounded structured memory, never tag or free text',()=>{
  const snapshot=memorySnapshot();
  const personal={deck_cards:Array.from({length:8},(_,i)=>({id:i+1,name:'Card '+(i+1),elixir:3})),
-  coach_memory:{version:1,focus:'elixir',snapshots:[snapshot],player_tag:'#TEST123',private_note:'do not send'}};
+  coach_memory:{version:1,focus:'elixir',snapshots:[snapshot],pending_practice:{action:'suggestions',deck_card_ids:[1,2,3,4,5,6,7,8],created_at:'2026-11-26T13:00:00.000Z'},practice_feedback:[{action:'suggestions',deck_card_ids:[1,2,3,4,5,6,7,8],created_at:'2026-11-26T13:00:00.000Z',outcome:'improved',recorded_at:'2026-11-26T14:00:00.000Z'}],player_tag:'#TEST123',private_note:'do not send'}};
  const payload=api.coachPayload('تحلیل سبک بازی',null,null,personal,'style');
  assert.equal(payload.personal.coach_memory.focus,'elixir');
  assert.equal(payload.personal.coach_memory.snapshots.length,1);
  assert.equal(payload.personal.coach_memory.player_tag,undefined);
  assert.equal(payload.personal.coach_memory.private_note,undefined);
+ assert.equal(payload.personal.coach_memory.pending_practice.action,'suggestions');
+ assert.equal(payload.personal.coach_memory.practice_feedback[0].outcome,'improved');
  assert.equal(JSON.stringify(payload).includes('#TEST123'),false);
  assert.equal(JSON.stringify(payload).includes('do not send'),false);
 });
