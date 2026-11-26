@@ -17,7 +17,7 @@ Provide continuity across visits without inventing a server-side identity or sil
 
 At most three snapshots:
 - capture timestamp, source kind and selected-deck source;
-- eight card IDs and bounded progression metadata (level, rarity, Evolution level and Star Level);
+- eight card IDs and bounded progression metadata (raw level, max level, rarity, Evolution/Hero availability bitfield, unlocked-form bitfield and Star Level);
 - up to 200 matched-tag Battle Log aggregate outcomes;
 - selected-deck aggregate outcomes;
 - up to three deck-pattern aggregates;
