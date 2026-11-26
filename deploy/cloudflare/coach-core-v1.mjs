@@ -6,7 +6,7 @@ export function coachIntent(question,action){
   const q=String(question||'').trim().toLowerCase().replace(/ي/g,'ی').replace(/ك/g,'ک');
   // A hint only: never replace free-text questions with fixed shortcut tasks.
   if(/ریپلی|بازپخش|ویدیو|ویدئو|\breplay\b|\bvideo\b/.test(q))return 'vision';
-  const terms=q.split(/\\s+/);
+  const terms=q.split(' ');
   if(/ایونت|رویداد|چالش/.test(q)||terms.includes('event')||terms.includes('challenge'))return 'events';
   if(/متا/.test(q)||terms.includes('meta'))return 'meta';
   if(/ارتقا|آپگرید|\bupgrade\b/.test(q))return 'progress';
