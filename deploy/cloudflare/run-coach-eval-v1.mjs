@@ -10,7 +10,7 @@ export const COACH_EVAL_MODELS=Object.freeze([
 ]);
 export const COACH_EVAL_MAX_CASES=60;
 export const COACH_EVAL_MAX_ESTIMATED_USD=0.10;
-const OUTPUT_TOKENS=220;
+const OUTPUT_TOKENS=384;
 const ABSTENTION=/نمی‌توان|نمی‌توانم|قابل تأیید نیست|قابل تایید نیست|تأیید نشده|تایید نشده|اطلاعات کافی نیست|داده زنده|داده به.?روز|در دسترس نیست|cannot verify|not available|no live data|insufficient data/i;
 
 export async function loadCoachEval(){
@@ -140,7 +140,7 @@ async function requestModel(accountId,token,model,messages){
   const started=performance.now();
   const response=await fetch('https://api.cloudflare.com/client/v4/accounts/'+encodeURIComponent(accountId)+'/ai/run/'+model.id,{
     method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
-    body:JSON.stringify({messages,max_completion_tokens:OUTPUT_TOKENS,temperature:0.1,seed:20261126,chat_template_kwargs:{enable_thinking:false}}),
+    body:JSON.stringify({messages,response_format:{type:'json_object'},max_completion_tokens:OUTPUT_TOKENS,temperature:0.1,seed:20261126,chat_template_kwargs:{enable_thinking:false}}),
     signal:AbortSignal.timeout(45000)
   });
   const latencyMs=Math.round(performance.now()-started);
