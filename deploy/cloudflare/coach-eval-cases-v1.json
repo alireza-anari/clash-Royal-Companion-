@@ -853,16 +853,6 @@
             "unlocked_forms": []
           },
           {
-            "id": 26000007,
-            "name": "Skeletons",
-            "rarity": "common",
-            "level": 13,
-            "elixir": 1,
-            "role": "cycle and distraction",
-            "active_form": "base",
-            "unlocked_forms": []
-          },
-          {
             "id": 26000012,
             "name": "Electro Wizard",
             "rarity": "legendary",
