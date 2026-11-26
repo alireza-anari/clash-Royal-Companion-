@@ -101,3 +101,12 @@ test('player progress dashboard separates current samples from same-deck post-ta
   assert.match(app,/رابطه علت‌ومعلولی را ثابت نمی‌کند/);
   assert.match(app,/addPracticeProgress/);
 });
+
+test('validated suggested swaps are tracked against the recommended deck, not falsely attributed to the old deck',()=>{
+  const app=fs.readFileSync(new URL('./app.js',import.meta.url),'utf8');
+  assert.match(app,/action==="suggestions"&&reply\.swap/);
+  assert.match(app,/trackingDeck=trackingDeck\.map\(id=>id===reply\.swap\.remove_id\?reply\.swap\.add_id:id\)/);
+  assert.match(app,/targetKind="suggested_deck"/);
+  assert.match(app,/previousTag!==incomingTag\)\{battles=null/);
+  assert.match(app,/نبردهای بعدی با دک پیشنهادی/);
+});
