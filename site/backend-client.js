@@ -255,8 +255,20 @@
     if(!value||typeof value!=='object'||!COACH_MEMORY_ACTIONS.has(value.action)||
       typeof value.created_at!=='string'||value.created_at.length>40||!Number.isFinite(Date.parse(value.created_at)))return null;
     const ids=Array.isArray(value.deck_card_ids)?value.deck_card_ids.slice(0,8):[];
-    return ids.length===8&&ids.every(id=>Number.isSafeInteger(id)&&id>0&&id<=1000000000)&&new Set(ids).size===8?
-      {action:value.action,deck_card_ids:ids,created_at:value.created_at}:null;
+    if(ids.length!==8||!ids.every(id=>Number.isSafeInteger(id)&&id>0&&id<=1000000000)||new Set(ids).size!==8)return null;
+    const zero={wins:0,losses:0,draws:0,unknown:0};
+    const counts=(raw,total)=>{
+      const clean=cleanCoachMemoryCounts(raw,total);
+      return clean?{matched_records:total,outcomes:clean}:null;
+    };
+    const baseline=value.baseline==null?null:counts(value.baseline.outcomes,value.baseline.matched_records);
+    const progress=value.progress==null?{matched_records:0,outcomes:zero}:counts(value.progress.outcomes,value.progress.matched_records);
+    if(value.baseline!=null&&!baseline||!progress)return null;
+    const validDate=x=>typeof x==='string'&&x.length<=40&&Number.isFinite(Date.parse(x))?x:null;
+    const since=validDate(value.since_battle_at),last=validDate(value.last_battle_at);
+    if(value.since_battle_at!=null&&!since||value.last_battle_at!=null&&!last)return null;
+    if(last&&since&&Date.parse(last)<Date.parse(since))return null;
+    return {action:value.action,deck_card_ids:ids,created_at:value.created_at,baseline,progress,since_battle_at:since,last_battle_at:last};
   }
   function cleanCoachFeedback(value){
     const pending=cleanCoachPractice(value);
@@ -312,10 +324,28 @@
         if(old.snapshots[0]&&fingerprint(old.snapshots[0])===fingerprint(clean))return true;
         return write(tag,{...old,snapshots:[clean,...old.snapshots].slice(0,3)});
       },
-      recordPractice(tag,action,deckCardIds){
+      recordPractice(tag,action,deckCardIds,baseline,sinceBattleAt){
         const old=readStored(tag);if(!old?.enabled||!COACH_MEMORY_ACTIONS.has(action))return false;
-        const clean=cleanCoachPractice({action,deck_card_ids:deckCardIds,created_at:new Date().toISOString()});
+        const zero={wins:0,losses:0,draws:0,unknown:0};
+        const clean=cleanCoachPractice({
+          action,deck_card_ids:deckCardIds,created_at:new Date().toISOString(),
+          baseline:baseline&&baseline.outcomes?baseline:{matched_records:0,outcomes:zero},
+          progress:{matched_records:0,outcomes:zero},since_battle_at:sinceBattleAt||null,last_battle_at:sinceBattleAt||null
+        });
         return clean?write(tag,{...old,pending_practice:clean}):false;
+      },
+      addPracticeProgress(tag,delta,lastBattleAt){
+        const old=readStored(tag),pending=old?.pending_practice;
+        if(!old?.enabled||!pending||!delta||!Number.isInteger(delta.matched_records)||delta.matched_records<1||delta.matched_records>200)return false;
+        const clean=cleanCoachMemoryCounts(delta.outcomes,delta.matched_records);
+        const stamp=typeof lastBattleAt==='string'&&lastBattleAt.length<=40&&Number.isFinite(Date.parse(lastBattleAt))?lastBattleAt:null;
+        if(!clean||!stamp||pending.progress.matched_records+delta.matched_records>200)return false;
+        const watermark=pending.last_battle_at||pending.since_battle_at||pending.created_at;
+        if(Date.parse(stamp)<=Date.parse(watermark))return false;
+        const outcomes=Object.fromEntries(['wins','losses','draws','unknown'].map(k=>[k,pending.progress.outcomes[k]+clean[k]]));
+        const progress={matched_records:pending.progress.matched_records+delta.matched_records,outcomes};
+        const next=cleanCoachPractice({...pending,progress,last_battle_at:stamp});
+        return next?write(tag,{...old,pending_practice:next}):false;
       },
       submitPracticeFeedback(tag,outcome){
         const old=readStored(tag);if(!old?.enabled||!COACH_MEMORY_OUTCOMES.has(outcome)||!old.pending_practice)return false;
