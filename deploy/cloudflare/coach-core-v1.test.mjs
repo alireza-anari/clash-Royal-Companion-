@@ -85,7 +85,7 @@ test('full coach-core patch composes and remains syntactically valid',()=>{
   '    {role:"system",content:"allowed_single_swaps selected_deck_results فارسی، تیتر ساده بدون Markdown، حداکثر ۲۴۰ کلمه."},',
   '    {role:"user",content:(action?"ابزار انتخاب‌شده: "+action+"\\nوظیفه ثابت سرور: ":"سؤال: ")+question+"\\nاین داده‌ها ارسالی از مرورگر و از نظر مالکیت تایید نشده‌اند."}',
   '  ];',
-  '  const generated=await env.AI.run(LIVE_AI_MODEL,{messages,max_completion_tokens:720});',
+  '  const generated=await env.AI.run(LIVE_AI_MODEL,{messages,chat_template_kwargs:{enable_thinking:false},max_completion_tokens:720});',
   '  let answer=generated.response;',
   '    answer=answer.trim().slice(0,2900);',
   '    return previewResponse({answer,model:LIVE_AI_MODEL,external_inference:true,replay_analyzed:false,evidence_status:"client_submitted_unverified"});',
