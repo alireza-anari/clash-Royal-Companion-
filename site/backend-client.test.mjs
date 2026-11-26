@@ -158,3 +158,36 @@ test('personal coach payload includes selected cards and only owned candidates, 
  assert.equal(p.personal.style.records,2);
  assert.ok(!JSON.stringify(p).includes('PRIVATE_'));
 });
+
+test('coach session retains at most two successful turns and resets by account object',()=>{
+ const s=api.createCoachSession(),a={},b={};
+ assert.equal(s.history(a).length,0);
+ for(let i=0;i<3;i++)s.record(a,'question '+i,'answer '+i);
+ assert.equal(s.history(a).length,2);assert.equal(s.history(a)[0].question,'question 1');
+ assert.equal(s.history(b).length,0);
+ s.record(a,'late reply','must not appear');assert.equal(s.history(b).length,0);
+ s.record(b,'question','answer');s.clear();assert.equal(s.history(b).length,0);
+});
+test('optional history is bounded, strips tags/emails and never replaces current question',()=>{
+ const personal={chat_history:[{question:'contact a@example.com #ABC123',answer:'past answer'},{question:'follow up',answer:'x'.repeat(600)}]};
+ const p=api.coachPayload('سؤال جدید',null,null,personal);
+ assert.equal(p.question,'سؤال جدید');assert.equal(p.personal.chat_history.length,2);
+ assert.ok(!JSON.stringify(p).includes('a@example.com'));assert.ok(!JSON.stringify(p).includes('#ABC123'));
+ assert.equal(api.coachPayload('تحلیل دک',null,null,personal,'deck').personal.chat_history,undefined);
+ const large={deck_cards:Array.from({length:8},(_,i)=>({id:i+1,name:'ک'.repeat(65),elixir:4,rarity:'legendary',active_form:'unknown'})),owned_candidates:Array.from({length:8},(_,i)=>({id:i+20,name:'ک'.repeat(65),elixir:3,rarity:'legendary',active_form:'unknown'})),chat_history:[{question:'الف'.repeat(280),answer:'ب'.repeat(600)}]};
+ const bounded=api.coachPayload('تحلیل',null,null,large);
+ assert.equal(bounded.personal.deck_cards.length,8);
+ assert.ok(new TextEncoder().encode(JSON.stringify(bounded)).length<=4096);
+});
+test('inconsistent battle totals are not sent as evidence',()=>{
+ const p=api.coachPayload('تحلیل',null,{filter:'all',matched_records:10,outcomes:{wins:2,losses:1,draws:0,unknown:0}},null);
+ assert.equal(p.battles,undefined);
+});
+test('style separates reported elixir leakage in wins and losses without guessing missing data',()=>{
+ const items=Array.from({length:8},(_,i)=>({id:i+1,name:'Card '+i,elixir:3}));
+ const entries=[{attribution:'matched_tag',outcome:'win',elixir_leaked:3},{attribution:'matched_tag',outcome:'loss',elixir_leaked:7},{attribution:'matched_tag',outcome:'loss',elixir_leaked:null},{attribution:'unknown',outcome:'win',elixir_leaked:50}];
+ const personal=api.personalCoachContext({items,errors:[]},null,items,[],'manual',entries);
+ assert.equal(personal.style.win_leaked_sample,1);assert.equal(personal.style.win_leaked_average,3);
+ assert.equal(personal.style.loss_leaked_sample,1);assert.equal(personal.style.loss_leaked_average,7);
+ const p=api.coachPayload('تحلیل',null,null,personal,'style');assert.equal(p.personal.style.loss_leaked_average,7);
+});

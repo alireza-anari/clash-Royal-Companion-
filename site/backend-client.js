@@ -189,14 +189,39 @@
     const counts={wins:0,losses:0,draws:0,unknown:0};
     const key=selected.length===8?[...ids].sort((a,b)=>a-b).join(":"):null;
     const matched=(entries||[]).filter(e=>e.attribution==="matched_tag").slice(0,200);
-    const groups=new Map(),leak=[];
+    const groups=new Map(),leak=[],winLeak=[],lossLeak=[];
     for(const e of matched){
       const id=Array.isArray(e.deck?.card_ids)?e.deck.card_ids.slice().sort((a,b)=>a-b).join(":"):null;
       if(id)groups.set(id,(groups.get(id)||0)+1);
-      if(Number.isFinite(e.elixir_leaked)&&e.elixir_leaked>=0)leak.push(e.elixir_leaked);
+      if(Number.isFinite(e.elixir_leaked)&&e.elixir_leaked>=0&&e.elixir_leaked<=1000){leak.push(e.elixir_leaked);if(e.outcome==='win')winLeak.push(e.elixir_leaked);if(e.outcome==='loss')lossLeak.push(e.elixir_leaked);}
       if(key&&id===key)counts[{win:"wins",loss:"losses",draw:"draws",unknown:"unknown"}[e.outcome]||"unknown"]++;
     }
-    return {deck_source:deckSource,deck_cards:selected.map(describe),owned_candidates:candidates,selected_deck_results:counts,style:{records:matched.length,distinct_decks:groups.size,most_used_deck_matches:Math.max(0,...groups.values()),elixir_leaked_sample:leak.length,elixir_leaked_average:leak.length?Math.round(leak.reduce((s,n)=>s+n,0)/leak.length*100)/100:null}};
+    const avg=xs=>xs.length?Math.round(xs.reduce((s,n)=>s+n,0)/xs.length*100)/100:null;
+    return {deck_source:deckSource,deck_cards:selected.map(describe),owned_candidates:candidates,selected_deck_results:counts,style:{records:matched.length,distinct_decks:groups.size,most_used_deck_matches:Math.max(0,...groups.values()),elixir_leaked_sample:leak.length,elixir_leaked_average:avg(leak),win_leaked_sample:winLeak.length,win_leaked_average:avg(winLeak),loss_leaked_sample:lossLeak.length,loss_leaked_average:avg(lossLeak)}};
+  }
+  // Page-local history; scope objects never cross the network.
+  function createCoachSession(){
+    let scope=null,turns=[];
+    function sync(next){if(next!==scope){scope=next;turns=[];return true;}return false;}
+    return Object.freeze({
+      clear(){turns=[];scope=null;},
+      history(next){sync(next);return turns.map(t=>({...t}));},
+      record(next,question,answer){
+        if(next!==scope||typeof question!=="string"||typeof answer!=="string"||!question.trim()||!answer.trim())return;
+        turns=[...turns,{question:question.slice(0,280),answer:answer.slice(0,600)}].slice(-2);
+      }
+    });
+  }
+  function cleanCoachHistory(history){
+    const redact=(s,max)=>s.replace(/#[A-Z0-9]{3,16}\b/gi,"[tag]").replace(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi,"[email]").trim().slice(0,max);
+    return (Array.isArray(history)?history:[]).slice(-2).filter(t=>t&&typeof t.question==="string"&&typeof t.answer==="string").map(t=>({question:redact(t.question,280),answer:redact(t.answer,600)})).filter(t=>t.question&&t.answer);
+  }
+  const coachBytes=value=>new TextEncoder().encode(JSON.stringify(value)).length;
+  function cleanOutcomeCounts(value){
+    const keys=["wins","losses","draws","unknown"];
+    if(!value||!keys.every(k=>Number.isInteger(value[k])&&value[k]>=0&&value[k]<=200))return null;
+    const counts=Object.fromEntries(keys.map(k=>[k,value[k]]));
+    return Object.values(counts).reduce((a,b)=>a+b,0)<=200?counts:null;
   }
   function coachPayload(question,facts,evidence,personal,action){
     const q=String(question||'').trim();
@@ -211,7 +236,7 @@
     if(evidence&&['all','event','other'].includes(evidence.filter)&&evidence.outcomes){
       const c=evidence.outcomes,n=evidence.matched_records;
       const counts=[c.wins,c.losses,c.draws,c.unknown];
-      if(Number.isInteger(n)&&n>0&&n<=200&&counts.every(x=>Number.isInteger(x)&&x>=0&&x<=200)&&counts.reduce((a,b)=>a+b,0)<=n)
+      if(Number.isInteger(n)&&n>0&&n<=200&&counts.every(x=>Number.isInteger(x)&&x>=0&&x<=200)&&counts.reduce((a,b)=>a+b,0)===n)
         payload.battles={filter:evidence.filter,matched_records:n,wins:c.wins,losses:c.losses,draws:c.draws,unknown:c.unknown};
     }
     if(personal&&typeof personal==="object"){
@@ -219,11 +244,24 @@
       if(["profile-live","profile-import","profile-edited","manual","sample","battle-event-import","battle-import"].includes(personal.deck_source))clean.deck_source=personal.deck_source;
       const card=c=>Object.fromEntries(["id","name","elixir","rarity","active_form","unlocked_forms","available_forms","display_level","star_level"].filter(k=>Object.hasOwn(c,k)).map(k=>[k,c[k]]));
       for(const k of ["deck_cards","owned_candidates"])if(Array.isArray(personal[k]))clean[k]=personal[k].slice(0,8).filter(c=>c&&Number.isSafeInteger(c.id)&&typeof c.name==="string").map(card);
-      if(personal.selected_deck_results)clean.selected_deck_results=Object.fromEntries(["wins","losses","draws","unknown"].map(k=>[k,personal.selected_deck_results[k]]));
-      if(personal.style)clean.style=Object.fromEntries(["records","distinct_decks","most_used_deck_matches","elixir_leaked_sample","elixir_leaked_average"].map(k=>[k,personal.style[k]]));
+      const outcomes=cleanOutcomeCounts(personal.selected_deck_results);
+      if(outcomes&&clean.deck_cards?.length===8&&new Set(clean.deck_cards.map(c=>c.id)).size===8)clean.selected_deck_results=outcomes;
+      if(personal.style)clean.style=Object.fromEntries(["records","distinct_decks","most_used_deck_matches","elixir_leaked_sample","elixir_leaked_average","win_leaked_sample","win_leaked_average","loss_leaked_sample","loss_leaked_average"].map(k=>[k,personal.style[k]]));
       payload.personal=clean;
+      // Preserve current evidence ahead of optional past conversation.
+      if(coachBytes(payload)>4096&&Array.isArray(clean.owned_candidates)){
+        while(clean.owned_candidates.length&&coachBytes(payload)>4096)clean.owned_candidates.pop();
+      }
+      if(!payload.action){
+        const history=cleanCoachHistory(personal.chat_history);
+        for(let i=history.length-1;i>=0;i--){
+          clean.chat_history=history.slice(i);
+          if(coachBytes(payload)>4096){clean.chat_history=history.slice(i+1);break;}
+        }
+        if(!clean.chat_history?.length)delete clean.chat_history;
+      }
     }
-    if(new TextEncoder().encode(JSON.stringify(payload)).length>4096)throw new BackendError("INVALID_INPUT","حجم داده تحلیل بیش از حد مجاز است.",422);
+    if(coachBytes(payload)>4096)throw new BackendError("INVALID_INPUT","حجم داده تحلیل بیش از حد مجاز است.",422);
     return payload;
   }
   async function askAI(session,question,facts,evidence,cap,personal,action){
@@ -246,5 +284,5 @@
       throw new BackendError('BAD_RESPONSE','پاسخ مربی معتبر نیست.');
     return {answer:data.answer,model:data.model};
   }
-  root.CRCBackendClient=Object.freeze({VERSION,BackendError,normalizeTag,route,capabilities,loadPlayer,normalizedToProfile,normalizedToBattles,personalCoachContext,coachPayload,askAI});
+  root.CRCBackendClient=Object.freeze({VERSION,BackendError,normalizeTag,route,capabilities,loadPlayer,normalizedToProfile,normalizedToBattles,personalCoachContext,coachPayload,askAI,createCoachSession,cleanCoachHistory});
 })(typeof window!=='undefined'?window:globalThis);

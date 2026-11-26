@@ -78,7 +78,10 @@ $("deckLibrary").querySelectorAll("[data-card]").forEach(function(b){b.addEventL
 }
 function renderHome(){var w=$("homeDeck");if(!w)return;w.innerHTML=deck.map(function(id,i){return slotHtml(getCard(id),i,true);}).join("");w.querySelectorAll("[data-slot]").forEach(function(b){b.addEventListener("click",function(){activeSlot=Number(b.dataset.slot);toPage("deck");});});var f=calcFacts();$("homeDeckElixir").textContent=f.average==null?"اکسیر نامشخص":fmt(f.average)+" اکسیر";$("homeDeckSource").textContent=deckSource==="sample"?"دک نمونه":deckSource==="profile-import"?"داده واردشده":deckSource==="profile-live"?"دک بازیکن":"دک ویرایش‌شده";}
 // Online-only coach. A user message or analysis shortcut directly starts the AI request.
-var coachAICap=null,coachBusy=false;
+var coachAICap=null,coachBusy=false,coachConversation=null;
+function coachScope(){return player||null;}
+function coachSession(){return coachConversation||(coachConversation=window.CRCBackendClient.createCoachSession());}
+function coachAccountChanged(){if(coachConversation)coachConversation.clear();var transcript=$("coachChatMessages");if(transcript)transcript.replaceChildren();if($("crcChatWelcome"))$("crcChatWelcome").hidden=false;if($("coachChatQuestion"))$("coachChatQuestion").value="";}
 // Treat model output as untrusted text; never interpret it as HTML or URLs.
 function crcCoachPresentation(message,cards){
   const text=String(message??"");
@@ -157,7 +160,7 @@ function crcCoachPending(active){
 function crcChatScrollBottom(){var scroll=$("crcChatScroll");if(scroll)scroll.scrollTop=scroll.scrollHeight;}
 function crcCoachToolsOpen(open){var menu=$("crcCoachTools"),toggle=$("crcCoachToolsToggle");if(!menu||!toggle)return;menu.hidden=!open;toggle.setAttribute("aria-expanded",String(open));}
 function crcChatViewport(){var viewport=window.visualViewport;var height=viewport?viewport.height:window.innerHeight;document.body.style.setProperty("--crc-chat-viewport",height+"px");document.body.classList.toggle("crc-chat-keyboard",!!viewport&&window.innerHeight-height>130);}
-function clearCoachChat(){if(coachBusy)return;$("coachChatMessages").replaceChildren();$("crcChatWelcome").hidden=false;crcCoachToolsOpen(false);$("coachChatQuestion").value="";crcChatScrollBottom();renderCoach();}
+function clearCoachChat(){if(coachBusy)return;if(coachConversation)coachConversation.clear();$("coachChatMessages").replaceChildren();$("crcChatWelcome").hidden=false;crcCoachToolsOpen(false);$("coachChatQuestion").value="";crcChatScrollBottom();renderCoach();}
 function currentPersonalCoachContext(f){
   const scope=$("coachBattleScope").value;
   const entries=window.CRCBattleIntelligence&&player?window.CRCBattleIntelligence.summarize(battles,player.tag,scope).entries:[];
@@ -184,12 +187,17 @@ async function askCoachChat(question,action){
     var tag=(player&&player.tag)||$("playerTag").value;
     var evidence=window.CRCBattleEvidence?window.CRCBattleEvidence.evidence(battles,tag,$("coachBattleScope").value,deck):null;
     var personal=currentPersonalCoachContext(facts);
+    var requestScope=coachScope(),requestSession=coachSession();
+    personal.chat_history=requestSession.history(requestScope);
     var reply=await window.CRCBackendClient.askAI(window.CRCBetaSession,text,facts,evidence,coachAICap,personal,action);
     crcCoachPending(false);
+    if(requestScope!==coachScope())return;
+    requestSession.record(requestScope,text,reply.answer);
     addCoachChatMessage("ai",reply.answer,reply.model+" · پاسخ تولیدشده توسط هوش مصنوعی");
     $("coachAIStatus").textContent="پاسخ آنلاین دریافت شد.";
   }catch(e){
     crcCoachPending(false);
+    if(typeof requestScope!=="undefined"&&requestScope!==coachScope())return;
     var message=(e&&e.message)||"مربی آنلاین موقتاً در دسترس نیست.";
     if(e&&e.code)message+=" ("+e.code+")";
     $("coachAIStatus").textContent=message;addCoachChatMessage("status",message);
@@ -240,7 +248,7 @@ var text=await file.text();try{return JSON.parse(text);}catch(e){throw Error("م
 }
 async function importProfile(file){
 try{var raw=await parseFile(file);if(!raw||Array.isArray(raw)||typeof raw!=="object"||!tagFormat(raw.tag))throw Error("این فایل پاسخ Player Profile معتبر نیست.");
-profileSource="file";liveFetchedAt=null;player=raw;mergeProfileCards(raw);renderProfile();renderCoach();if(battles)renderBattles();
+coachAccountChanged();profileSource="file";liveFetchedAt=null;player=raw;mergeProfileCards(raw);renderProfile();renderCoach();if(battles)renderBattles();
 if(Array.isArray(raw.currentDeck)&&raw.currentDeck.length===8){
 var ids=raw.currentDeck.map(function(c){return c&&c.id;});
 if(ids.every(function(id){return Number.isSafeInteger(id);})&&new Set(ids).size===8){setDeck(ids,"profile-import",true);notify("پروفایل وارد شد؛ دک ثبت‌شده هم بارگذاری شد.");}
@@ -293,7 +301,7 @@ async function loadProfileLive(){
   try{
     var payload=await window.CRCBackendClient.loadPlayer(apiTransport(),tag);
     // Do not mutate local profile state until all mandatory response schemas are verified.
-    player=payload.profile;profileSource="live";liveFetchedAt=payload.fetched_at;
+    coachAccountChanged();player=payload.profile;profileSource="live";liveFetchedAt=payload.fetched_at;
     battles=payload.battles;battlesSource="live";
     mergeProfileCards(player);mergeBattleCards(battles);
     if(Array.isArray(player.currentDeck)&&player.currentDeck.length===8){
