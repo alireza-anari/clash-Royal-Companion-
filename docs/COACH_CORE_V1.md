@@ -68,3 +68,13 @@ Read-only Cloudflare inspection found a single system message containing existin
 - A profile switch clears the in-memory Battle Log unless the incoming Player Tag matches the previously selected tag, preventing accidental cross-profile aggregation.
 - Browser, Worker, quality-facts and UI tests cover schema validation, same-deck filtering, timestamps, duplicate prevention, suggested-swap targeting, current-profile isolation and non-causal wording.
 - No production Worker, API key, account secret, quota, server-side memory, or deployment setting was changed.
+
+
+## Phase 1, slice 9 — card forms and Collection Level
+- The profile card adapter now preserves the API's max_evolution_level capability bitfield and trusted Hero/Evolution asset URLs when the backend supplies them. The browser decodes bit 1 as Evolution and bit 2 as Hero; the owned-card evolution_level bitfield is decoded separately as unlocked forms.
+- Card catalog entries and card details display the raw rarity-relative level/max level, Star Level, and explicit Evolution/Hero available or unlocked indicators. No raw rarity-relative level is converted into a false cross-rarity comparison.
+- Added a guarded Collection Level estimate using all received standard and support cards. It normalizes rarity-relative raw levels to the common Level 16 scale and adds five for each unlocked Evolution and five for each unlocked Hero. The estimate is withheld if any required level/rarity data is incomplete or invalid.
+- The profile UI labels this as an estimate, because the current API adapter may not include every account field. It does not invent gold, shards, Hero Coins, upgrade costs, or future card inventory.
+- The Coach memory stores both the unlocked-form bitfield and the maximum supported-form bitfield; the Worker independently validates each as an integer from 0 to 3.
+- Tests cover bitfield decoding, mixed-rarity Collection Level arithmetic, missing/invalid data fail-closed behavior, trusted form-icon URLs, and UI display.
+- Supercell's current support material describes separate Evolution and Hero deck slots and Collection Level as card levels plus five per unlocked Evolution/Hero. The API's maxEvolutionLevel bitfield mapping is documented against observed API card objects; it is not guessed from rarity or card ID.
