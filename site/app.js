@@ -78,9 +78,98 @@ $("deckLibrary").querySelectorAll("[data-card]").forEach(function(b){b.addEventL
 }
 function renderHome(){var w=$("homeDeck");if(!w)return;w.innerHTML=deck.map(function(id,i){return slotHtml(getCard(id),i,true);}).join("");w.querySelectorAll("[data-slot]").forEach(function(b){b.addEventListener("click",function(){activeSlot=Number(b.dataset.slot);toPage("deck");});});var f=calcFacts();$("homeDeckElixir").textContent=f.average==null?"اکسیر نامشخص":fmt(f.average)+" اکسیر";$("homeDeckSource").textContent=deckSource==="sample"?"دک نمونه":deckSource==="profile-import"?"داده واردشده":deckSource==="profile-live"?"دک بازیکن":"دک ویرایش‌شده";}
 // Online-only coach. A user message or analysis shortcut directly starts the AI request.
-var coachAICap=null,coachBusy=false,coachConversation=null;
+var coachAICap=null,coachBusy=false,coachConversation=null,coachMemory=null;
 function coachScope(){return player||null;}
 function coachSession(){return coachConversation||(coachConversation=window.CRCBackendClient.createCoachSession());}
+function coachMemoryStore(){
+  if(coachMemory)return coachMemory;
+  try{if(window.CRCBackendClient&&window.CRCBackendClient.createCoachMemory)coachMemory=window.CRCBackendClient.createCoachMemory(window.localStorage);}catch(e){}
+  return coachMemory;
+}
+function coachMemoryTag(){
+  var raw=player&&player.tag?player.tag:$("playerTag")&&$("playerTag").value;
+  return window.CRCBackendClient?window.CRCBackendClient.normalizeTag(raw):null;
+}
+function coachMemorySnapshot(){
+  var tag=coachMemoryTag();
+  if(!tag||!player||!window.CRCBattleIntelligence)return null;
+  var ids=deck.slice();
+  if(ids.length!==8||!ids.every(id=>Number.isSafeInteger(id)&&id>0)||new Set(ids).size!==8)return null;
+  var report=window.CRCBattleIntelligence.summarize(battles,tag,"all");
+  var matched=(report&&Array.isArray(report.entries)?report.entries:[]).filter(e=>e.attribution==="matched_tag");
+  var count=entries=>({wins:entries.filter(e=>e.outcome==="win").length,losses:entries.filter(e=>e.outcome==="loss").length,draws:entries.filter(e=>e.outcome==="draw").length,unknown:entries.filter(e=>e.outcome==="unknown").length});
+  var deckKey=ids.slice().sort((a,b)=>a-b).join(":");
+  var selected=matched.filter(e=>e.deck&&Array.isArray(e.deck.card_ids)&&e.deck.card_ids.slice().sort((a,b)=>a-b).join(":")===deckKey);
+  var owned=Array.isArray(player.cards)?player.cards:[];
+  var cards=ids.map(id=>{
+    var c=owned.find(x=>x&&x.id===id)||{},item={id};
+    if(Number.isInteger(c.level)&&c.level>=1&&c.level<=16)item.level=c.level;
+    var rarity=String(c.rarity||"").toLowerCase();if(["common","rare","epic","legendary","champion"].includes(rarity))item.rarity=rarity;
+    if(Number.isInteger(c.evolutionLevel)&&c.evolutionLevel>=0&&c.evolutionLevel<=3)item.evolution_level=c.evolutionLevel;
+    if(Number.isInteger(c.starLevel)&&c.starLevel>=0&&c.starLevel<=3)item.star_level=c.starLevel;
+    return item;
+  });
+  var groups=new Map();
+  for(var e of matched){
+    if(!e.deck||!Array.isArray(e.deck.card_ids)||e.deck.card_ids.length!==8)continue;
+    var key=e.deck.card_ids.slice().sort((a,b)=>a-b).join(":");
+    var group=groups.get(key)||{deck_card_ids:e.deck.card_ids.slice(),plays:0,wins:0,losses:0,draws:0,unknown:0,event_plays:0};
+    group.plays++;group[{win:"wins",loss:"losses",draw:"draws",unknown:"unknown"}[e.outcome]||"unknown"]++;
+    if(e.classification==="event")group.event_plays++;
+    groups.set(key,group);
+  }
+  var patterns=Array.from(groups.values()).sort((a,b)=>b.plays-a.plays).slice(0,3).map(g=>({
+    deck_card_ids:g.deck_card_ids,plays:g.plays,
+    outcomes:{wins:g.wins,losses:g.losses,draws:g.draws,unknown:g.unknown},event_plays:g.event_plays
+  }));
+  var leaks=matched.map(e=>e.elixir_leaked).filter(n=>Number.isFinite(n)&&n>=0&&n<=1000);
+  var latest=matched.map(e=>e.raw_battle_time||e.battle_time).filter(x=>typeof x==="string"&&x.length<=40).sort().slice(-1)[0]||null;
+  var allowedDeckSources=["profile-live","profile-import","profile-edited","manual","sample","battle-event-import","battle-import"];
+  return {
+    captured_at:new Date().toISOString(),source:profileSource==="live"?"live":"imported",
+    deck_source:allowedDeckSources.includes(deckSource)?deckSource:"manual",deck_card_ids:ids,cards,
+    battles:{matched_records:matched.length,outcomes:count(matched),elixir_leak_sample:leaks.length,avg_elixir_leaked:leaks.length?Math.round(leaks.reduce((a,b)=>a+b,0)/leaks.length*100)/100:null},
+    selected_deck:{matched_records:selected.length,outcomes:count(selected)},
+    deck_patterns:patterns,latest_battle_at:latest
+  };
+}
+function coachMemoryCapture(){
+  var tag=coachMemoryTag(),store=coachMemoryStore();
+  if(!tag||!store||!store.isEnabled(tag))return false;
+  var snapshot=coachMemorySnapshot();
+  return snapshot?store.record(tag,snapshot):false;
+}
+function refreshCoachMemoryUI(){
+  var checkbox=$("crcCoachMemoryEnabled"),focus=$("crcCoachMemoryFocus"),clear=$("crcCoachMemoryClear"),status=$("crcCoachMemoryStatus");
+  if(!checkbox)return;
+  var tag=coachMemoryTag(),store=coachMemoryStore(),enabled=!!(tag&&store&&store.isEnabled(tag)),memory=enabled?store.read(tag):null;
+  checkbox.checked=enabled;checkbox.disabled=!tag||!store;
+  if(focus){focus.disabled=!enabled;focus.value=memory&&memory.focus||"balanced";}
+  if(clear)clear.disabled=!enabled;
+  if(status)status.textContent=!tag?"برای استفاده از حافظه، ابتدا یک پروفایل با Player Tag بارگذاری کن.":enabled?"حافظه فعال است؛ "+(memory?memory.snapshots.length:0)+" ثبت تاریخی روی همین دستگاه.":"حافظه خاموش است و چیزی ذخیره یا همراه درخواست مربی ارسال نمی‌شود.";
+}
+function setupCoachMemory(){
+  var checkbox=$("crcCoachMemoryEnabled"),focus=$("crcCoachMemoryFocus"),clear=$("crcCoachMemoryClear");
+  if(!checkbox||!focus||!clear)return;
+  checkbox.addEventListener("change",function(){
+    var tag=coachMemoryTag(),store=coachMemoryStore();
+    if(!tag||!store){checkbox.checked=false;refreshCoachMemoryUI();return;}
+    if(!store.setEnabled(tag,checkbox.checked)){checkbox.checked=false;notify("ذخیره حافظه در این مرورگر ممکن نیست.");}
+    else if(checkbox.checked)coachMemoryCapture();
+    refreshCoachMemoryUI();
+  });
+  focus.addEventListener("change",function(){
+    var tag=coachMemoryTag(),store=coachMemoryStore();
+    if(tag&&store&&!store.setFocus(tag,focus.value))notify("ذخیره تمرکز تمرین ناموفق بود.");
+    refreshCoachMemoryUI();
+  });
+  clear.addEventListener("click",function(){
+    var tag=coachMemoryTag(),store=coachMemoryStore();
+    if(tag&&store)store.clear(tag);
+    refreshCoachMemoryUI();notify("حافظه مربی این پروفایل از این دستگاه پاک شد.");
+  });
+  refreshCoachMemoryUI();
+}
 function coachAccountChanged(){if(coachConversation)coachConversation.clear();var transcript=$("coachChatMessages");if(transcript)transcript.replaceChildren();if($("crcChatWelcome"))$("crcChatWelcome").hidden=false;if($("coachChatQuestion"))$("coachChatQuestion").value="";}
 // Treat model output as untrusted text; never interpret it as HTML or URLs.
 function crcCoachPresentation(message,cards){
@@ -195,6 +284,8 @@ async function askCoachChat(question,action){
     var personal=currentPersonalCoachContext(facts);
     var requestScope=coachScope(),requestSession=coachSession();
     personal.chat_history=requestSession.history(requestScope);
+    coachMemoryCapture();
+    var memoryStore=coachMemoryStore();if(memoryStore&&tag)personal.coach_memory=memoryStore.read(tag);
     var reply=await window.CRCBackendClient.askAI(window.CRCBetaSession,text,facts,evidence,coachAICap,personal,action);
     crcCoachPending(false);
     if(requestScope!==coachScope())return;
@@ -222,8 +313,9 @@ function setupCoachChat(){
   if(window.visualViewport){window.visualViewport.addEventListener("resize",crcChatViewport);window.visualViewport.addEventListener("scroll",crcChatViewport);}
   window.addEventListener("resize",crcChatViewport);
   $("clearCoachChat").addEventListener("click",clearCoachChat);
+  setupCoachMemory();
 }
-function renderCoach(){if(!coachBusy){$("coachAIStatus").textContent=coachAICap&&coachAICap.ai_coach_enabled===true?"مربی آنلاین آماده است؛ یک تحلیل آماده انتخاب کن یا سؤال خودت را بفرست.":"در حال بررسی دسترسی مربی آنلاین…";}}
+function renderCoach(){if(!coachBusy){$("coachAIStatus").textContent=coachAICap&&coachAICap.ai_coach_enabled===true?"مربی آنلاین آماده است؛ یک تحلیل آماده انتخاب کن یا سؤال خودت را بفرست.":"در حال بررسی دسترسی مربی آنلاین…";}refreshCoachMemoryUI();coachMemoryCapture();}
 function renderCatalog(){
 var q=$("cardSearch").value.trim().toLowerCase(),cst=$("cardCost").value;
 var list=catalog.filter(function(c){var own=crcOwn(c.id);if(crcFilter==="owned"&&!own)return false;if(crcFilter==="max"&&!(own&&Number.isInteger(own.level)&&Number.isInteger(own.maxLevel)&&own.level>=own.maxLevel))return false;if(q&&!c.name.toLowerCase().includes(q)&&!String(c.id).includes(q))return false;if(cst==="1-2"&&!(c.elixir>=1&&c.elixir<=2))return false;if(cst==="3-4"&&!(c.elixir>=3&&c.elixir<=4))return false;if(cst==="5+"&&!(c.elixir>=5))return false;return true;});
