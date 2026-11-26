@@ -21,6 +21,16 @@ test('all prompts use synthetic, unverified evidence and a strict four-key respo
   assert.equal(b.context.evidence_status,'client_submitted_unverified');
  }
 });
+test('each prompt declares only the fact keys sources and swap indices actually available',async()=>{
+ const data=await loadCoachEval();
+ const deck=coachEvalBuildMessages(data,data.scenarios.find(x=>x.id==='D04')).messages[1].content;
+ assert.match(deck,/مقادیر دقیق و مجاز fact_keys برای همین سناریو: \[\]/);
+ assert.match(deck,/شناسه‌های دقیق و مجاز source_ids برای همین سناریو: \["K01"\]/);
+ const swap=coachEvalBuildMessages(data,data.scenarios.find(x=>x.id==='S01')).messages[1].content;
+ assert.match(swap,/اندیس‌های مجاز swap_index برای همین سناریو: \[0,1,2,3\]/);
+ const battle=coachEvalBuildMessages(data,data.scenarios.find(x=>x.id==='B01')).messages[1].content;
+ assert.match(battle,/مقادیر دقیق و مجاز fact_keys برای همین سناریو: \["overall","selected","elixir"\]/);
+});
 test('the scoring rubric accepts a structurally valid evidence-backed deck answer',async()=>{
  const data=await loadCoachEval(),s=data.scenarios.find(x=>x.id==='D04');
  const raw=JSON.stringify({answer:'Star Level فقط ظاهر کارت را تغییر می‌دهد و روی گیم‌پلی اثر ندارد.',swap_index:null,fact_keys:[],source_ids:['K01']});
