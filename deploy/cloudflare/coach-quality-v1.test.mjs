@@ -17,7 +17,7 @@ test('computed facts separate selected deck and overall and exclude unknown outc
 });
 test('valid swap is rendered by server, not from hallucinated model advice',()=>{
  const result=coachQualityEvaluate(payload({answer:'Swap for an invented card',swap_index:0,fact_keys:['selected']}),ctx);
- assert.equal(result.status,'checked_structure');assert.match(result.answer,/Card 1 ← Musketeer/);assert.doesNotMatch(result.answer,/invented/);assert.match(result.answer,/66\.7/);
+ assert.equal(result.status,'checked_structure');assert.match(result.answer,/حذف: Card 1/);assert.match(result.answer,/افزودن: Musketeer/);assert.doesNotMatch(result.answer,/invented/);assert.match(result.answer,/66\.7/);
 });
 test('reject invalid swap indices, duplicate cards, protected forms and excessive level gap',()=>{
  for(const index of [-1,1,4,0.5])assert.equal(coachQualityEvaluate(payload({swap_index:index}),ctx).status,'limited');
@@ -43,3 +43,12 @@ test('only explicitly selected retrieved references are returned',()=>{
  assert.equal(coachQualityEvaluate(payload(),{...ctx,intent:'general'}).sources.length,0);
 });
 test('unknown worker source is rejected',()=>assert.throws(()=>patchCoachQuality('unknown')));
+
+test('unverified numerical win-rate prose is withheld in both Persian and English',()=>{
+ for(const answer of ['نرخ برد دک ۸۰٪ است','Win rate is 90%','درصد برد: ٧٥٪']){
+  const r=coachQualityEvaluate(payload({answer}),{...ctx,intent:'deck'});
+  assert.equal(r.status,'limited');assert.equal(r.reason,'UNVERIFIED_RATE_IN_PROSE');
+ }
+ const r=coachQualityEvaluate(payload({answer:'The Giant ability activates at 50% health',source_ids:['K01']}),{...ctx,intent:'general'});
+ assert.equal(r.status,'checked_structure');
+});

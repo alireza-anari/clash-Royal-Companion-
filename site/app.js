@@ -199,7 +199,7 @@ async function askCoachChat(question,action){
     crcCoachPending(false);
     if(requestScope!==coachScope())return;
     requestSession.record(requestScope,text,reply.answer);
-    addCoachChatMessage("ai",reply.answer,reply.model+" · پاسخ تولیدشده توسط هوش مصنوعی",reply.sources);
+    addCoachChatMessage("ai",reply.answer,reply.model+(reply.qualityStatus==="limited"?" · پاسخ محدودشده پس از بررسی":" · پاسخ تولیدشده توسط هوش مصنوعی"),reply.sources);
     $("coachAIStatus").textContent="پاسخ آنلاین دریافت شد.";
   }catch(e){
     crcCoachPending(false);

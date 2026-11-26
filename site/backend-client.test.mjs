@@ -199,3 +199,12 @@ test('coach response accepts only allowlisted official knowledge sources',async(
  const reply=await api.askAI(session,'کارت‌ها و دک من',null,null,{ai_coach_enabled:true},null);
  assert.equal(reply.sources.length,1);assert.equal(reply.sources[0].id,'K01');assert.equal(reply.knowledgeVersion,'test');
 });
+
+test('quality status is recognized only for a known response version',async()=>{
+ const response={answer:'پاسخ محدود',model:'@cf/google/gemma-4-26b-a4b-it',external_inference:true,replay_analyzed:false,evidence_status:'client_submitted_unverified',quality_version:'crc-coach-quality-v1',quality_status:'limited'};
+ const session={enabled:true,fetch:async()=>({ok:true,json:async()=>response})};
+ const ask=()=>api.askAI(session,'تحلیل دک من',null,null,{ai_coach_enabled:true},null);
+ assert.equal((await ask()).qualityStatus,'limited');
+ response.quality_status='verified_truth';assert.equal((await ask()).qualityStatus,null);
+ response.quality_status='limited';response.quality_version='unknown';assert.equal((await ask()).qualityStatus,null);
+});
