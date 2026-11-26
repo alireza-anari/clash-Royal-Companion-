@@ -78,3 +78,14 @@ test('coach presentation preserves untrusted text and selects only known card im
   assert.equal(present('hello',cards).cards.length,0);
   assert.doesNotMatch(app.slice(app.indexOf('function crcRenderCoachAnswer('),app.indexOf('function crcCoachPending(')),/innerHTML|insertAdjacentHTML/);
 });
+
+test('Coach memory is opt-in, profile-scoped, separately clearable and feedback-driven',()=>{
+  const app=fs.readFileSync(new URL('./app.js',import.meta.url),'utf8');
+  for(const id of ['crcCoachMemoryEnabled','crcCoachMemoryFocus','crcCoachMemoryFeedback','crcCoachMemoryFeedbackSave','crcCoachMemoryClear','crcCoachMemoryStatus'])assert.ok(html.includes('id="'+id+'"'),id);
+  const control=html.match(/<input id="crcCoachMemoryEnabled"[^>]*>/)?.[0]||'';
+  assert.ok(control);assert.doesNotMatch(control,/\bchecked\b/);
+  assert.match(html,/پیش‌فرض خاموش/);assert.match(html,/Battle Log خام ذخیره نمی‌شوند/);
+  assert.match(app,/createCoachMemory/);assert.match(app,/coachMemoryTag/);assert.match(app,/recordPractice/);assert.match(app,/submitPracticeFeedback/);
+  const clear=app.match(/function clearCoachChat\(\)\{[\s\S]*?\n\}/)?.[0]||'';
+  assert.ok(clear);assert.doesNotMatch(clear,/coachMemoryStore|crcCoachMemoryClear|\.clear\(/);
+});
