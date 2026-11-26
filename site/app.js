@@ -140,17 +140,19 @@ function coachMemoryCapture(){
   return snapshot?store.record(tag,snapshot):false;
 }
 function refreshCoachMemoryUI(){
-  var checkbox=$("crcCoachMemoryEnabled"),focus=$("crcCoachMemoryFocus"),clear=$("crcCoachMemoryClear"),status=$("crcCoachMemoryStatus");
+  var checkbox=$("crcCoachMemoryEnabled"),focus=$("crcCoachMemoryFocus"),clear=$("crcCoachMemoryClear"),status=$("crcCoachMemoryStatus"),feedback=$("crcCoachMemoryFeedback"),saveFeedback=$("crcCoachMemoryFeedbackSave");
   if(!checkbox)return;
-  var tag=coachMemoryTag(),store=coachMemoryStore(),enabled=!!(tag&&store&&store.isEnabled(tag)),memory=enabled?store.read(tag):null;
+  var tag=coachMemoryTag(),store=coachMemoryStore(),enabled=!!(tag&&store&&store.isEnabled(tag)),memory=enabled?store.read(tag):null,pending=!!(memory&&memory.pending_practice);
   checkbox.checked=enabled;checkbox.disabled=!tag||!store;
   if(focus){focus.disabled=!enabled;focus.value=memory&&memory.focus||"balanced";}
   if(clear)clear.disabled=!enabled;
-  if(status)status.textContent=!tag?"برای استفاده از حافظه، ابتدا یک پروفایل با Player Tag بارگذاری کن.":enabled?"حافظه فعال است؛ "+(memory?memory.snapshots.length:0)+" ثبت تاریخی روی همین دستگاه.":"حافظه خاموش است و چیزی ذخیره یا همراه درخواست مربی ارسال نمی‌شود.";
+  if(feedback)feedback.disabled=!enabled||!pending;
+  if(saveFeedback)saveFeedback.disabled=!enabled||!pending;
+  if(status)status.textContent=!tag?"برای استفاده از حافظه، ابتدا یک پروفایل با Player Tag بارگذاری کن.":enabled?"حافظه فعال است؛ "+(memory?memory.snapshots.length:0)+" ثبت تاریخی روی همین دستگاه."+(pending?" نتیجه آخرین تمرین در انتظار ثبت است.":""):"حافظه خاموش است و چیزی ذخیره یا همراه درخواست مربی ارسال نمی‌شود.";
 }
 function setupCoachMemory(){
-  var checkbox=$("crcCoachMemoryEnabled"),focus=$("crcCoachMemoryFocus"),clear=$("crcCoachMemoryClear");
-  if(!checkbox||!focus||!clear)return;
+  var checkbox=$("crcCoachMemoryEnabled"),focus=$("crcCoachMemoryFocus"),clear=$("crcCoachMemoryClear"),feedback=$("crcCoachMemoryFeedback"),saveFeedback=$("crcCoachMemoryFeedbackSave");
+  if(!checkbox||!focus||!clear||!feedback||!saveFeedback)return;
   checkbox.addEventListener("change",function(){
     var tag=coachMemoryTag(),store=coachMemoryStore();
     if(!tag||!store){checkbox.checked=false;refreshCoachMemoryUI();return;}
@@ -167,6 +169,11 @@ function setupCoachMemory(){
     var tag=coachMemoryTag(),store=coachMemoryStore();
     if(tag&&store)store.clear(tag);
     refreshCoachMemoryUI();notify("حافظه مربی این پروفایل از این دستگاه پاک شد.");
+  });
+  saveFeedback.addEventListener("click",function(){
+    var tag=coachMemoryTag(),store=coachMemoryStore();
+    if(tag&&store&&store.submitPracticeFeedback(tag,feedback.value)){feedback.value="";refreshCoachMemoryUI();notify("بازخورد تمرین برای مربی ذخیره شد.");}
+    else notify("ابتدا یک نتیجه معتبر برای آخرین تمرین انتخاب کن.");
   });
   refreshCoachMemoryUI();
 }
@@ -290,6 +297,8 @@ async function askCoachChat(question,action){
     crcCoachPending(false);
     if(requestScope!==coachScope())return;
     requestSession.record(requestScope,text,reply.answer);
+    var practiceStore=coachMemoryStore();if(action&&practiceStore&&tag&&practiceStore.isEnabled(tag))practiceStore.recordPractice(tag,action,deck);
+    refreshCoachMemoryUI();
     addCoachChatMessage("ai",reply.answer,reply.model+(reply.qualityStatus==="limited"?" · پاسخ محدودشده پس از بررسی":" · پاسخ تولیدشده توسط هوش مصنوعی"),reply.sources);
     $("coachAIStatus").textContent="پاسخ آنلاین دریافت شد.";
   }catch(e){
