@@ -145,10 +145,10 @@ function refreshCoachMemoryUI(){
   var tag=coachMemoryTag(),store=coachMemoryStore(),enabled=!!(tag&&store&&store.isEnabled(tag)),memory=enabled?store.read(tag):null,pending=!!(memory&&memory.pending_practice);
   checkbox.checked=enabled;checkbox.disabled=!tag||!store;
   if(focus){focus.disabled=!enabled;focus.value=memory&&memory.focus||"balanced";}
-  if(clear)clear.disabled=!enabled;
+  if(clear)clear.disabled=!tag||!store;
   if(feedback)feedback.disabled=!enabled||!pending;
-  if(saveFeedback)saveFeedback.disabled=!enabled||!pending;
-  if(status)status.textContent=!tag?"برای استفاده از حافظه، ابتدا یک پروفایل با Player Tag بارگذاری کن.":enabled?"حافظه فعال است؛ "+(memory?memory.snapshots.length:0)+" ثبت تاریخی روی همین دستگاه."+(pending?" نتیجه آخرین تمرین در انتظار ثبت است.":""):"حافظه خاموش است و چیزی ذخیره یا همراه درخواست مربی ارسال نمی‌شود.";
+  if(saveFeedback)saveFeedback.disabled=!enabled||!pending||!feedback||!feedback.value;
+  if(status)status.textContent=!tag?"برای استفاده از حافظه، ابتدا یک پروفایل با Player Tag بارگذاری کن.":enabled?"حافظه فعال است؛ "+(memory?memory.snapshots.length:0)+" ثبت تاریخی روی همین دستگاه."+(pending?" نتیجه آخرین تمرین در انتظار ثبت است.":""):"حافظه خاموش است؛ داده‌های قبلی تا پاک‌کردن دستی فقط روی همین دستگاه می‌مانند و ارسال نمی‌شوند.";
 }
 function setupCoachMemory(){
   var checkbox=$("crcCoachMemoryEnabled"),focus=$("crcCoachMemoryFocus"),clear=$("crcCoachMemoryClear"),feedback=$("crcCoachMemoryFeedback"),saveFeedback=$("crcCoachMemoryFeedbackSave");
@@ -170,6 +170,7 @@ function setupCoachMemory(){
     if(tag&&store)store.clear(tag);
     refreshCoachMemoryUI();notify("حافظه مربی این پروفایل از این دستگاه پاک شد.");
   });
+  feedback.addEventListener("change",refreshCoachMemoryUI);
   saveFeedback.addEventListener("click",function(){
     var tag=coachMemoryTag(),store=coachMemoryStore();
     if(tag&&store&&store.submitPracticeFeedback(tag,feedback.value)){feedback.value="";refreshCoachMemoryUI();notify("بازخورد تمرین برای مربی ذخیره شد.");}
