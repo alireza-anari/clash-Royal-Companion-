@@ -426,3 +426,41 @@ test('proactive practice review is prioritized only with opted-in structured mem
  memory.setEnabled(p.tag,false);
  assert.equal(api.coachProactiveHint(p,ids,[],memory.read(p.tag)),null);
 });
+
+function fakeCapture(surface='window'){
+ let time=0,callback=null,stopped=0,ended=null,attached=0,detached=0;
+ const track={readyState:'live',getSettings:()=>({displaySurface:surface}),stop(){stopped++;},addEventListener(name,fn){ended=fn;}};
+ const stream={getVideoTracks:()=>[track],getAudioTracks:()=>[],getTracks:()=>[track]};
+ const deps={request:async()=>stream,attach:async()=>{attached++;},detach:()=>{detached++;},sample:()=>({width:2,height:2,data:{byteLength:16}}),now:()=>time,schedule:fn=>{callback=fn;return 1;},cancel:()=>{callback=null;}};
+ return {deps,stream,advance(ms){time+=ms;callback?.();},end(){ended?.();},stats:()=>({stopped,attached,detached})};
+}
+test('capture uses explicit request, samples bounded frames only and releases tracks on stop',async()=>{
+ const mock=fakeCapture(),capture=api.createBattleCapture(mock.deps);
+ assert.equal(capture.summary().state,'idle');assert.equal(mock.stats().attached,0);
+ assert.equal(await capture.start(),true);assert.equal(capture.summary().frames,1);assert.equal(capture.frame(0),null);
+ mock.advance(1000);assert.equal(capture.summary().frames,1);
+ mock.advance(1000);assert.equal(capture.summary().frames,2);
+ mock.advance(240000);assert.equal(capture.summary().state,'ready');assert.equal(capture.summary().reason,'limit');
+ assert.equal(mock.stats().stopped,1);assert.equal(capture.frame(1).at_ms,2000);assert.equal(capture.summary().replay_analyzed,false);
+ capture.discard();assert.equal(capture.frame(0),null);assert.equal(capture.summary().bytes,0);
+});
+test('capture rejects monitor, permission denial, unsupported devices and late permission after discard',async()=>{
+ const monitor=fakeCapture('monitor'),a=api.createBattleCapture(monitor.deps);
+ assert.equal(await a.start(),false);assert.equal(a.summary().reason,'surface');assert.equal(monitor.stats().stopped,1);
+ const missing=api.createBattleCapture({});assert.equal(await missing.start(),false);assert.equal(missing.summary().reason,'unsupported');
+ const m=fakeCapture(),denied=api.createBattleCapture({...m.deps,request:async()=>{throw {name:'NotAllowedError'};}});
+ assert.equal(await denied.start(),false);assert.equal(denied.summary().reason,'denied');
+ let resolve;const pending=api.createBattleCapture({...m.deps,request:()=>new Promise(r=>resolve=r)});
+ const task=pending.start();pending.discard();resolve(m.stream);
+ assert.equal(await task,false);assert.equal(m.stats().stopped,1);assert.equal(m.stats().attached,0);
+});
+test('capture stops on source end or byte budget and disallows unsupported observations',async()=>{
+ const m=fakeCapture(),capture=api.createBattleCapture({...m.deps,sample:()=>({width:320,height:320,data:{byteLength:320*320*4}})});
+ await capture.start();for(let i=0;i<80;i++)m.advance(2000);
+ assert.equal(capture.summary().state,'ready');assert.ok(capture.summary().bytes<=api.CAPTURE_LIMITS.maxBytes);
+ const n=fakeCapture(),ended=api.createBattleCapture(n.deps);await ended.start();n.end();assert.equal(ended.summary().reason,'ended');assert.equal(n.stats().stopped,1);
+ const v={version:1,replay_analyzed:false,observations:[{kind:'unit_visible',status:'unverified',at_ms:2000,card_id:1,x:.5,y:.4}]};
+ assert.ok(api.validateBattleObservations(v,[1],[2000]));
+ for(const o of [{...v.observations[0],card_id:2},{...v.observations[0],status:'verified'},{...v.observations[0],at_ms:3000},{...v.observations[0],x:2},{...v.observations[0],claim:'mistake'}])assert.equal(api.validateBattleObservations({...v,observations:[o]},[1],[2000]),null);
+ assert.equal(api.validateBattleObservations({...v,replay_analyzed:true},[1],[2000]),null);
+});

@@ -66,6 +66,11 @@ try{
     assert.ok(await loadingPage.locator(fail?'#coachChatMessages .is-status':'#coachChatMessages .is-coach').count());
   }
   await loadingPage.close();
+  await toggle.click();await menu.locator('#crcCaptureOpen').click();
+  assert.equal(await page.locator('#crcCaptureDialog').isVisible(),true);assert.equal(await page.locator('#crcCaptureStop').isDisabled(),true);
+  assert.match(await page.locator('#crcCaptureDialog').textContent(),/تحلیل تاکتیکی هنوز فعال نیست/);
+  await page.screenshot({path:'visual-check/'+name+'-capture.png'});
+  await page.locator('#crcCaptureClose').click();assert.equal(await page.locator('#crcCaptureDialog').isVisible(),false);
   await page.locator('#clearCoachChat').click();assert.equal(await welcome.isVisible(),true);assert.equal(await page.locator('#coachChatMessages .is-user').count(),0);
   await page.evaluate(()=>location.hash='player');await page.locator('#page-player.active').waitFor();await page.locator('#crcChangeAccount').click();await page.locator('#crcNext').click();await page.locator('#crcNext2').click();await page.locator('#crcConnect').click();assert.ok(await page.locator('#crcError').textContent());
   await page.screenshot({path:'visual-check/'+name+'-onboarding.png'});

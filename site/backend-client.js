@@ -601,5 +601,80 @@
       {remove_id:rawSwap.remove_id,add_id:rawSwap.add_id,remove:rawSwap.remove,add:rawSwap.add,gain:rawSwap.gain.slice(),loss:rawSwap.loss.slice(),elixir_delta:rawSwap.elixir_delta,level_gap:rawSwap.level_gap}:null;
     return {answer:data.answer,model:data.model,sources,knowledgeVersion:typeof data.knowledge_version==='string'?data.knowledge_version:null,qualityStatus,swap,modelRoute:['fast','quality'].includes(data.model_route)?data.model_route:null,fallbackUsed:typeof data.fallback_used==='boolean'?data.fallback_used:null};
   }
-  root.CRCBackendClient=Object.freeze({VERSION,BackendError,normalizeTag,route,capabilities,loadPlayer,normalizedToProfile,normalizedToBattles,personalCoachContext,coachPayload,askAI,createCoachSession,cleanCoachHistory,createCoachMemory,cleanCoachMemory,cleanCoachMemorySnapshot,coachDistinctBattles,coachPracticeDelta,coachPracticePlan,coachProactiveHint,createCoachHintSession,cardFormProgress,collectionLevel,COACH_MEMORY_VERSION});
+  // Local, user-initiated screen sampling only. No recorder, microphone, persistence, upload or inference.
+  const CAPTURE_LIMITS=Object.freeze({durationMs:240000,intervalMs:2000,maxFrames:120,maxBytes:24*1024*1024,maxSide:320});
+  function createBattleCapture(deps,onChange=()=>{}){
+    let state='idle',reason=null,stream=null,timer=null,started=null,frames=[],bytes=0,epoch=0,last=-Infinity;
+    const supported=typeof deps?.request==='function'&&typeof deps?.attach==='function'&&typeof deps?.sample==='function'&&typeof deps?.now==='function'&&typeof deps?.schedule==='function'&&typeof deps?.cancel==='function';
+    const summary=()=>({state,reason,frames:frames.length,bytes,durationMs:frames.length?frames[frames.length-1].at_ms:0,replay_analyzed:false});
+    const emit=()=>onChange(summary());
+    const release=s=>{try{s?.getTracks().forEach(t=>{try{t.stop();}catch{}});}catch{}};
+    const cleanup=()=>{if(timer!==null){deps.cancel(timer);timer=null;}release(stream);stream=null;try{deps.detach?.();}catch{}};
+    function stop(why='user'){
+      if(state!=='capturing'&&state!=='requesting')return;
+      epoch++;cleanup();state=frames.length?'ready':'idle';reason=why;emit();
+    }
+    function discard(){epoch++;cleanup();frames=[];bytes=0;started=null;last=-Infinity;state='idle';reason=null;emit();}
+    function tick(){
+      if(state!=='capturing')return;
+      const elapsed=Math.floor(deps.now()-started);
+      if(!Number.isFinite(elapsed)||elapsed<0||elapsed>=CAPTURE_LIMITS.durationMs){stop('limit');return;}
+      if(elapsed-last<CAPTURE_LIMITS.intervalMs)return;
+      let image;
+      try{image=deps.sample(CAPTURE_LIMITS.maxSide);}catch{stop('sample_error');return;}
+      if(!image)return;
+      const w=image.width,h=image.height,size=image.data?.byteLength;
+      if(!Number.isInteger(w)||!Number.isInteger(h)||w<1||h<1||w>CAPTURE_LIMITS.maxSide||h>CAPTURE_LIMITS.maxSide||size!==w*h*4){stop('sample_error');return;}
+      if(bytes+size>CAPTURE_LIMITS.maxBytes||frames.length>=CAPTURE_LIMITS.maxFrames){stop('limit');return;}
+      frames.push({at_ms:elapsed,image});bytes+=size;last=elapsed;
+      if(frames.length>=CAPTURE_LIMITS.maxFrames||bytes>=CAPTURE_LIMITS.maxBytes)stop('limit');else emit();
+    }
+    async function start(){
+      if(!supported){reason='unsupported';emit();return false;}
+      if(state!=='idle'||frames.length)return false;
+      const token=++epoch;state='requesting';reason=null;emit();
+      let candidate=null;
+      try{
+        candidate=await deps.request();
+        if(token!==epoch){release(candidate);return false;}
+        const tracks=candidate?.getVideoTracks?.()||[];
+        // Accept an explicitly reported window/tab only, never an entire screen or unidentified surface.
+        if(tracks.length!==1||!['window','browser'].includes(tracks[0].getSettings?.().displaySurface)||candidate.getAudioTracks?.().length){
+          release(candidate);stop('surface');return false;
+        }
+        stream=candidate;
+        tracks[0].addEventListener('ended',()=>{if(token===epoch)stop('ended');},{once:true});
+        await deps.attach(candidate);
+        if(token!==epoch){release(candidate);return false;}
+        if(tracks[0].readyState==='ended'){stop('ended');return false;}
+        started=deps.now();state='capturing';timer=deps.schedule(tick,CAPTURE_LIMITS.intervalMs);emit();tick();return state==='capturing';
+      }catch(err){
+        release(candidate);
+        if(token!==epoch)return false;
+        stop(err?.name==='NotAllowedError'||err?.name==='AbortError'?'denied':'error');return false;
+      }
+    }
+    return Object.freeze({supported,start,stop,discard,summary,frame(index){return state==='ready'&&Number.isInteger(index)&&index>=0&&index<frames.length?frames[index]:null;}});
+  }
+  // Future provider observations must be independently reviewed. Sample timestamps are not game-clock timestamps.
+  function validateBattleObservations(value,knownIds,frameTimes){
+    if(!value||value.version!==1||value.replay_analyzed!==false||!Array.isArray(value.observations)||value.observations.length>120||!Array.isArray(knownIds)||!Array.isArray(frameTimes))return null;
+    const times=new Set(frameTimes.filter(x=>Number.isInteger(x)&&x>=0&&x<CAPTURE_LIMITS.durationMs));
+    const ids=new Set(knownIds.filter(x=>Number.isSafeInteger(x)&&x>0)),seen=new Set(),observations=[];
+    for(const o of value.observations){
+      if(!o||!times.has(o.at_ms)||!['card_visible','elixir_visible','unit_visible'].includes(o.kind)||o.status!=='unverified')return null;
+      const clean={at_ms:o.at_ms,kind:o.kind,status:'unverified'};
+      if(o.kind==='card_visible'||o.kind==='unit_visible'){
+        if(!ids.has(o.card_id))return null;clean.card_id=o.card_id;
+      }
+      if(o.kind==='elixir_visible'){if(!Number.isInteger(o.elixir)||o.elixir<0||o.elixir>10)return null;clean.elixir=o.elixir;}
+      if(o.kind==='unit_visible'){
+        if(![o.x,o.y].every(x=>typeof x==='number'&&Number.isFinite(x)&&x>=0&&x<=1))return null;clean.x=o.x;clean.y=o.y;
+      }
+      if(Object.keys(o).some(k=>!Object.hasOwn(clean,k)))return null;
+      const key=JSON.stringify(clean);if(seen.has(key))return null;seen.add(key);observations.push(clean);
+    }
+    return {version:1,replay_analyzed:false,observations:observations.sort((a,b)=>a.at_ms-b.at_ms)};
+  }
+  root.CRCBackendClient=Object.freeze({createBattleCapture,validateBattleObservations,CAPTURE_LIMITS,VERSION,BackendError,normalizeTag,route,capabilities,loadPlayer,normalizedToProfile,normalizedToBattles,personalCoachContext,coachPayload,askAI,createCoachSession,cleanCoachHistory,createCoachMemory,cleanCoachMemory,cleanCoachMemorySnapshot,coachDistinctBattles,coachPracticeDelta,coachPracticePlan,coachProactiveHint,createCoachHintSession,cardFormProgress,collectionLevel,COACH_MEMORY_VERSION});
 })(typeof window!=='undefined'?window:globalThis);

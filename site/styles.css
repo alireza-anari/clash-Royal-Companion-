@@ -712,3 +712,12 @@ body.crc-coach-view .content > .footer{display:none!important}
 .crc-hint-footer button:disabled{opacity:.6;cursor:not-allowed}
 
 #page-coach .crc-meta-note{font-size:11px;line-height:1.7;color:#bdc5df;margin:4px 10px 8px}#page-coach .crc-meta-note a{color:#dfcaff;text-decoration:underline}
+
+.crc-capture-dialog{box-sizing:border-box;width:min(94vw,520px);max-height:85dvh;overflow:auto;background:#17213c;color:#eeeafa;border:1px solid #58648d;border-radius:18px;padding:18px;direction:rtl}
+.crc-capture-dialog::backdrop{background:rgba(4,8,20,.8)}
+.crc-capture-head,.crc-capture-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.crc-capture-head{justify-content:space-between}.crc-capture-head h2{font-size:18px;margin:0}
+.crc-capture-dialog p{font-size:13px;line-height:1.8;margin:10px 0}.crc-capture-note{color:#c2b0f8}
+.crc-capture-actions .btn{min-height:44px}.crc-capture-dialog .btn:disabled{opacity:.5;cursor:not-allowed}
+.crc-capture-dialog [hidden]{display:none!important}.crc-capture-dialog select{width:100%;margin:12px 0}
+#crcCapturePreview{display:block;max-width:100%;height:auto;margin:10px auto;border-radius:8px;background:#0b1120}

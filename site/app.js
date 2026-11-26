@@ -46,7 +46,7 @@ function validIcon(url){try{var u=new URL(url);return u.protocol==="https:"&&(u.
 function art(card){if(card&&validIcon(card.icon)){return '<img class="card-img" loading="lazy" alt="" src="'+safe(card.icon)+'">';}return '<span class="emoji-img" aria-hidden="true">'+safe(card&&card.emoji||"🃏")+'</span>';}
 function notify(text){var el=$("toast");el.textContent=text;el.classList.add("show");if(toastTimer)clearTimeout(toastTimer);toastTimer=setTimeout(function(){el.classList.remove("show");},3400);}
 function fmt(n){return typeof n==="number"&&Number.isFinite(n)?new Intl.NumberFormat("fa-IR",{maximumFractionDigits:3}).format(n):"نامشخص";}
-function view(name){var p=PAGE_IDS.includes(name)?name:"home";document.querySelectorAll(".page").forEach(function(el){el.classList.toggle("active",el.id==="page-"+p);});document.querySelectorAll("[data-nav]").forEach(function(el){var current=el.getAttribute("data-nav")===p;el.classList.toggle("active",current);if(current)el.setAttribute("aria-current","page");else el.removeAttribute("aria-current");});$("pageTitle").textContent=pageNames[p];document.body.classList.toggle("crc-coach-view",p==="coach");if(p==="coach"){renderCoach();crcChatViewport();}else crcCoachToolsOpen(false);if(p==="cards")renderCatalog();if(p==="deck"){renderDeck();crcRender();}if(p==="battles")renderBattles();window.scrollTo({top:0,behavior:"auto"});}
+function view(name){var p=PAGE_IDS.includes(name)?name:"home";document.querySelectorAll(".page").forEach(function(el){el.classList.toggle("active",el.id==="page-"+p);});document.querySelectorAll("[data-nav]").forEach(function(el){var current=el.getAttribute("data-nav")===p;el.classList.toggle("active",current);if(current)el.setAttribute("aria-current","page");else el.removeAttribute("aria-current");});$("pageTitle").textContent=pageNames[p];document.body.classList.toggle("crc-coach-view",p==="coach");if(p==="coach"){renderCoach();crcChatViewport();}else {crcCoachToolsOpen(false);discardBattleCapture();}if(p==="cards")renderCatalog();if(p==="deck"){renderDeck();crcRender();}if(p==="battles")renderBattles();window.scrollTo({top:0,behavior:"auto"});}
 function toPage(p){location.hash=p;view(p);}
 function readDeck(){try{var raw=JSON.parse(localStorage.getItem("crc.deck")||"null");if(Array.isArray(raw)&&raw.length===8&&raw.every(function(id){return Number.isSafeInteger(id);})&&new Set(raw).size===8){return raw;}}catch(e){}return null;}
 function saveDeck(){try{localStorage.setItem("crc.deck",JSON.stringify(deck));}catch(e){}}
@@ -306,7 +306,7 @@ function setupCoachMemory(){
   });
   refreshCoachMemoryUI();
 }
-function coachAccountChanged(){if(coachConversation)coachConversation.clear();var transcript=$("coachChatMessages");if(transcript)transcript.replaceChildren();if($("crcChatWelcome"))$("crcChatWelcome").hidden=false;if($("coachChatQuestion"))$("coachChatQuestion").value="";}
+function coachAccountChanged(){discardBattleCapture();if(coachConversation)coachConversation.clear();var transcript=$("coachChatMessages");if(transcript)transcript.replaceChildren();if($("crcChatWelcome"))$("crcChatWelcome").hidden=false;if($("coachChatQuestion"))$("coachChatQuestion").value="";}
 // Treat model output as untrusted text; never interpret it as HTML or URLs.
 function crcCoachPresentation(message,cards){
   const text=String(message??"");
@@ -655,8 +655,49 @@ function renderBattles(){
   $("battleList").innerHTML=rows.length?rows.slice(0,40).map(battleRow).join(""):'<div class="empty-panel">برای این فیلتر موردی موجود نیست.</div>';
 }
 function renderAll(){renderDeck();renderCoach();renderCatalog();crcRender();}
+var battleCapture=null;
+function setupBattleCapture(){
+  const dialog=$("crcCaptureDialog"),video=$("crcCaptureVideo"),preview=$("crcCapturePreview"),select=$("crcCaptureFrame"),status=$("crcCaptureStatus");
+  const start=$("crcCaptureStart"),stop=$("crcCaptureStop"),clear=$("crcCaptureClear");
+  if(!dialog||!window.CRCBackendClient)return;
+  const canvas=document.createElement("canvas"),ctx=canvas.getContext("2d",{willReadFrequently:true}),out=preview.getContext("2d");
+  const supported=window.isSecureContext&&!!navigator.mediaDevices&&typeof navigator.mediaDevices.getDisplayMedia==="function"&&!!ctx&&!!out;
+  function renderFrame(){
+    const frame=battleCapture.frame(Number(select.value));preview.hidden=!frame;
+    if(!frame){out.clearRect(0,0,preview.width,preview.height);preview.width=1;preview.height=1;return;}
+    preview.width=frame.image.width;preview.height=frame.image.height;out.putImageData(frame.image,0,0);
+  }
+  function render(s){
+    const labels={denied:"اجازه اشتراک صفحه صادر نشد.",surface:"فقط یک پنجره یا تب بدون صدا را انتخاب کن؛ نمایشگر کامل یا سطح نامشخص پذیرفته نیست.",error:"اتصال تصویری ممکن نشد.",sample_error:"نمونه‌برداری متوقف شد.",limit:"به سقف زمان یا حجم رسیدیم؛ اشتراک متوقف شد.",ended:"اشتراک صفحه پایان یافت.",user:"ثبت متوقف شد."};
+    status.textContent=!supported?"این مرورگر ضبط پنجره را پشتیبانی نمی‌کند؛ برای ثبت بازی روی موبایل به اپ بومی نیاز است.":s.state==="requesting"?"منتظر انتخاب پنجره در مرورگر…":s.state==="capturing"?"● ثبت محلی فعال است · "+s.frames+" تصویر":(labels[s.reason]||"آماده ثبت محلی.")+(s.frames?" "+s.frames+" نمونه تصویری؛ تحلیل نشده.":"");
+    start.disabled=!supported||s.state!=="idle";stop.disabled=!["requesting","capturing"].includes(s.state);clear.disabled=s.state==="idle"&&!s.frames;
+    select.hidden=s.state!=="ready";select.disabled=s.state!=="ready";
+    if(s.state==="ready"){
+      select.replaceChildren();for(let i=0;i<s.frames;i++){const f=battleCapture.frame(i),option=document.createElement("option");option.value=String(i);option.textContent="تصویر "+(i+1)+" · "+(f.at_ms/1000).toFixed(1)+" ثانیه از شروع ثبت";select.append(option);}
+      renderFrame();
+    }else{select.replaceChildren();preview.hidden=true;preview.width=1;preview.height=1;}
+  }
+  battleCapture=window.CRCBackendClient.createBattleCapture({
+    request:supported?()=>navigator.mediaDevices.getDisplayMedia({video:{displaySurface:"window",frameRate:{ideal:10,max:15}},audio:false}):null,
+    attach:async stream=>{video.srcObject=stream;await video.play();},
+    detach:()=>{video.pause();video.srcObject=null;canvas.width=1;canvas.height=1;},
+    sample:max=>{if(video.readyState<2||!video.videoWidth||!video.videoHeight)return null;const scale=Math.min(1,max/Math.max(video.videoWidth,video.videoHeight));canvas.width=Math.max(1,Math.round(video.videoWidth*scale));canvas.height=Math.max(1,Math.round(video.videoHeight*scale));ctx.drawImage(video,0,0,canvas.width,canvas.height);return ctx.getImageData(0,0,canvas.width,canvas.height);},
+    now:()=>performance.now(),schedule:(fn,ms)=>setInterval(fn,ms),cancel:id=>clearInterval(id)
+  },render);
+  $("crcCaptureOpen").addEventListener("click",()=>{crcCoachToolsOpen(false);render(battleCapture.summary());dialog.showModal();});
+  start.addEventListener("click",()=>{battleCapture.start();});
+  stop.addEventListener("click",()=>battleCapture.stop());
+  clear.addEventListener("click",()=>battleCapture.discard());
+  select.addEventListener("change",renderFrame);
+  $("crcCaptureClose").addEventListener("click",()=>{battleCapture.discard();dialog.close();});
+  dialog.addEventListener("cancel",()=>battleCapture.discard());
+  dialog.addEventListener("close",()=>battleCapture.discard());
+  window.addEventListener("pagehide",()=>battleCapture.discard());
+  render(battleCapture.summary());
+}
+function discardBattleCapture(){if(battleCapture)battleCapture.discard();const dialog=$("crcCaptureDialog");if(dialog&&dialog.open)dialog.close();}
 function setupEvents(){
- setupCoachChat();
+ setupCoachChat();setupBattleCapture();
 window.addEventListener("hashchange",function(){view(location.hash.slice(1));});
 $("loadHeavy").addEventListener("click",function(){setDeck(predefined.heavy,"sample");});
 $("loadHog").addEventListener("click",function(){setDeck(predefined.hog,"sample");});

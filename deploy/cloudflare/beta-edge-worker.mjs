@@ -331,8 +331,8 @@ async function routeRequest(request,env){
         "ورود به بتای خصوصی به‌صورت خودکار انجام می‌شود و نیازی به کد دعوت نیست؛ اتصال زنده Supercell فعلاً غیرفعال است و ورود محلی JSON نیز در دسترس است.");
     const pageHeaders=new Headers({
       "Content-Type":"text/html; charset=utf-8","Cache-Control":"no-store",
-      "Content-Security-Policy":"default-src 'none'; script-src 'self'; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; img-src 'self' https://api-assets.clashroyale.com; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'",
-      "X-Content-Type-Options":"nosniff","X-Frame-Options":"DENY",
+      "Content-Security-Policy":"default-src 'none'; script-src 'self'; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; img-src 'self' https://api-assets.clashroyale.com; media-src 'self' blob:; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'",
+      "X-Content-Type-Options":"nosniff","X-Frame-Options":"DENY","Permissions-Policy":"display-capture=(self), camera=(), microphone=()",
       "X-Robots-Tag":"noindex, nofollow","Referrer-Policy":"no-referrer"
     });
     if(automaticCookie)pageHeaders.set("Set-Cookie",automaticCookie);
