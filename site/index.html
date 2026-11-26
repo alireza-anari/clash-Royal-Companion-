@@ -95,6 +95,15 @@
           <option value="pressure">فشار و تبدیل دفاع به حمله</option>
           <option value="deck">تعادل و هماهنگی دک</option>
         </select>
+        <label for="crcCoachMemoryFeedback">نتیجه آخرین تمرین</label>
+        <select id="crcCoachMemoryFeedback" class="text-field" disabled>
+          <option value="">هنوز نتیجه را ثبت نکرده‌ام</option>
+          <option value="improved">بهتر شد</option>
+          <option value="same">تفاوتی نداشت</option>
+          <option value="worse">بدتر شد</option>
+          <option value="not_tried">هنوز امتحان نکردم</option>
+        </select>
+        <button type="button" id="crcCoachMemoryFeedbackSave" class="crc-chat-tool" disabled>ثبت نتیجه تمرین</button>
         <div class="crc-chat-memory-footer"><small id="crcCoachMemoryStatus" role="status">حافظه خاموش است.</small><button type="button" id="crcCoachMemoryClear" class="btn ghost" disabled>پاک کردن حافظه</button></div>
       </div>
     </div>
