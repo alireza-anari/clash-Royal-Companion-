@@ -72,7 +72,7 @@ test('cost estimate is capped, reproducible and uses official allowlisted model 
  const data=await loadCoachEval(),estimate=coachEvalEstimateCost(data);
  assert.ok(estimate.totalEstimatedUsd>0);
  assert.ok(estimate.totalEstimatedUsd<0.10);
- assert.equal(estimate.byModel[COACH_EVAL_MODELS[0].id].outputTokenCap,60*220);
+ assert.equal(estimate.byModel[COACH_EVAL_MODELS[0].id].outputTokenCap,60*384);
  assert.equal(COACH_EVAL_MODELS[0].inputUsdPerMillion,0.10);
  assert.equal(COACH_EVAL_MODELS[1].outputUsdPerMillion,0.40);
 });
