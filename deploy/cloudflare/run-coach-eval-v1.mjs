@@ -77,7 +77,7 @@ export function coachEvalScore(data,scenario,raw){
   const languagePass=scenario.language==='fa'?/[\u0600-\u06FF]/.test(answer):/[A-Za-z]/.test(answer);
   checks.push({name:'language',pass:languagePass});
   const weights={schema_and_quality_gate:25,required_fact_keys:12,safe_swap_selection:13,source_attribution:15,required_content:15,forbidden_claims:10,abstention_when_required:5,language:5};
-  const score=Math.round(checks.reduce((sum,c)=>sum+(c.pass?weights[c.name]:0),0));
+  const score=structural?Math.round(checks.reduce((sum,c)=>sum+(c.pass?weights[c.name]:0),0)):0;
   return {id:scenario.id,category:scenario.category,score,passed:checks.every(c=>c.pass),qualityStatus:quality.status,qualityReason:quality.reason||null,checks,answer,modelRawValid:!!parsed};
 }
 export function coachEvalValidateCases(data){
