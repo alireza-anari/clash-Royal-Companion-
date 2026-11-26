@@ -243,7 +243,7 @@
     const deckSource=COACH_MEMORY_DECK_SOURCES.has(value.deck_source)?value.deck_source:'manual';
     const latest=typeof value.latest_battle_at==='string'&&value.latest_battle_at.length<=40?value.latest_battle_at:null;
     return {
-      captured_at:captured,source,deck_source,deck_card_ids:deck,cards:cleanCards,
+      captured_at:captured,source,deck_source:deckSource,deck_card_ids:deck,cards:cleanCards,
       battles:{matched_records:b.matched_records,outcomes:bc,elixir_leak_sample:b.elixir_leak_sample,avg_elixir_leaked:b.avg_elixir_leaked},
       selected_deck:{matched_records:selected.matched_records,outcomes:sc},
       deck_patterns:cleanPatterns,latest_battle_at:latest
