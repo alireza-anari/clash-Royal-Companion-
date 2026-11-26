@@ -132,3 +132,5 @@ test('explicit meta intent takes precedence over mode names',()=>{
  assert.equal(coachIntent('بهترین دک امروز چیست؟'),'meta');
  assert.equal(coachIntent('برنامه چالش امروز چیست؟'),'events');
 });
+
+test('explicit current deck ranking in English uses guarded meta route',()=>assert.equal(coachIntent('best deck right now'),'meta'));

@@ -133,3 +133,21 @@ test('client supplied meta data cannot override the server-owned dataset',()=>{
  const result=coachQualityEvaluate(payload({answer:'100% win rate'}),{...ctx,intent:'meta',question:'متا Ranked',personal:{...ctx.personal,meta_snapshot:metaFixture}});
  assert.match(result.answer,/در دسترس نیست/);assert.doesNotMatch(result.answer,/100%|60\.0٪/);
 });
+
+import {buildCoachMeta} from './build-coach-meta-v1.mjs';
+
+test('offline meta builder deduplicates reversed participants and rejects contradictory records',()=>{
+ const input={version:1,source:'supercell_api_own_aggregate',reviewed:true,mode:'ranked',cohort:'synthetic test only',window_start:metaFixture.window_start,window_end:metaFixture.window_end,generated_at:metaFixture.generated_at};
+ const a=metaCards.map(c=>({id:c.id,name:c.name,active_form:c.required_form,display_level:12}));
+ const b=a.map(c=>({...c,id:c.id+100,name:'Other '+c.id}));
+ const records=Array.from({length:100},(_,i)=>({battle_key:i.toString(16).padStart(64,'0'),mode:'ranked',at:'2026-11-25T00:00:00Z',players:[{outcome:'win',cards:a},{outcome:'loss',cards:b}]}));
+ const dup={...records[0],players:records[0].players.slice().reverse()};
+ const snapshot=buildCoachMeta({...input,battles:[...records,dup]});
+ assert.equal(snapshot.total_deck_observations,200);assert.equal(snapshot.decks.length,2);
+ assert.equal(snapshot.decks[0].plays,100);assert.ok(coachMetaValidate(snapshot));
+ assert.throws(()=>buildCoachMeta({...input,battles:records.slice(0,99)}));
+ assert.throws(()=>buildCoachMeta({...input,battles:[...records,{...dup,at:'2026-11-25T01:00:00Z'}]}));
+ assert.throws(()=>buildCoachMeta({...input,battles:[...records,{...dup,mode:'classic_challenge'}]}));
+ assert.throws(()=>buildCoachMeta({...input,battles:[...records,{...dup,players:[{outcome:'win',cards:a},{outcome:'win',cards:b}]}]}));
+ assert.equal(JSON.stringify(snapshot).includes('battle_key'),false);
+});
