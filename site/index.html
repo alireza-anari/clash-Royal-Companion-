@@ -83,6 +83,20 @@
 <button type="button" class="crc-chat-tool" data-coach-jump="coachBattleReport" aria-controls="coachChatPanel"><span aria-hidden="true">⚔</span>تحلیل سبک بازی</button>
 <button type="button" class="crc-chat-tool" data-coach-jump="coachReport" aria-controls="coachChatPanel"><span aria-hidden="true">✧</span>برنامه پیشرفت</button>
       <div class="crc-chat-scope"><label for="coachBattleScope">مبنای نبردها</label><select id="coachBattleScope" class="text-field"><option value="all">همه نبردها</option><option value="event">نبردهای رویدادی</option><option value="other">سایر / نامشخص</option></select></div>
+      <div class="crc-chat-memory">
+        <label class="crc-chat-memory-toggle" for="crcCoachMemoryEnabled"><input id="crcCoachMemoryEnabled" type="checkbox"> حافظه مربی روی این دستگاه</label>
+        <p>اختیاری و پیش‌فرض خاموش. در صورت فعال‌سازی، حداکثر ۳ خلاصه از دک و آمار نبردها فقط در همین مرورگر می‌ماند و همراه درخواست مربی ارسال می‌شود؛ متن چت و Battle Log خام ذخیره نمی‌شوند.</p>
+        <label for="crcCoachMemoryFocus">تمرکز تمرین</label>
+        <select id="crcCoachMemoryFocus" class="text-field" disabled>
+          <option value="balanced">بدون اولویت خاص</option>
+          <option value="cycle">چرخه و زمان‌بندی کارت‌ها</option>
+          <option value="elixir">مدیریت اکسیر</option>
+          <option value="defense">دفاع و پاسخ به حمله</option>
+          <option value="pressure">فشار و تبدیل دفاع به حمله</option>
+          <option value="deck">تعادل و هماهنگی دک</option>
+        </select>
+        <div class="crc-chat-memory-footer"><small id="crcCoachMemoryStatus" role="status">حافظه خاموش است.</small><button type="button" id="crcCoachMemoryClear" class="btn ghost" disabled>پاک کردن حافظه</button></div>
+      </div>
     </div>
     <form id="coachChatForm" class="coach-chat-form">
       <button type="button" id="crcCoachToolsToggle" class="btn ghost crc-chat-tool-toggle" aria-label="ابزارهای تحلیل" title="ابزارهای تحلیل" aria-expanded="false" aria-controls="crcCoachTools"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
@@ -90,7 +104,7 @@
       <input id="coachChatQuestion" class="text-field" name="coachQuestion" type="text" required maxlength="280" autocomplete="off" placeholder="از مربی بپرس…" aria-describedby="crcCoachDataNotice">
       <button class="btn primary crc-chat-send" type="submit" aria-label="ارسال پیام" title="ارسال پیام"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5m-6 6 6-6 6 6"/></svg></button>
     </form>
-    <p id="crcCoachDataNotice" class="small">با ارسال پیام یا انتخاب تحلیل، سؤال و داده‌های دک، کارت‌ها و آمار نبردها برای پردازش آنلاین به Cloudflare Workers AI ارسال می‌شوند؛ نام و تگ حساب در داده‌های ساختاریافته ارسال نمی‌شوند. برای ادامه چت، حداکثر دو پیام و پاسخ قبلی همین نشست نیز ممکن است ارسال شود؛ اطلاعات شخصی در متن ننویس. پاک کردن گفتگو یا بارگذاری مجدد حساب، این حافظه موقت را پاک می‌کند.</p>
+    <p id="crcCoachDataNotice" class="small">با ارسال پیام یا انتخاب تحلیل، سؤال و داده‌های دک، کارت‌ها و آمار نبردها برای پردازش آنلاین به Cloudflare Workers AI ارسال می‌شوند؛ نام و تگ حساب در داده‌های ساختاریافته ارسال نمی‌شوند و Player Tag مالکیت را ثابت نمی‌کند. حداکثر دو پیام و پاسخ قبلی همین نشست ممکن است ارسال شود. حافظه بلندمدت دستگاه اختیاری و پیش‌فرض خاموش است؛ اگر روشنش کنی فقط خلاصه ساختاریافته دک و نبردها همراه درخواست مربی ارسال می‌شود، نه متن چت یا Battle Log خام. اطلاعات شخصی در متن ننویس.</p>
   </div>
 </div>
 </section>
