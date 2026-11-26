@@ -141,6 +141,18 @@ function coachMemoryUpdatePracticeProgress(tag,store){
   var delta=window.CRCBackendClient.coachPracticeDelta(report.entries,pending);
   return delta?store.addPracticeProgress(tag,{matched_records:delta.matched_records,outcomes:delta.outcomes},delta.last_battle_at):false;
 }
+function coachPracticeDeckStats(cardIds){
+  var tag=coachMemoryTag();
+  if(!tag||!battles||!window.CRCBattleIntelligence||!Array.isArray(cardIds)||cardIds.length!==8||!cardIds.every(Number.isSafeInteger)||new Set(cardIds).size!==8)return null;
+  var report=window.CRCBattleIntelligence.summarize(battles,tag,"all");
+  var matched=report.entries.filter(e=>e.attribution==="matched_tag");
+  var key=cardIds.slice().sort((a,b)=>a-b).join(":");
+  var selected=matched.filter(e=>e.deck&&e.deck.card_ids.slice().sort((a,b)=>a-b).join(":")===key);
+  var outcomes={wins:0,losses:0,draws:0,unknown:0};
+  selected.forEach(e=>{outcomes[{win:"wins",loss:"losses",draw:"draws",unknown:"unknown"}[e.outcome]]++;});
+  var latest=matched.map(e=>e.battle_time).filter(x=>typeof x==="string"&&Number.isFinite(Date.parse(x))).sort().slice(-1)[0]||null;
+  return {baseline:{matched_records:selected.length,outcomes},latest_battle_at:latest};
+}
 function coachMemoryCapture(){
   var tag=coachMemoryTag(),store=coachMemoryStore();
   if(!tag||!store||!store.isEnabled(tag))return false;
@@ -176,9 +188,9 @@ function renderProgressPanel(){
   var pending=memory&&(memory.pending_practice||(memory.practice_feedback&&memory.practice_feedback[0])),actions={deck:"تحلیل دک",suggestions:"پیشنهاد تعویض",style:"تحلیل سبک بازی",overview:"برنامه پیشرفت"},feedbackLabels={improved:"بهتر شد",same:"تفاوتی نداشت",worse:"بدتر شد",not_tried:"هنوز امتحان نکردم"};
   var task="";
   if(pending){
-    task='<div class="crc-progress-task"><strong>پیگیری آخرین کار مربی: '+safe(actions[pending.action]||"تمرین")+(pending.outcome?' · بازخورد ثبت‌شده: '+safe(feedbackLabels[pending.outcome]||"نامشخص"):"")+'</strong>'+
-      '<div class="crc-progress-columns"><div><small>نمونه قبل از درخواست</small><p>'+safe(coachProgressOutcomeText(pending.baseline))+'</p></div>'+
-      '<div><small>نبردهای بعدی با همان ۸ کارت</small><p>'+safe(coachProgressOutcomeText(pending.progress))+'</p></div></div>'+
+    task='<div class="crc-progress-task"><strong>پیگیری آخرین کار مربی: '+safe(actions[pending.action]||"تمرین")+(pending.target_kind==="suggested_deck"?' · دک پیشنهادی':'')+(pending.outcome?' · بازخورد ثبت‌شده: '+safe(feedbackLabels[pending.outcome]||"نامشخص"):"")+'</strong>'+
+      '<div class="crc-progress-columns"><div><small>نمونه پیش از درخواست</small><p>'+safe(coachProgressOutcomeText(pending.baseline))+'</p></div>'+
+      '<div><small>'+(pending.target_kind==="suggested_deck"?"نبردهای بعدی با دک پیشنهادی (در صورت استفاده)":"نبردهای بعدی با همان ۸ کارت")+'</small><p>'+safe(coachProgressOutcomeText(pending.progress))+'</p></div></div>'+
       '<p class="small">فقط نبردهای قابل انتساب با همان ترکیب کارت و زمان جدیدتر از درخواست شمرده می‌شوند. این مقایسه اجرای پیشنهاد یا رابطه علت‌ومعلولی را ثابت نمی‌کند.</p></div>';
   }else if(memory){
     task='<p class="small">هنوز کار مربی برای پیگیری ثبت نشده است؛ از یکی از تحلیل‌های آماده مربی استفاده کن.</p>';
@@ -357,7 +369,7 @@ async function askCoachChat(question,action){
     crcCoachPending(false);
     if(requestScope!==coachScope())return;
     requestSession.record(requestScope,text,reply.answer);
-    var practiceStore=coachMemoryStore();if(action&&practiceStore&&tag&&practiceStore.isEnabled(tag)){var taskSnapshot=coachMemorySnapshot();practiceStore.recordPractice(tag,action,deck,taskSnapshot&&taskSnapshot.selected_deck,taskSnapshot&&taskSnapshot.latest_battle_at);}
+    var practiceStore=coachMemoryStore();if(action&&practiceStore&&tag&&practiceStore.isEnabled(tag)){var trackingDeck=deck.slice(),targetKind="current_deck";if(action==="suggestions"&&reply.swap&&trackingDeck.includes(reply.swap.remove_id)&&!trackingDeck.includes(reply.swap.add_id)){trackingDeck=trackingDeck.map(id=>id===reply.swap.remove_id?reply.swap.add_id:id);targetKind="suggested_deck";}var taskStats=coachPracticeDeckStats(trackingDeck);practiceStore.recordPractice(tag,action,trackingDeck,taskStats&&taskStats.baseline,taskStats&&taskStats.latest_battle_at,targetKind);}
     refreshCoachMemoryUI();
     addCoachChatMessage("ai",reply.answer,reply.model+(reply.qualityStatus==="limited"?" · پاسخ محدودشده پس از بررسی":" · پاسخ تولیدشده توسط هوش مصنوعی"),reply.sources);
     $("coachAIStatus").textContent="پاسخ آنلاین دریافت شد.";
