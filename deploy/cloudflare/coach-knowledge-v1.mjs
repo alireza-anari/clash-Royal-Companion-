@@ -69,7 +69,7 @@ function coachKnowledgeExpand(tokens){
   for(const group of groups)if(group.some(t=>out.has(t)))for(const t of group)out.add(t);
   return out;
 }
-function coachRetrieve(question,action,cards){
+export function coachRetrieve(question,action,cards){
   const names=Array.isArray(cards)?cards.slice(0,8).map(c=>typeof c?.name==='string'?c.name:'').join(' '):'';
   const query=coachKnowledgeNormalize(String(question||'')+' '+names);
   const tokens=coachKnowledgeExpand(coachKnowledgeTokens(query));
