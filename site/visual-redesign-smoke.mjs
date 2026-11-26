@@ -21,6 +21,8 @@ try{
     await page.evaluate(v=>location.hash=v,view);
     await page.locator('#page-'+view+'.active').waitFor();
     assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+2),'horizontal overflow: '+view+' '+name);
+    assert.equal(await page.locator('.content > .footer').isVisible(),view!=='coach','footer visibility: '+view);
+    if(view==='coach')assert.ok(await page.locator('#page-coach').evaluate(el=>{const r=el.getBoundingClientRect();const p=el.parentElement;const cs=getComputedStyle(p);return Math.abs(r.width-Math.min(900,p.clientWidth-parseFloat(cs.paddingLeft)-parseFloat(cs.paddingRight)))<=2;}),'coach uses full available width: '+name);
     await page.screenshot({path:'visual-check/'+name+'-'+view+'.png',fullPage:true});
   }
   await page.evaluate(()=>location.hash='deck');await page.locator('#page-deck.active').waitFor();
@@ -40,6 +42,8 @@ try{
   await page.locator('#coachChatQuestion').fill('تست گفتگو');await page.locator('#coachChatForm [type=submit]').click();
   assert.equal(await page.locator('#coachChatMessages .is-user').count(),3);
   assert.ok(await page.locator('#coachChatForm').evaluate(el=>{const r=el.getBoundingClientRect();const nav=document.querySelector('.bottom-nav');const n=nav.getBoundingClientRect();return r.top>=0&&r.bottom<=innerHeight+1&&(getComputedStyle(nav).display==='none'||r.bottom<=n.top+1);}));
+  assert.equal(await page.locator('.content > .footer').isVisible(),false);
+  assert.ok(await page.locator('#coachChatForm').evaluate(el=>Math.abs(el.getBoundingClientRect().width-document.querySelector('#page-coach').getBoundingClientRect().width)<=2),'composer takes full coach width');
   await page.screenshot({path:'visual-check/'+name+'-coach-chat.png'});
   await page.locator('#clearCoachChat').click();assert.equal(await welcome.isVisible(),true);assert.equal(await page.locator('#coachChatMessages .is-user').count(),0);
   await page.evaluate(()=>location.hash='player');await page.locator('#page-player.active').waitFor();await page.locator('#crcChangeAccount').click();await page.locator('#crcNext').click();await page.locator('#crcNext2').click();await page.locator('#crcConnect').click();assert.ok(await page.locator('#crcError').textContent());
