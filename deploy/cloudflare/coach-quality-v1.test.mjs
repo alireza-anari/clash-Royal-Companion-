@@ -80,14 +80,18 @@ test('validated device memory is available only as an explicitly selected histor
   battles:{matched_records:2,outcomes:{wins:1,losses:1,draws:0,unknown:0},elixir_leak_sample:1,avg_elixir_leaked:4.5},
   selected_deck:{matched_records:2,outcomes:{wins:1,losses:1,draws:0,unknown:0}},deck_patterns:[],latest_battle_at:'20261126T110000.000Z'
  };
- const memory={version:1,focus:'elixir',snapshots:[snapshot],practice_feedback:[{action:'suggestions',deck_card_ids:[1,2,3,4,5,6,7,8],created_at:'2026-11-26T13:00:00.000Z',outcome:'improved',recorded_at:'2026-11-26T14:00:00.000Z'}]};
+ const baseline={matched_records:2,outcomes:{wins:1,losses:1,draws:0,unknown:0}};
+ const progress={matched_records:3,outcomes:{wins:2,losses:1,draws:0,unknown:0}};
+ const pending={action:'suggestions',deck_card_ids:[1,2,3,4,5,6,7,8],created_at:'2026-11-26T13:00:00.000Z',baseline,progress,since_battle_at:'2026-11-26T12:00:00.000Z',last_battle_at:'2026-11-26T15:00:00.000Z'};
+ const memory={version:1,focus:'elixir',snapshots:[snapshot],pending_practice:pending,practice_feedback:[{...pending,outcome:'improved',recorded_at:'2026-11-26T16:00:00.000Z'}]};
  const facts=coachQualityFacts(null,{coach_memory:memory});
  assert.match(facts.memory,/حافظه تاریخی محلی/);
  assert.match(facts.memory,/مدیریت اکسیر/);
  assert.match(facts.memory,/بازخورد خوداظهاری/);assert.match(facts.memory,/بهتر شد/);
- const result=coachQualityEvaluate(payload({fact_keys:['memory']}),{personal:{coach_memory:memory},battles:null,docs,intent:'style'});
+ assert.match(facts.practice,/نمونه پیش از کار مربی/);assert.match(facts.practice,/نبردهای جدیدتر با همان دک/);
+ const result=coachQualityEvaluate(payload({fact_keys:['memory','practice']}),{personal:{coach_memory:memory},battles:null,docs,intent:'style'});
  assert.equal(result.status,'checked_structure');
- assert.match(result.answer,/حافظه تاریخی محلی/);
+ assert.match(result.answer,/حافظه تاریخی محلی/);assert.match(result.answer,/نبردهای جدیدتر با همان دک/);
  assert.match(result.answer,/۱ نبرد|1 نبرد/);
 });
 test('historical memory is not fabricated when snapshot totals are inconsistent',()=>{
