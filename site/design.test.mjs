@@ -26,7 +26,7 @@ test('design system has readable surfaces, mobile controls and reduced-motion su
 
 test('theme and service worker cache are refreshed for the new CSS', () => {
   assert.match(html, /name="theme-color" content="#080f1e"/);
-  assert.match(sw, /crc-mvp-static-v27/);
+  assert.match(sw, /crc-mvp-static-v28/);
 });
 
 test('coach is online-only and no per-message approval or local fallback is exposed',()=>{
@@ -55,7 +55,7 @@ test('onboarding has a single profile-fetch path and prepares the online coach w
 });
 test('battle evidence is shipped as a support module, not an offline coach',()=>{
   assert.match(html,/src="\/battle-evidence\.js"/);assert.doesNotMatch(html,/offline-coach\.js|coach-chat\.js/);
-  assert.match(sw,/crc-mvp-static-v27/);assert.match(sw,/\/battle-evidence\.js/);assert.doesNotMatch(sw,/offline-coach\.js|coach-chat\.js/);
+  assert.match(sw,/crc-mvp-static-v28/);assert.match(sw,/\/battle-evidence\.js/);assert.doesNotMatch(sw,/offline-coach\.js|coach-chat\.js/);
 });
 
 test('minimal coach keeps composer and tools separate from the welcome state',()=>{const app=fs.readFileSync(new URL('./app.js',import.meta.url),'utf8');for(const id of ['crcChatWelcome','crcChatScroll','crcCoachToolsToggle','crcCoachTools','coachChatQuestion','clearCoachChat'])assert.ok(html.includes('id="'+id+'"'),id);assert.match(html,/aria-expanded="false" aria-controls="crcCoachTools"/);assert.match(app,/\$\("crcChatWelcome"\)\.hidden=true/);assert.match(app,/\$\("crcChatWelcome"\)\.hidden=false/);assert.match(css,/body\.crc-coach-view/);assert.match(css,/\.crc-chat-scroll\{[^}]*overflow:auto/);});
@@ -146,4 +146,12 @@ test('proactive coach is a quiet single prompt and not an automatic AI request',
  assert.match(hint,/crcHintSession\.dismiss/);
  assert.match(hint,/store&&store\.isEnabled\(tag\)/);
  assert.doesNotMatch(hint,/innerHTML|fetch\(|setInterval|Notification|localStorage/);
+});
+
+test('meta shortcut is explicit and links official changes separately from statistics',()=>{
+ const app=fs.readFileSync(new URL('./app.js',import.meta.url),'utf8');
+ assert.match(html,/data-coach-jump="coachMeta"/);
+ assert.match(html,/https:\/\/supercell\.com\/en\/games\/clashroyale\/blog\//);
+ assert.match(app,/if\(key==="coachMeta"\)/);
+ assert.match(app,/متای Ranked/);
 });

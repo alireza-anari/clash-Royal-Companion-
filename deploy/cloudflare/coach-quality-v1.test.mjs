@@ -100,3 +100,36 @@ test('historical memory is not fabricated when snapshot totals are inconsistent'
   selected_deck:{matched_records:0,outcomes:{wins:0,losses:0,draws:0,unknown:0}}};
  assert.equal(coachQualityFacts(null,{coach_memory:{version:1,focus:'balanced',snapshots:[snapshot]}}).memory,undefined);
 });
+
+import {COACH_META_SNAPSHOTS,coachMetaValidate,coachMetaMode,coachMetaSelect,coachMetaFit,coachMetaAnswer} from './coach-meta-v1.mjs';
+
+const metaNow=Date.parse('2026-11-26T15:00:00Z');
+const metaCards=Array.from({length:8},(_,i)=>({id:i+1,name:'Card '+(i+1),required_form:i===0?1:0,min_display_level:12}));
+const metaFixture={version:1,source:'supercell_api_own_aggregate',reviewed:true,mode:'ranked',cohort:'synthetic test only',window_start:'2026-11-23T00:00:00Z',window_end:'2026-11-26T00:00:00Z',generated_at:'2026-11-26T01:00:00Z',total_deck_observations:200,decks:[{cards:metaCards,plays:50,wins:30,losses:19,draws:1}]};
+test('meta snapshot validates counts, mode, date, provenance, duplicate and sample bounds',()=>{
+ assert.ok(coachMetaValidate(metaFixture));
+ for(const v of [{...metaFixture,reviewed:false},{...metaFixture,source:'unlicensed'},{...metaFixture,mode:'unknown'},{...metaFixture,window_end:'bad'},{...metaFixture,decks:[{...metaFixture.decks[0],wins:51}]},{...metaFixture,decks:[{...metaFixture.decks[0],plays:29,wins:9,losses:19}]},{...metaFixture,decks:[metaFixture.decks[0],metaFixture.decks[0]]}])assert.equal(coachMetaValidate(v),null);
+ assert.equal(coachMetaMode('متای چالش بزرگ'),'grand_challenge');
+ assert.equal(coachMetaMode('رنک و مسیر جام'),null);
+ assert.equal(coachMetaSelect([metaFixture],'ranked',metaNow).status,'recent_sample');
+ assert.equal(coachMetaSelect([metaFixture],'classic_challenge',metaNow).status,'unavailable');
+ assert.equal(coachMetaSelect([metaFixture],'ranked',metaNow+3*86400000).status,'stale');
+ assert.equal(coachMetaSelect([metaFixture],'ranked',metaNow-86400000).status,'unavailable');
+});
+test('meta fit requires explicit level and unlock evidence, missing subset is not missing ownership',()=>{
+ const row=coachMetaValidate(metaFixture).decks[0],cards=metaCards.map(c=>({id:c.id,display_level:12,unlocked_forms:c.required_form}));
+ assert.equal(coachMetaFit(row,{deck_cards:cards}).compatible,true);
+ assert.equal(coachMetaFit(row,{deck_cards:cards.slice(0,7)}).not_in_submitted_subset[0],8);
+ assert.equal(coachMetaFit(row,{deck_cards:cards.map(c=>({...c,unlocked_forms:0}))}).form_not_recorded[0],1);
+ assert.equal(coachMetaFit(row,{deck_cards:cards.map(c=>({...c,display_level:11}))}).below_level.length,8);
+ assert.equal(coachMetaFit(row,{deck_cards:cards,owned_candidates:[cards[0]]}).compatible,false);
+ const text=coachMetaAnswer('متا Ranked',{deck_cards:cards},metaNow,[metaFixture]);
+ assert.match(text,/25\.0٪/);assert.match(text,/60\.0٪/);assert.match(text,/UTC/);assert.match(text,/آمار کل بازی نیست/);
+ assert.doesNotMatch(coachMetaAnswer('متا Ranked',{},metaNow+3*86400000,[metaFixture]),/60\.0٪/);
+ assert.equal(COACH_META_SNAPSHOTS.length,0);
+ assert.match(coachMetaAnswer('متا Ranked',{},metaNow),/در دسترس نیست/);
+});
+test('client supplied meta data cannot override the server-owned dataset',()=>{
+ const result=coachQualityEvaluate(payload({answer:'100% win rate'}),{...ctx,intent:'meta',question:'متا Ranked',personal:{...ctx.personal,meta_snapshot:metaFixture}});
+ assert.match(result.answer,/در دسترس نیست/);assert.doesNotMatch(result.answer,/100%|60\.0٪/);
+});

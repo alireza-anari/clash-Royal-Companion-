@@ -9,8 +9,8 @@ export function coachIntent(question,action){
   // A hint only: never replace free-text questions with fixed shortcut tasks.
   if(/ریپلی|بازپخش|ویدیو|ویدئو|\breplay\b|\bvideo\b/.test(q))return 'vision';
   const terms=q.split(' ');
+  if(/متا|محبوب.?ترین دک|بهترین دک (?:روز|امروز|الان)|\bmeta\b|\btop decks\b/.test(q))return 'meta';
   if(/ایونت|رویداد|چالش/.test(q)||terms.includes('event')||terms.includes('challenge'))return 'events';
-  if(/متا/.test(q)||terms.includes('meta'))return 'meta';
   if(/ارتقا|آپگرید|\bupgrade\b/.test(q))return 'progress';
   if(/تعویض|جایگزین|بهبود دک|\bswap\b|\breplace\b/.test(q))return 'suggestions';
   if(/سبک بازی|نبرد|برد و باخت|\bbattle\b|\bmatchup\b/.test(q))return 'style';

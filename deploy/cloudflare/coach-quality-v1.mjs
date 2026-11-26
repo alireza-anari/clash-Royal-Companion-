@@ -1,3 +1,4 @@
+import {coachMetaAnswer,coachMetaDeclarations} from './coach-meta-v1.mjs';
 // Deterministic output checks; not a semantic fact checker.
 export const QUALITY_VERSION='crc-coach-quality-v1';
 export function coachQualityFacts(battles,personal){
@@ -125,7 +126,7 @@ export function coachQualityEvaluate(raw,context={}){
     // Never render model-authored recommendation text for this intent.
     answer=swap?'## پیشنهاد آزمایشی\nحذف: '+swap.remove+'\nافزودن: '+swap.add+'\nمزیت ساختاری: '+swap.gain.join('، ')+'\n'+(swap.loss.length?'بده‌بستان: کاهش پوشش '+swap.loss.join('، ')+'\n':'')+'تغییر هزینه اکسیر: '+swap.elixir_delta+(swap.level_gap===null?'\nاختلاف سطح کارت‌ها مشخص نیست.':'\nاختلاف سطح ثبت‌شده: '+swap.level_gap)+'\nاین گزینه از فهرست کارت‌های ارسالی انتخاب شده، نه مالکیت تاییدشده؛ بهبود ساختاری تضمین برد نیست. چند نبرد آزمایشی انجام بده.':'در داده فعلی پیشنهاد تعویض تاییدشده‌ای برای نمایش ندارم. فعلاً روی تمرین همین دک تمرکز کن.';
   }else if(intent==='meta'){
-    answer='داده زنده و تاییدشده متا در این مسیر تحلیل در دسترس نیست؛ نمی‌توانم بهترین دک روز، محبوبیت یا نرخ برد فعلی را تایید کنم.';
+    answer=coachMetaAnswer(context.question,personal);
   }else if(intent==='vision'){
     answer='بازپخش یا ویدیوی نبرد در این درخواست تحلیل نشده است؛ زمان‌بندی، جایگذاری و علت دقیق باخت از آمار خلاصه قابل اثبات نیست.';
   }
@@ -137,7 +138,7 @@ export function coachQualityEvaluate(raw,context={}){
 export function patchCoachQuality(source){
   let s=source;
   const once=(old,nu)=>{if(s.split(old).length!==2)throw new Error('Coach quality anchor mismatch: '+old.slice(0,80));s=s.replace(old,()=>nu);};
-  const declarations=['const QUALITY_VERSION='+JSON.stringify(QUALITY_VERSION)+';',coachQualityFacts.toString(),coachQualitySwap.toString(),coachQualityNumericClaim.toString(),coachQualityPersonalStatsClaim.toString(),coachQualityEvaluate.toString()].join('\n');
+  const declarations=[coachMetaDeclarations(),'const QUALITY_VERSION='+JSON.stringify(QUALITY_VERSION)+';',coachQualityFacts.toString(),coachQualitySwap.toString(),coachQualityNumericClaim.toString(),coachQualityPersonalStatsClaim.toString(),coachQualityEvaluate.toString()].join('\n');
   once('async function previewChat(request,env) {',declarations+'\nasync function previewChat(request,env) {');
   once('CRC_COACH_IDENTITY_V1','CRC_COACH_IDENTITY_V1. قالب خروجی الزامی: فقط یک شیء JSON معتبر، بدون Markdown یا کدبلاک بیرونی، با چهار کلید answer (متن ساده حداکثر ۱۵۰۰ نویسه)، swap_index (null یا اندیس صفر تا سه از allowed_single_swaps فقط برای پیشنهاد تعویض)، fact_keys (آرایه حداکثر سه کلید از overall,selected,elixir,memory,practice فقط اگر داده موجود است)، source_ids (آرایه حداکثر سه شناسه منبع بازیابی‌شده که واقعاً استفاده کردی). هیچ آمار شخصی مثل تعداد نبرد، برد/باخت یا میانگین اکسیر و نرخ برد را در answer ننویس؛ سرور آن‌ها را محاسبه می‌کند. پیشنهاد تعویض فقط با اندیس، نه متن. اگر شواهد ناکافی است answer را کوتاه و صادقانه بنویس. مثال ساختاری: '+JSON.stringify({answer:'سلام!',swap_index:null,fact_keys:[],source_ids:[]}).replaceAll('"','\\"')+'.');
   once('    answer=coachFormatAnswer(answer,retrievedKnowledge).trim().slice(0,2900);','    const quality=coachQualityEvaluate(answer,{battles:evidence,personal,docs:retrievedKnowledge,intent:coachPlan.intent});\n    answer=quality.answer;');

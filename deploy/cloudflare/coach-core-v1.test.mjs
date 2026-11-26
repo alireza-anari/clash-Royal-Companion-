@@ -126,3 +126,9 @@ test('device-local Coach memory is schema-validated and strips identity and free
  assert.equal(coachMemoryContext({version:2,focus:'elixir',snapshots:[snapshot]}),null);
  assert.equal(coachMemoryContext({version:1,focus:'elixir',snapshots:[{...snapshot,deck_card_ids:[1,1,2,3,4,5,6,7]}]}).snapshots.length,0);
 });
+
+test('explicit meta intent takes precedence over mode names',()=>{
+ assert.equal(coachIntent('متای چالش بزرگ چیست؟'),'meta');
+ assert.equal(coachIntent('بهترین دک امروز چیست؟'),'meta');
+ assert.equal(coachIntent('برنامه چالش امروز چیست؟'),'events');
+});

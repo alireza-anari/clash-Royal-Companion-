@@ -710,3 +710,5 @@ body.crc-coach-view .content > .footer{display:none!important}
 .crc-hint-footer small{font-size:11px;color:#bdc5df;flex:1;line-height:1.6}
 .crc-hint-footer .btn{min-height:44px;font-size:12px;flex:none}
 .crc-hint-footer button:disabled{opacity:.6;cursor:not-allowed}
+
+#page-coach .crc-meta-note{font-size:11px;line-height:1.7;color:#bdc5df;margin:4px 10px 8px}#page-coach .crc-meta-note a{color:#dfcaff;text-decoration:underline}

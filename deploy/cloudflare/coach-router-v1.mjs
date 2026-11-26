@@ -55,7 +55,7 @@ export function patchCoachRouter(source){
   ].join('\n');
   once('async function previewChat(request,env) {',declarations+'\nasync function previewChat(request,env) {');
   once('    const generated=await env.AI.run(LIVE_AI_MODEL,{messages,chat_template_kwargs:{enable_thinking:false},max_completion_tokens:coachPlan.maxTokens});',
-    '    const modelRoute=coachModelPlan(question,coachPlan,action,env,LIVE_AI_MODEL);\n    const execution=await coachModelExecute(env,modelRoute,messages,{battles:evidence,personal,docs:retrievedKnowledge,intent:coachPlan.intent},coachQualityEvaluate);\n    const selectedModel=execution.model;\n    const quality=execution.quality;\n    let answer=quality.answer;');
+    '    const modelRoute=coachModelPlan(question,coachPlan,action,env,LIVE_AI_MODEL);\n    const execution=await coachModelExecute(env,modelRoute,messages,{battles:evidence,personal,docs:retrievedKnowledge,intent:coachPlan.intent,question},coachQualityEvaluate);\n    const selectedModel=execution.model;\n    const quality=execution.quality;\n    let answer=quality.answer;');
   const oldExtraction=[
     '    let answer=typeof generated?.response==="string"?generated.response:"";',
     '    if(!answer&&typeof generated?.choices?.[0]?.message?.content==="string")answer=generated.choices[0].message.content;',
