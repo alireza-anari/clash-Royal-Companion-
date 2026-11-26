@@ -8,6 +8,7 @@ test('intent hints distinguish shortcuts and free questions',()=>{
  assert.equal(coachIntent('چطور این کارت را ارتقا بدهم؟'),'progress');
  assert.equal(coachIntent('بهترین جایگزین برای کارت من چیست؟'),'suggestions');
  assert.equal(coachIntent('ریپلی من را نگاه کن'),'vision');
+ assert.equal(coachIntent('بهترین دک متا الان چیست؟'),'meta');
  assert.equal(coachInferencePlan('سلام').maxTokens,240);
  assert.equal(coachInferencePlan('سلام، دک من را تحلیل کن').maxTokens,720);
 });
@@ -27,6 +28,8 @@ test('official knowledge retrieval ranks current Giant and Mirror mechanics',()=
  assert.equal(giant[0].id,'K04');
  const mirror=coachRetrieve('How does Mirror evolution work?',null,[]);
  assert.equal(mirror[0].id,'K04');
+ const ew=coachRetrieve('Hero Electro Wizard ability',null,[]);
+ assert.equal(ew[0].id,'K05');
  assert.ok(giant[0].url.startsWith('https://support.supercell.com/'));
 });
 test('retrieval finds elixir cycle and card level rules in Persian',()=>{
@@ -36,12 +39,14 @@ test('retrieval finds elixir cycle and card level rules in Persian',()=>{
 test('seasonal information is explicitly dated and capped to three sources',()=>{
  const result=coachRetrieve('اخبار رویدادها و قابلیت کارت‌ها','events',[]);
  assert.ok(result.length<=3);
- assert.ok(result.some(x=>x.id==='K04'||x.id==='K05'));
+ assert.ok(result.some(x=>x.id==='K04'));
+ assert.ok(result.some(x=>x.id==='K05'));
  assert.equal(COACH_KNOWLEDGE.find(x=>x.id==='K04').freshness,'dated-feature');
  assert.equal(COACH_KNOWLEDGE_VERSION,'crc-clash-royale-knowledge-2026-11-26');
 });
 test('unrelated current meta queries do not retrieve unsupported win-rate claims',()=>{
  assert.deepEqual(coachRetrieve('current ranked usage statistics',null,[]),[]);
+ assert.equal(coachIntent('meta deck win rates'),'meta');
 });
 test('knowledge patch inserts retrieved context, citations and source metadata once',()=>{
  const source=[
