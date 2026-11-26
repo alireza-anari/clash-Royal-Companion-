@@ -43,3 +43,7 @@ Read-only Cloudflare inspection found a single system message containing existin
 - CI runs only dataset validation and offline unit tests. It never calls model APIs. Live benchmark results must be generated separately and include measured usage when the provider returns it; otherwise cost is marked estimated, not actual.
 - Pricing inputs follow Cloudflare's Workers AI pricing page last updated 2026-10-20: Gemma 4 26B at $0.10/M input and $0.30/M output; GLM-4.7 Flash at $0.060/M input and $0.40/M output. Workers AI free allocation is 10,000 Neurons/day; usage beyond it on Workers Paid is billed at $0.011/1,000 Neurons. Actual charges depend on measured Neurons, not this token-price estimate.
 - No production Worker, routing binding, quota, account secret, or deployment was changed.
+
+- Added a server-side UNVERIFIED_PERSONAL_STATS_IN_PROSE gate. It withholds model-written battle counts, wins/losses, and numeric averages so personal statistics are displayed only from server-computed evidence. The detector deliberately does not block ordinary card elixir costs or four-card cycle mechanics.
+- The router requests provider JSON-object output mode, and the evaluation prompt supplies case-specific allowed fact keys, source IDs, and safe swap indices.
+- Final live benchmark results are recorded in docs/COACH_EVAL_REPORT_2026-11-26.md. Gemma remains the recommended substantive coach model; GLM is not enabled as a general fallback.
