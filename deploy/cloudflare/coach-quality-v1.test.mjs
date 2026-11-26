@@ -61,6 +61,11 @@ test('unverified personal battle counts and average elixir prose are withheld',(
  assert.match(r.answer,/میانگین اکسیر ثبت‌شده/);
  assert.doesNotMatch(r.answer,/3\.25|۱۱ برد/);
 });
+test('personal-stat guard allows card elixir costs and cycle counts',()=>{
+ const answer='Giant با هزینه ۵ اکسیر شرط برد اصلی است؛ پس از بازی یک کارت، چهار کارت دیگر بازی می‌شود.';
+ const r=coachQualityEvaluate(payload({answer,source_ids:['K01']}),{...ctx,intent:'deck'});
+ assert.equal(r.status,'checked_structure');assert.equal(r.reason,null);
+});
 test('personal-stat guard does not block official mechanics with numbers',()=>{
  for(const answer of ['برای Evolution شش Evolution Shard لازم است.','پس از بازی یک کارت، چهار کارت دیگر باید بازی شود.','Evolution Giant در ۵۰٪ جان فعال می‌شود.']){
   const r=coachQualityEvaluate(payload({answer,source_ids:['K01']}),{...ctx,intent:'deck'});
