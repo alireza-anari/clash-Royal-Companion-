@@ -26,9 +26,9 @@ export function coachQualityFacts(battles,personal){
     const snapshot=memory.snapshots[0],focusLabels={balanced:'بدون اولویت خاص',cycle:'چرخه کارت',elixir:'مدیریت اکسیر',defense:'دفاع',pressure:'فشار و ضدحمله',deck:'تعادل دک'};
     const ids=Array.isArray(snapshot.deck_card_ids)&&snapshot.deck_card_ids.length===8&&snapshot.deck_card_ids.every(id=>Number.isSafeInteger(id)&&id>0)?snapshot.deck_card_ids:null;
     const battle=snapshot.battles,selectedMemory=snapshot.selected_deck;
-    const countsOk=x=>x&&keys.every(k=>count(x[k]))&&keys.reduce((sum,k)=>sum+x[k],0)<=200;
-    if(ids&&battle&&Number.isInteger(battle.matched_records)&&battle.matched_records>=0&&battle.matched_records<=200&&countsOk(battle.outcomes)&&
-      selectedMemory&&Number.isInteger(selectedMemory.matched_records)&&selectedMemory.matched_records>=0&&selectedMemory.matched_records<=battle.matched_records&&countsOk(selectedMemory.outcomes)){
+    const countsOk=(x,total)=>x&&keys.every(k=>count(x[k]))&&keys.reduce((sum,k)=>sum+x[k],0)===total;
+    if(ids&&battle&&Number.isInteger(battle.matched_records)&&battle.matched_records>=0&&battle.matched_records<=200&&countsOk(battle.outcomes,battle.matched_records)&&
+      selectedMemory&&Number.isInteger(selectedMemory.matched_records)&&selectedMemory.matched_records>=0&&selectedMemory.matched_records<=battle.matched_records&&countsOk(selectedMemory.outcomes,selectedMemory.matched_records)){
       const historical=['حافظه تاریخی محلی (غیرزنده و مالکیت تأییدنشده)؛ آخرین ثبت: '+String(snapshot.captured_at||'نامشخص'),
         'تمرکز تمرین انتخابی: '+(focusLabels[memory.focus]||focusLabels.balanced),
         'دک ذخیره‌شده با شناسه کارت‌ها: '+ids.join(', '),
