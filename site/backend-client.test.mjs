@@ -208,3 +208,12 @@ test('quality status is recognized only for a known response version',async()=>{
  response.quality_status='verified_truth';assert.equal((await ask()).qualityStatus,null);
  response.quality_status='limited';response.quality_version='unknown';assert.equal((await ask()).qualityStatus,null);
 });
+
+test('coach router model and route metadata accept only known values',async()=>{
+ const response={answer:'پاسخ کوتاه',model:'@cf/zai-org/glm-4.7-flash',external_inference:true,replay_analyzed:false,evidence_status:'client_submitted_unverified',model_route:'fast',fallback_used:false,router_version:'crc-coach-model-router-v1'};
+ const session={enabled:true,fetch:async()=>({ok:true,json:async()=>response})};
+ const ask=()=>api.askAI(session,'سلام',null,null,{ai_coach_enabled:true},null);
+ const reply=await ask();assert.equal(reply.model,'@cf/zai-org/glm-4.7-flash');assert.equal(reply.modelRoute,'fast');assert.equal(reply.fallbackUsed,false);
+ response.model_route='untrusted';response.fallback_used='yes';
+ const next=await ask();assert.equal(next.modelRoute,null);assert.equal(next.fallbackUsed,null);
+});
