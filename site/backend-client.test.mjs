@@ -310,3 +310,14 @@ test('post-task practice delta counts only newer exact-deck matches for the sele
  assert.deepEqual(delta,{matched_records:2,outcomes:{wins:1,losses:1,draws:0,unknown:0},last_battle_at:'2026-11-26T13:02:00.000Z'});
  assert.equal(api.coachPracticeDelta([entry('2026-11-26T13:00:00.000Z','win')],task),null);
 });
+
+test('coach client exposes only schema-valid server-checked card swap metadata',async()=>{
+ const response={answer:'پیشنهاد آزمایشی',model:'@cf/google/gemma-4-26b-a4b-it',external_inference:true,replay_analyzed:false,evidence_status:'client_submitted_unverified',
+  quality_version:'crc-coach-quality-v1',quality_status:'checked_structure',
+  quality_swap:{remove:'Knight',add:'Valkyrie',remove_id:26000000,add_id:26000011,gain:['دفاع'],loss:[],elixir_delta:1,level_gap:0}};
+ const session={enabled:true,fetch:async()=>({ok:true,json:async()=>response})};
+ const reply=await api.askAI(session,'پیشنهاد تعویض',null,null,{ai_coach_enabled:true},null);
+ assert.equal(reply.swap.remove_id,26000000);assert.equal(reply.swap.add_id,26000011);
+ response.quality_swap={...response.quality_swap,add_id:'not-an-id'};
+ assert.equal((await api.askAI(session,'پیشنهاد تعویض',null,null,{ai_coach_enabled:true},null)).swap,null);
+});
