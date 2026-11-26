@@ -468,7 +468,7 @@
     const sources=Array.isArray(data.knowledge_sources)?data.knowledge_sources.slice(0,3).filter(s=>s&&/^K\d{2}$/.test(s.id||'')&&typeof s.title==='string'&&s.title.length<=140&&sourceUrl(s.url)&&s.authority==='official-support').map(s=>({id:s.id,title:s.title,url:sourceUrl(s.url),publisher:typeof s.publisher==='string'?s.publisher.slice(0,80):'Supercell',verified_at:typeof s.verified_at==='string'?s.verified_at:null,published_at:typeof s.published_at==='string'?s.published_at:null})):[];
     const qualityStatus=data.quality_version==='crc-coach-quality-v1'&&['limited','checked_structure'].includes(data.quality_status)?data.quality_status:null;
     const rawSwap=data.quality_swap;
-    const swap=rawSwap&&Number.isSafeInteger(rawSwap.remove_id)&&rawSwap.remove_id>0&&Number.isSafeInteger(rawSwap.add_id)&&rawSwap.add_id>0&&
+    const swap=qualityStatus==='checked_structure'&&rawSwap&&Number.isSafeInteger(rawSwap.remove_id)&&rawSwap.remove_id>0&&Number.isSafeInteger(rawSwap.add_id)&&rawSwap.add_id>0&&
       typeof rawSwap.remove==='string'&&rawSwap.remove.length<=65&&typeof rawSwap.add==='string'&&rawSwap.add.length<=65&&
       Array.isArray(rawSwap.gain)&&rawSwap.gain.length<=8&&rawSwap.gain.every(x=>typeof x==='string'&&x.length<=60)&&
       Array.isArray(rawSwap.loss)&&rawSwap.loss.length<=8&&rawSwap.loss.every(x=>typeof x==='string'&&x.length<=60)&&
