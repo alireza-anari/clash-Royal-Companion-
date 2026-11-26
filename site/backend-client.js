@@ -329,7 +329,7 @@
         const zero={wins:0,losses:0,draws:0,unknown:0};
         const clean=cleanCoachPractice({
           action,deck_card_ids:deckCardIds,created_at:new Date().toISOString(),
-          baseline:baseline&&baseline.outcomes?baseline:{matched_records:0,outcomes:zero},
+          baseline:baseline&&baseline.outcomes?baseline:null,
           progress:{matched_records:0,outcomes:zero},since_battle_at:sinceBattleAt||null,last_battle_at:sinceBattleAt||null
         });
         return clean?write(tag,{...old,pending_practice:clean}):false;
