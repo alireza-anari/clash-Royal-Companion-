@@ -86,7 +86,9 @@ test('full coach-core patch composes and remains syntactically valid',()=>{
   '    {role:"user",content:(action?"ابزار انتخاب‌شده: "+action+"\\nوظیفه ثابت سرور: ":"سؤال: ")+question+"\\nاین داده‌ها ارسالی از مرورگر و از نظر مالکیت تایید نشده‌اند."}',
   '  ];',
   '    const generated=await env.AI.run(LIVE_AI_MODEL,{messages,chat_template_kwargs:{enable_thinking:false},max_completion_tokens:720});',
-  '  let answer=generated.response;',
+  '    let answer=typeof generated?.response==="string"?generated.response:"";',
+  '    if(!answer&&typeof generated?.choices?.[0]?.message?.content==="string")answer=generated.choices[0].message.content;',
+  '    if(!answer&&Array.isArray(generated?.output))answer=generated.output.map(x=>x?.content||x?.text||"").join("\\n");',
   '    answer=answer.trim().slice(0,2900);',
   '    return previewResponse({answer,model:LIVE_AI_MODEL,external_inference:true,replay_analyzed:false,evidence_status:"client_submitted_unverified"});',
   '}'
