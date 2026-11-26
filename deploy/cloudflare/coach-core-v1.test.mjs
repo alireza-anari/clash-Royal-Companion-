@@ -44,19 +44,21 @@ test('unrelated current meta queries do not retrieve unsupported win-rate claims
  assert.deepEqual(coachRetrieve('current ranked usage statistics',null,[]),[]);
 });
 test('knowledge patch inserts retrieved context, citations and source metadata once',()=>{
- const source=String.raw\`async function previewChat(request,env) {
-  const coachPlan=coachInferencePlan(question,action);
-  const messages=[
-    {role:"system",content:"CRC_COACH_IDENTITY_V1"},
-    {role:"user",content:personal+"\\nاین داده‌ها ارسالی از مرورگر و از نظر مالکیت تایید نشده‌اند."}
-  ];
-  try {
-    answer=answer.trim().slice(0,2900);
-    return previewResponse({answer,model:LIVE_AI_MODEL,external_inference:true,replay_analyzed:false,evidence_status:"client_submitted_unverified"});
-  }
-}\`;
+ const source=[
+  'async function previewChat(request,env) {',
+  '  const coachPlan=coachInferencePlan(question,action);',
+  '  const messages=[',
+  '    {role:"system",content:"CRC_COACH_IDENTITY_V1"},',
+  '    {role:"user",content:personal+"\\\\nاین داده‌ها ارسالی از مرورگر و از نظر مالکیت تایید نشده‌اند."}',
+  '  ];',
+  '  try {',
+  '    answer=answer.trim().slice(0,2900);',
+  '    return previewResponse({answer,model:LIVE_AI_MODEL,external_inference:true,replay_analyzed:false,evidence_status:"client_submitted_unverified"});',
+  '  }',
+  '}'
+ ].join('\n');
  const out=patchCoachKnowledge(source);
- assert.match(out,/coachRetrieve\\(question,action,personal.deck_cards\\)/);
+ assert.match(out,/coachRetrieve\(question,action,personal.deck_cards\)/);
  assert.match(out,/knowledge_sources:coachKnowledgeSources/);
  assert.match(out,/coachFormatAnswer/);
  assert.throws(()=>patchCoachKnowledge(out));
