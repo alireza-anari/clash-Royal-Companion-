@@ -201,11 +201,11 @@ test('coach response accepts only allowlisted official knowledge sources',async(
 });
 
 test('quality status is recognized only for a known response version',async()=>{
- const response={answer:'پاسخ محدود',model:'@cf/google/gemma-4-26b-a4b-it',external_inference:true,replay_analyzed:false,evidence_status:'client_submitted_unverified',quality_version:'crc-coach-quality-v1',quality_status:'limited'};
+ const response={answer:'پاسخ محدود',model:'@cf/google/gemma-4-26b-a4b-it',external_inference:true,replay_analyzed:false,evidence_status:'client_submitted_unverified',quality_version:'crc-coach-quality-v1',quality_status:'limited',quality_swap:{remove:'Knight',add:'Valkyrie',remove_id:26000000,add_id:26000011,gain:['دفاع'],loss:[],elixir_delta:1,level_gap:0}};
  const session={enabled:true,fetch:async()=>({ok:true,json:async()=>response})};
  const ask=()=>api.askAI(session,'تحلیل دک من',null,null,{ai_coach_enabled:true},null);
  assert.equal((await ask()).qualityStatus,'limited');
- response.quality_status='verified_truth';assert.equal((await ask()).qualityStatus,null);
+ response.quality_status='verified_truth';assert.equal((await ask()).qualityStatus,null);assert.equal((await ask()).swap,null);
  response.quality_status='limited';response.quality_version='unknown';assert.equal((await ask()).qualityStatus,null);
 });
 
