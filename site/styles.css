@@ -695,3 +695,18 @@ body.crc-coach-view .content > .footer{display:none!important}
 .crc-form-chip.evo{border-color:#795cbd;color:#e3d2ff;background:#261b45}
 .crc-form-chip.hero{border-color:#9b793d;color:#ffe4a5;background:#3a2b16}
 .crc-form-stat .crc-form-badges{display:flex;justify-content:center;margin:0 0 5px}
+
+/* Single quiet proactive prompt; no modal, toast or automatic chat. */
+.crc-proactive-hint[hidden]{display:none!important}
+.crc-proactive-hint{margin:12px 0;padding:12px 14px;border:1px solid #485781;border-radius:15px;background:#151e3a;color:#f0eeff;min-width:0}
+.crc-hint-header,.crc-hint-body,.crc-hint-footer{display:flex;align-items:center;gap:9px;min-width:0}
+.crc-hint-header strong{font-size:14px;flex:1;line-height:1.6}
+.crc-hint-icon{color:#d8bdff;font-size:20px}
+.crc-hint-dismiss{width:44px;height:44px;border:0;border-radius:9px;color:#d5d9ed;background:transparent;font-size:23px;cursor:pointer;flex:none}
+.crc-hint-dismiss:hover,.crc-hint-dismiss:focus-visible{background:#302650}
+.crc-hint-body img{width:42px;height:auto;flex:none}
+.crc-hint-body p{margin:0;font-size:12px;line-height:1.8;overflow-wrap:anywhere}
+.crc-hint-footer{justify-content:space-between;flex-wrap:wrap;margin-top:10px}
+.crc-hint-footer small{font-size:11px;color:#bdc5df;flex:1;line-height:1.6}
+.crc-hint-footer .btn{min-height:44px;font-size:12px;flex:none}
+.crc-hint-footer button:disabled{opacity:.6;cursor:not-allowed}

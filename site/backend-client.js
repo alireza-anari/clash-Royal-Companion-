@@ -363,6 +363,60 @@
       status:!task?'ready':known>=5?'review':'practice',
       follow_up:feedback?.outcome==='worse'?'در بازبینی بعدی توضیح بده کدام بخش تمرین دشوار بود؛ این بازخورد به‌تنهایی افت عملکرد را اثبات نمی‌کند.':null};
   }
+  // Proactive prompts are deterministic local hints, never AI replies or automatic requests.
+  function coachProactiveHint(profile,deckIds,entries,memory,now=Date.now()){
+    if(!normalizeTag(profile?.tag))return null;
+    const clean=cleanCoachMemory(memory),task=clean?.pending_practice;
+    const plan=clean&&coachPracticePlan(clean);
+    if(task&&plan?.status==='review')return {key:'review:'+task.created_at,kind:'review',icon:'✓',title:'وقت مرور تمرین است',detail:'به نقطه بازبینی تمرین رسیده‌ای؛ نتیجه‌ای که تجربه کردی ثبت کن.',action:'review'};
+    const keyFor=ids=>Array.isArray(ids)&&ids.length===8&&ids.every(id=>Number.isSafeInteger(id)&&id>0)&&new Set(ids).size===8?ids.slice().sort((x,y)=>x-y).join(':'):null;
+    const key=keyFor(deckIds),actual=keyFor(Array.isArray(profile.currentDeck)?profile.currentDeck.map(x=>x?.id):null);
+    if(!key||key!==actual||!Array.isArray(profile.cards))return null;
+    const owned=new Map(),duplicates=new Set();
+    for(const card of profile.cards.slice(0,400)){
+      if(!card||!Number.isSafeInteger(card.id))continue;
+      if(owned.has(card.id))duplicates.add(card.id);
+      owned.set(card.id,card);
+    }
+    const cards=deckIds.map(id=>owned.get(id));
+    if(cards.some(x=>!x||duplicates.has(x.id)))return null;
+    // Only explicitly reported unlocked/capability fields; never infer from icon or rarity.
+    for(const card of cards.slice().sort((x,y)=>x.id-y.id)){
+      const available=card.maxEvolutionLevel,unlocked=card.evolutionLevel;
+      if(!Number.isInteger(available)||available<0||available>3||!Number.isInteger(unlocked)||unlocked<0||unlocked>3||(unlocked&~available)!==0)continue;
+      const locked=available&~unlocked;
+      if(locked){const form=(locked&1)?'Evolution':'Hero';
+        return {key:'form:'+card.id+':'+available+':'+unlocked,kind:'form',icon:'✦',title:'فرم ویژه قابل بررسی',detail:'در اطلاعات پروفایل، این کارت قابلیت '+form+' دارد اما باز شدن این فرم ثبت نشده است. منابع لازم را جداگانه بررسی کن.',card_id:card.id,action:'ask',
+          question:'فرم‌های ویژه کارت‌های دک فعلی من را بر اساس داده‌های موجود بررسی کن. اولویت بررسی Evolution یا Hero چیست؟ منابع یا امکان خرید را فرض نکن.'};
+      }
+    }
+    const caps={common:16,rare:14,epic:11,legendary:8,champion:6};
+    const levels=cards.map(card=>{
+      const cap=caps[String(card.rarity||'').toLowerCase()];
+      return Number.isInteger(cap)&&card.maxLevel===cap&&Number.isInteger(card.level)&&card.level>=1&&card.level<=cap?{id:card.id,level:card.level+16-cap}:null;
+    });
+    if(levels.every(Boolean)){
+      const ordered=levels.slice().sort((x,y)=>x.level-y.level||x.id-y.id),lowest=ordered[0],median=(ordered[3].level+ordered[4].level)/2;
+      if(median-lowest.level>=2)return {key:'level:'+lowest.id+':'+lowest.level,kind:'level',icon:'↑',title:'اولویت ارتقا را بررسی کن',detail:'سطح این کارت در داده فعلی از سطح میانی دک پایین‌تر است. این فقط دلیل بررسی است، نه دستور ارتقا یا تضمین برد.',card_id:lowest.id,action:'ask',
+        question:'سطح کارت‌های دک فعلی من را با توجه به نقش و منابع نامشخص بررسی کن؛ کدام کارت اولویت بررسی برای ارتقا دارد؟'};
+    }
+    const recent=coachDistinctBattles(entries).filter(e=>keyFor(e.deck?.card_ids)===key&&['win','loss','draw'].includes(e.outcome)&&typeof e.game_mode==='string'&&e.game_mode.trim()&&e.game_mode.length<=100&&Date.parse(e.battle_time)<=now&&now-Date.parse(e.battle_time)<=7*86400000).slice(-3);
+    if(recent.length===3&&recent.every(e=>e.outcome==='loss'&&e.game_mode===recent[0].game_mode&&e.classification===recent[0].classification)){
+      return {key:'review-deck:'+key,kind:'battle',icon:'⚔',title:'فرصت بازبینی دک',detail:'سه نتیجه اخیر قابل مقایسه از همین ترکیب در یک حالت، باخت بوده‌اند. علت شکست از Battle Log مشخص نیست.',action:'ask',
+        question:'نتایج اخیر دک فعلی مرا بررسی کن و یک تمرین عملی پیشنهاد بده. علت شکست یا اتفاقات ریپلی را حدس نزن.'};
+    }
+    return null;
+  }
+  function createCoachHintSession(){
+    const dismissed=new Map();
+    return Object.freeze({
+      visible(tag,hint){const key=normalizeTag(tag);return key&&hint&&!dismissed.get(key)?.includes(hint.key)?hint:null;},
+      dismiss(tag,hint){const key=normalizeTag(tag);if(!key||!hint||typeof hint.key!=='string'||hint.key.length>160)return false;
+        const previous=dismissed.get(key)||[];dismissed.delete(key);dismissed.set(key,[...new Set([...previous,hint.key])].slice(-24));
+        while(dismissed.size>16)dismissed.delete(dismissed.keys().next().value);
+        return true;}
+    });
+  }
   function cleanCoachMemory(value){
     if(!value||typeof value!=='object'||Array.isArray(value)||value.version!==COACH_MEMORY_VERSION)return null;
     const focus=COACH_MEMORY_FOCI.has(value.focus)?value.focus:'balanced';
@@ -547,5 +601,5 @@
       {remove_id:rawSwap.remove_id,add_id:rawSwap.add_id,remove:rawSwap.remove,add:rawSwap.add,gain:rawSwap.gain.slice(),loss:rawSwap.loss.slice(),elixir_delta:rawSwap.elixir_delta,level_gap:rawSwap.level_gap}:null;
     return {answer:data.answer,model:data.model,sources,knowledgeVersion:typeof data.knowledge_version==='string'?data.knowledge_version:null,qualityStatus,swap,modelRoute:['fast','quality'].includes(data.model_route)?data.model_route:null,fallbackUsed:typeof data.fallback_used==='boolean'?data.fallback_used:null};
   }
-  root.CRCBackendClient=Object.freeze({VERSION,BackendError,normalizeTag,route,capabilities,loadPlayer,normalizedToProfile,normalizedToBattles,personalCoachContext,coachPayload,askAI,createCoachSession,cleanCoachHistory,createCoachMemory,cleanCoachMemory,cleanCoachMemorySnapshot,coachDistinctBattles,coachPracticeDelta,coachPracticePlan,cardFormProgress,collectionLevel,COACH_MEMORY_VERSION});
+  root.CRCBackendClient=Object.freeze({VERSION,BackendError,normalizeTag,route,capabilities,loadPlayer,normalizedToProfile,normalizedToBattles,personalCoachContext,coachPayload,askAI,createCoachSession,cleanCoachHistory,createCoachMemory,cleanCoachMemory,cleanCoachMemorySnapshot,coachDistinctBattles,coachPracticeDelta,coachPracticePlan,coachProactiveHint,createCoachHintSession,cardFormProgress,collectionLevel,COACH_MEMORY_VERSION});
 })(typeof window!=='undefined'?window:globalThis);

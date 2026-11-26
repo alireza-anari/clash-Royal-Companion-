@@ -69,6 +69,25 @@ try{
   await page.locator('#clearCoachChat').click();assert.equal(await welcome.isVisible(),true);assert.equal(await page.locator('#coachChatMessages .is-user').count(),0);
   await page.evaluate(()=>location.hash='player');await page.locator('#page-player.active').waitFor();await page.locator('#crcChangeAccount').click();await page.locator('#crcNext').click();await page.locator('#crcNext2').click();await page.locator('#crcConnect').click();assert.ok(await page.locator('#crcError').textContent());
   await page.screenshot({path:'visual-check/'+name+'-onboarding.png'});
+  await page.locator('#crcOnboard').evaluate(el=>el.close());
+  assert.equal(await page.locator('#crcHomeHint').isVisible(),false);
+  const sample=JSON.parse(await fs.readFile(path.join(root,'catalog.json'),'utf8')).cards.filter(c=>c.type!=='support').slice(0,8);
+  const owned=sample.map((c,i)=>({id:c.id,name:c.name,rarity:'common',level:12,maxLevel:16,elixirCost:c.elixir,evolutionLevel:0,maxEvolutionLevel:i===0?1:0}));
+  const file={name:'mock-profile.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify({tag:'#TEST123',name:'Mock',cards:owned,currentDeck:owned}))};
+  let aiCalls=0;page.on('request',r=>{if(r.url().includes('/api/v1/coach/chat'))aiCalls++;});
+  await page.locator('#profileFile').setInputFiles(file);
+  await page.waitForFunction(()=>document.querySelector('#profileSummary').textContent.includes('Mock'));
+  await page.evaluate(()=>location.hash='home');
+  await page.locator('#crcHomeHint').waitFor();
+  assert.match(await page.locator('#crcHomeHint').textContent(),/Evolution/);
+  assert.equal(await page.locator('#crcHomeHint .crc-hint-footer button').isDisabled(),true);
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+2),'proactive hint overflow: '+name);
+  await page.screenshot({path:'visual-check/'+name+'-proactive.png'});
+  await page.locator('#crcHomeHint .crc-hint-dismiss').click();
+  assert.equal(await page.locator('#crcHomeHint').isVisible(),false);
+  await page.evaluate(()=>location.hash='coach');await page.locator('#page-coach.active').waitFor();
+  assert.equal(await page.locator('#crcCoachHint').isVisible(),false);
+  assert.equal(aiCalls,0);
   assert.deepEqual(errors,[]);
   await page.close();
  }

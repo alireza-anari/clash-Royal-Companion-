@@ -385,3 +385,44 @@ test('pending practice is not overwritten and review checkpoint is not a perform
  assert.equal(memory.recordPractice(tag,'deck',deck,null,null),true);
  assert.equal(memory.read('#OTHER123'),null);
 });
+
+test('proactive hint requires actual deck ownership and explicit form evidence',()=>{
+ const ids=[1,2,3,4,5,6,7,8],cards=ids.map(id=>({id,rarity:'common',level:12,maxLevel:16}));
+ const p={tag:'#TEST123',cards,currentDeck:ids.map(id=>({id}))};
+ assert.equal(api.coachProactiveHint(null,ids,[],null),null);
+ assert.equal(api.coachProactiveHint(p,ids,[],null),null);
+ cards[0].maxEvolutionLevel=3;
+ assert.equal(api.coachProactiveHint(p,ids,[],null),null);
+ cards[0].evolutionLevel=0;
+ const hint=api.coachProactiveHint(p,ids,[],null);
+ assert.equal(hint.kind,'form');assert.equal(hint.card_id,1);assert.match(hint.detail,/Evolution/);
+ assert.equal(api.coachProactiveHint(p,[1,2,3,4,5,6,7,9],[],null),null);
+ cards[0].evolutionLevel=3;cards[1].level=9;
+ const level=api.coachProactiveHint(p,ids,[],null);
+ assert.equal(level.kind,'level');assert.equal(level.card_id,2);
+ cards[1].maxLevel=14;
+ assert.equal(api.coachProactiveHint(p,ids,[],null),null);
+});
+test('proactive hints respect recent distinct same-mode evidence and session dismissal isolation',()=>{
+ const ids=[1,2,3,4,5,6,7,8],p={tag:'#TEST123',cards:ids.map(id=>({id})),currentDeck:ids.map(id=>({id}))};
+ const now=Date.parse('2026-11-26T15:00:00Z');
+ const row=(n,mode='Ladder')=>({battle_time:new Date(now-n*60000).toISOString(),attribution:'matched_tag',outcome:'loss',game_mode:mode,classification:'unclassified',deck:{card_ids:ids}});
+ assert.equal(api.coachProactiveHint(p,ids,[row(1),row(1),row(2)],null,now),null);
+ assert.equal(api.coachProactiveHint(p,ids,[row(1),row(2,'Event'),row(3)],null,now),null);
+ assert.equal(api.coachProactiveHint(p,ids,[row(1),row(2),row(3)],null,now+8*86400000),null);
+ const hint=api.coachProactiveHint(p,ids,[row(1),row(2),row(3)],null,now);
+ assert.equal(hint.kind,'battle');
+ const session=api.createCoachHintSession();assert.equal(session.visible(p.tag,hint),hint);
+ assert.equal(session.dismiss(p.tag,hint),true);assert.equal(session.visible(p.tag,hint),null);
+ assert.equal(session.visible('#OTHER123',hint),hint);
+ assert.equal(api.createCoachHintSession().visible(p.tag,hint),hint);
+});
+test('proactive practice review is prioritized only with opted-in structured memory',()=>{
+ const ids=[1,2,3,4,5,6,7,8],p={tag:'#TEST123'},memory=api.createCoachMemory(memoryStorage());
+ memory.setEnabled(p.tag,true);memory.recordPractice(p.tag,'style',ids,null,null);
+ assert.equal(api.coachProactiveHint(p,ids,[],memory.read(p.tag)),null);
+ memory.addPracticeProgress(p.tag,{matched_records:5,outcomes:{wins:2,losses:3,draws:0,unknown:0}},'2090-01-01T00:00:00Z');
+ assert.equal(api.coachProactiveHint(p,ids,[],memory.read(p.tag)).action,'review');
+ memory.setEnabled(p.tag,false);
+ assert.equal(api.coachProactiveHint(p,ids,[],memory.read(p.tag)),null);
+});
