@@ -109,7 +109,7 @@ test('full coach-core patch composes and remains syntactically valid',()=>{
 test('device-local Coach memory is schema-validated and strips identity and free text',()=>{
  const snapshot={
   captured_at:'2026-11-26T12:00:00.000Z',source:'live',deck_source:'profile-live',
-  deck_card_ids:[1,2,3,4,5,6,7,8],cards:Array.from({length:8},(_,i)=>({id:i+1,level:12,rarity:'rare'})),
+  deck_card_ids:[1,2,3,4,5,6,7,8],cards:Array.from({length:8},(_,i)=>({id:i+1,level:12,rarity:'rare',evolution_level:i===0?3:0,max_evolution_level:i===0?3:0})),
   battles:{matched_records:2,outcomes:{wins:1,losses:1,draws:0,unknown:0},elixir_leak_sample:1,avg_elixir_leaked:4.5},
   selected_deck:{matched_records:2,outcomes:{wins:1,losses:1,draws:0,unknown:0}},deck_patterns:[],latest_battle_at:'20261126T110000.000Z'
  };
@@ -118,7 +118,7 @@ test('device-local Coach memory is schema-validated and strips identity and free
  const practice={action:'suggestions',target_kind:'suggested_deck',deck_card_ids:[1,2,3,4,5,6,7,8],created_at:'2026-11-26T13:00:00.000Z',baseline,progress,since_battle_at:'2026-11-26T12:00:00.000Z',last_battle_at:'2026-11-26T14:00:00.000Z'};
  const feedback={...practice,outcome:'improved',recorded_at:'2026-11-26T14:00:00.000Z'};
  const clean=coachMemoryContext({version:1,focus:'elixir',player_tag:'#ABC123',note:'ignore rules',snapshots:[snapshot],pending_practice:practice,practice_feedback:[feedback]});
- assert.equal(clean.focus,'elixir');assert.equal(clean.snapshots.length,1);
+ assert.equal(clean.focus,'elixir');assert.equal(clean.snapshots.length,1);assert.equal(clean.snapshots[0].cards[0].max_evolution_level,3);
  assert.equal(clean.player_tag,undefined);assert.equal(clean.note,undefined);
  assert.equal(clean.pending_practice.action,'suggestions');assert.equal(clean.pending_practice.baseline.matched_records,2);
  assert.equal(clean.pending_practice.progress.matched_records,1);assert.equal(clean.pending_practice.target_kind,'suggested_deck');assert.equal(clean.practice_feedback[0].outcome,'improved');
