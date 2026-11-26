@@ -465,7 +465,15 @@
     const sourceUrl=value=>{try{const u=new URL(value);return u.protocol==='https:'&&((u.hostname==='support.supercell.com'&&u.pathname.startsWith('/clash-royale/en/articles/'))||(u.hostname==='supercell.com'&&u.pathname.startsWith('/en/games/clashroyale/')))&&!u.username&&!u.password?u.href:null;}catch{return null;}};
     const sources=Array.isArray(data.knowledge_sources)?data.knowledge_sources.slice(0,3).filter(s=>s&&/^K\d{2}$/.test(s.id||'')&&typeof s.title==='string'&&s.title.length<=140&&sourceUrl(s.url)&&s.authority==='official-support').map(s=>({id:s.id,title:s.title,url:sourceUrl(s.url),publisher:typeof s.publisher==='string'?s.publisher.slice(0,80):'Supercell',verified_at:typeof s.verified_at==='string'?s.verified_at:null,published_at:typeof s.published_at==='string'?s.published_at:null})):[];
     const qualityStatus=data.quality_version==='crc-coach-quality-v1'&&['limited','checked_structure'].includes(data.quality_status)?data.quality_status:null;
-    return {answer:data.answer,model:data.model,sources,knowledgeVersion:typeof data.knowledge_version==='string'?data.knowledge_version:null,qualityStatus,modelRoute:['fast','quality'].includes(data.model_route)?data.model_route:null,fallbackUsed:typeof data.fallback_used==='boolean'?data.fallback_used:null};
+    const rawSwap=data.quality_swap;
+    const swap=rawSwap&&Number.isSafeInteger(rawSwap.remove_id)&&rawSwap.remove_id>0&&Number.isSafeInteger(rawSwap.add_id)&&rawSwap.add_id>0&&
+      typeof rawSwap.remove==='string'&&rawSwap.remove.length<=65&&typeof rawSwap.add==='string'&&rawSwap.add.length<=65&&
+      Array.isArray(rawSwap.gain)&&rawSwap.gain.length<=8&&rawSwap.gain.every(x=>typeof x==='string'&&x.length<=60)&&
+      Array.isArray(rawSwap.loss)&&rawSwap.loss.length<=8&&rawSwap.loss.every(x=>typeof x==='string'&&x.length<=60)&&
+      Number.isInteger(rawSwap.elixir_delta)&&rawSwap.elixir_delta>=-10&&rawSwap.elixir_delta<=1&&
+      (rawSwap.level_gap===null||(Number.isInteger(rawSwap.level_gap)&&rawSwap.level_gap>=-2&&rawSwap.level_gap<=15))?
+      {remove_id:rawSwap.remove_id,add_id:rawSwap.add_id,remove:rawSwap.remove,add:rawSwap.add,gain:rawSwap.gain.slice(),loss:rawSwap.loss.slice(),elixir_delta:rawSwap.elixir_delta,level_gap:rawSwap.level_gap}:null;
+    return {answer:data.answer,model:data.model,sources,knowledgeVersion:typeof data.knowledge_version==='string'?data.knowledge_version:null,qualityStatus,swap,modelRoute:['fast','quality'].includes(data.model_route)?data.model_route:null,fallbackUsed:typeof data.fallback_used==='boolean'?data.fallback_used:null};
   }
   root.CRCBackendClient=Object.freeze({VERSION,BackendError,normalizeTag,route,capabilities,loadPlayer,normalizedToProfile,normalizedToBattles,personalCoachContext,coachPayload,askAI,createCoachSession,cleanCoachHistory,createCoachMemory,cleanCoachMemory,cleanCoachMemorySnapshot,coachPracticeDelta,COACH_MEMORY_VERSION});
 })(typeof window!=='undefined'?window:globalThis);
