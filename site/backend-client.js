@@ -199,7 +199,109 @@
     const avg=xs=>xs.length?Math.round(xs.reduce((s,n)=>s+n,0)/xs.length*100)/100:null;
     return {deck_source:deckSource,deck_cards:selected.map(describe),owned_candidates:candidates,selected_deck_results:counts,style:{records:matched.length,distinct_decks:groups.size,most_used_deck_matches:Math.max(0,...groups.values()),elixir_leaked_sample:leak.length,elixir_leaked_average:avg(leak),win_leaked_sample:winLeak.length,win_leaked_average:avg(winLeak),loss_leaked_sample:lossLeak.length,loss_leaked_average:avg(lossLeak)}};
   }
-  // Page-local history; scope objects never cross the network.
+  // Opt-in, device-local memory. It stores compact snapshots only: no raw Battle Log, tags in values, or chat text.
+  const COACH_MEMORY_VERSION=1;
+  const COACH_MEMORY_FOCI=new Set(['balanced','cycle','elixir','defense','pressure','deck']);
+  const COACH_MEMORY_SOURCES=new Set(['live','imported']);
+  const COACH_MEMORY_DECK_SOURCES=new Set(['profile-live','profile-import','profile-edited','manual','sample','battle-event-import','battle-import']);
+  function cleanCoachMemoryCounts(value,total){
+    const keys=['wins','losses','draws','unknown'];
+    if(!value||!Number.isInteger(total)||total<0||total>200||!keys.every(k=>Number.isInteger(value[k])&&value[k]>=0&&value[k]<=200))return null;
+    const out=Object.fromEntries(keys.map(k=>[k,value[k]]));
+    return keys.reduce((sum,k)=>sum+out[k],0)===total?out:null;
+  }
+  function cleanCoachMemorySnapshot(value){
+    if(!value||typeof value!=='object'||Array.isArray(value))return null;
+    const captured=typeof value.captured_at==='string'&&value.captured_at.length<=40&&Number.isFinite(Date.parse(value.captured_at))?value.captured_at:null;
+    const deck=Array.isArray(value.deck_card_ids)?value.deck_card_ids.slice(0,8):[];
+    if(!captured||deck.length!==8||!deck.every(id=>Number.isSafeInteger(id)&&id>0&&id<=1000000000)||new Set(deck).size!==8)return null;
+    const cards=Array.isArray(value.cards)?value.cards.slice(0,8):[];
+    if(cards.length!==8||new Set(cards.map(c=>c?.id)).size!==8||cards.some(c=>!c||!deck.includes(c.id)))return null;
+    const cleanCards=cards.map(c=>{
+      const item={id:c.id};
+      if(Number.isInteger(c.level)&&c.level>=1&&c.level<=16)item.level=c.level;
+      if(['common','rare','epic','legendary','champion'].includes(c.rarity))item.rarity=c.rarity;
+      if(Number.isInteger(c.evolution_level)&&c.evolution_level>=0&&c.evolution_level<=3)item.evolution_level=c.evolution_level;
+      if(Number.isInteger(c.star_level)&&c.star_level>=0&&c.star_level<=3)item.star_level=c.star_level;
+      return item;
+    }).sort((a,b)=>deck.indexOf(a.id)-deck.indexOf(b.id));
+    const b=value.battles,bc=cleanCoachMemoryCounts(b?.outcomes,b?.matched_records);
+    if(!bc||!Number.isInteger(b.elixir_leak_sample)||b.elixir_leak_sample<0||b.elixir_leak_sample>b.matched_records||
+       !(b.avg_elixir_leaked===null||(typeof b.avg_elixir_leaked==='number'&&Number.isFinite(b.avg_elixir_leaked)&&b.avg_elixir_leaked>=0&&b.avg_elixir_leaked<=1000)))return null;
+    const selected=value.selected_deck,sc=cleanCoachMemoryCounts(selected?.outcomes,selected?.matched_records);
+    if(!sc||selected.matched_records>b.matched_records)return null;
+    const patterns=Array.isArray(value.deck_patterns)?value.deck_patterns.slice(0,3):[];
+    const cleanPatterns=[];
+    for(const p of patterns){
+      const ids=Array.isArray(p?.deck_card_ids)?p.deck_card_ids.slice(0,8):[];
+      const outcomes=cleanCoachMemoryCounts(p?.outcomes,p?.plays);
+      if(ids.length!==8||!ids.every(id=>Number.isSafeInteger(id)&&id>0&&id<=1000000000)||new Set(ids).size!==8||!outcomes||
+         !Number.isInteger(p.event_plays)||p.event_plays<0||p.event_plays>p.plays)continue;
+      cleanPatterns.push({deck_card_ids:ids,plays:p.plays,outcomes,event_plays:p.event_plays});
+    }
+    const source=COACH_MEMORY_SOURCES.has(value.source)?value.source:'imported';
+    const deckSource=COACH_MEMORY_DECK_SOURCES.has(value.deck_source)?value.deck_source:'manual';
+    const latest=typeof value.latest_battle_at==='string'&&value.latest_battle_at.length<=40?value.latest_battle_at:null;
+    return {
+      captured_at:captured,source,deck_source,deck_card_ids:deck,cards:cleanCards,
+      battles:{matched_records:b.matched_records,outcomes:bc,elixir_leak_sample:b.elixir_leak_sample,avg_elixir_leaked:b.avg_elixir_leaked},
+      selected_deck:{matched_records:selected.matched_records,outcomes:sc},
+      deck_patterns:cleanPatterns,latest_battle_at:latest
+    };
+  }
+  function cleanCoachMemory(value){
+    if(!value||typeof value!=='object'||Array.isArray(value)||value.version!==COACH_MEMORY_VERSION)return null;
+    const focus=COACH_MEMORY_FOCI.has(value.focus)?value.focus:'balanced';
+    const snapshots=(Array.isArray(value.snapshots)?value.snapshots:[]).slice(0,2).map(cleanCoachMemorySnapshot).filter(Boolean);
+    return snapshots.length?{version:COACH_MEMORY_VERSION,focus,snapshots}:null;
+  }
+  function createCoachMemory(storage){
+    const validTag=value=>normalizeTag(value);
+    const key=tag=>'crc.coach.memory.v1.'+validTag(tag).slice(1);
+    const readStored=tag=>{
+      if(!validTag(tag)||!storage||typeof storage.getItem!=='function')return null;
+      try{
+        const raw=storage.getItem(key(tag));if(!raw||raw.length>24000)return null;
+        const value=JSON.parse(raw);
+        if(!value||value.version!==COACH_MEMORY_VERSION||typeof value.enabled!=='boolean')return null;
+        return {version:COACH_MEMORY_VERSION,enabled:value.enabled,focus:COACH_MEMORY_FOCI.has(value.focus)?value.focus:'balanced',
+          snapshots:(Array.isArray(value.snapshots)?value.snapshots:[]).slice(0,3).map(cleanCoachMemorySnapshot).filter(Boolean)};
+      }catch{return null;}
+    };
+    const write=(tag,value)=>{
+      if(!validTag(tag)||!storage||typeof storage.setItem!=='function')return false;
+      try{storage.setItem(key(tag),JSON.stringify(value));return true;}catch{return false;}
+    };
+    return Object.freeze({
+      isEnabled(tag){return readStored(tag)?.enabled===true;},
+      setEnabled(tag,enabled){
+        if(!validTag(tag)||typeof enabled!=='boolean')return false;
+        const old=readStored(tag)||{version:COACH_MEMORY_VERSION,enabled:false,focus:'balanced',snapshots:[]};
+        return write(tag,{...old,enabled});
+      },
+      read(tag){
+        const value=readStored(tag);if(!value?.enabled)return null;
+        return cleanCoachMemory({version:COACH_MEMORY_VERSION,focus:value.focus,snapshots:value.snapshots});
+      },
+      setFocus(tag,focus){
+        if(!COACH_MEMORY_FOCI.has(focus))return false;
+        const old=readStored(tag);if(!old?.enabled)return false;
+        return write(tag,{...old,focus});
+      },
+      record(tag,snapshot){
+        const old=readStored(tag);if(!old?.enabled)return false;
+        const clean=cleanCoachMemorySnapshot(snapshot);if(!clean)return false;
+        const fingerprint=value=>JSON.stringify({...value,captured_at:null});
+        if(old.snapshots[0]&&fingerprint(old.snapshots[0])===fingerprint(clean))return true;
+        return write(tag,{...old,snapshots:[clean,...old.snapshots].slice(0,3)});
+      },
+      clear(tag){
+        if(!validTag(tag)||!storage||typeof storage.removeItem!=='function')return false;
+        try{storage.removeItem(key(tag));return true;}catch{return false;}
+      }
+    });
+  }
+  // Page-local conversation retains only two successful turns.
   function createCoachSession(){
     let scope=null,turns=[];
     function sync(next){if(next!==scope){scope=next;turns=[];return true;}return false;}
@@ -247,11 +349,14 @@
       const outcomes=cleanOutcomeCounts(personal.selected_deck_results);
       if(outcomes&&clean.deck_cards?.length===8&&new Set(clean.deck_cards.map(c=>c.id)).size===8)clean.selected_deck_results=outcomes;
       if(personal.style)clean.style=Object.fromEntries(["records","distinct_decks","most_used_deck_matches","elixir_leaked_sample","elixir_leaked_average","win_leaked_sample","win_leaked_average","loss_leaked_sample","loss_leaked_average"].map(k=>[k,personal.style[k]]));
+      const memory=cleanCoachMemory(personal.coach_memory);if(memory)clean.coach_memory=memory;
       payload.personal=clean;
       // Preserve current evidence ahead of optional past conversation.
       if(coachBytes(payload)>4096&&Array.isArray(clean.owned_candidates)){
         while(clean.owned_candidates.length&&coachBytes(payload)>4096)clean.owned_candidates.pop();
       }
+      if(coachBytes(payload)>4096&&clean.coach_memory?.snapshots?.length>1)clean.coach_memory.snapshots.pop();
+      if(coachBytes(payload)>4096)delete clean.coach_memory;
       if(!payload.action){
         const history=cleanCoachHistory(personal.chat_history);
         for(let i=history.length-1;i>=0;i--){
@@ -287,5 +392,5 @@
     const qualityStatus=data.quality_version==='crc-coach-quality-v1'&&['limited','checked_structure'].includes(data.quality_status)?data.quality_status:null;
     return {answer:data.answer,model:data.model,sources,knowledgeVersion:typeof data.knowledge_version==='string'?data.knowledge_version:null,qualityStatus,modelRoute:['fast','quality'].includes(data.model_route)?data.model_route:null,fallbackUsed:typeof data.fallback_used==='boolean'?data.fallback_used:null};
   }
-  root.CRCBackendClient=Object.freeze({VERSION,BackendError,normalizeTag,route,capabilities,loadPlayer,normalizedToProfile,normalizedToBattles,personalCoachContext,coachPayload,askAI,createCoachSession,cleanCoachHistory});
+  root.CRCBackendClient=Object.freeze({VERSION,BackendError,normalizeTag,route,capabilities,loadPlayer,normalizedToProfile,normalizedToBattles,personalCoachContext,coachPayload,askAI,createCoachSession,cleanCoachHistory,createCoachMemory,cleanCoachMemory,cleanCoachMemorySnapshot,COACH_MEMORY_VERSION});
 })(typeof window!=='undefined'?window:globalThis);
