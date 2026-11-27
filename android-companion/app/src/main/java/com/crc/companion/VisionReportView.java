@@ -25,6 +25,17 @@ public final class VisionReportView extends LinearLayout {
         catch(RuntimeException invalid){
             line("گزارش قابل تأیید نیست؛ داده‌ای نمایش داده نمی‌شود.",16);return;
         }
+        renderReport(report);
+    }
+    /** Caller must authenticate the job response and use original submitted times. */
+    public void displayJson(String result,List<Long> expectedTimes,Set<Integer> knownCardIds){
+        removeAllViews();
+        final VisionBattleReport.Report report;
+        try{report=VisionReportJson.decode(result,expectedTimes,knownCardIds);}
+        catch(RuntimeException invalid){line("گزارش قابل تأیید نیست؛ داده‌ای نمایش داده نمی‌شود.",16);return;}
+        renderReport(report);
+    }
+    private void renderReport(VisionBattleReport.Report report){
         line("گزارش تصویری نبرد",22);
         line(VisionBattleReport.summaryFa(report),16);
         line("مشاهدات به تفکیک نمونه",18);
