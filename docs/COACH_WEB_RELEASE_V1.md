@@ -23,3 +23,11 @@ Deployment list metadata and downloaded latest script are separate observations;
 5. Confirm deployed version and rollback target immediately before any rollout. Keep prior versions available. Require successful staging smoke before promoting.
 
 Private backend repository access and exact Vision job contract are not resolved by restored Cloudflare access. No deployment, migration, credential, activation, quota, billing or production change was made.
+
+
+## Stage 21 — version upload (not deployed)
+- Before upload: active and latest uploaded legacy version both 690453ba-6aac-4a28-9951-61ada639ede0 (22), 100% traffic. Checked exact expected module inventory, source/candidate character lengths, active binding inventory and runtime settings. Composed the exact stage-20 GitHub head 2e3f82cb337b011bbdf00c0e2f2aef3ec5aae749 Coach patch in memory. Preserved both unrelated meta modules.
+- Cloudflare version upload with strict binding inheritance succeeded. New version 23: a561d2fa-5d4a-4942-9686-9362d9880bc1. Cloudflare reported startup_time_ms=3; this is upload validation, not measured real request latency.
+- Read-back compared all returned binding metadata, runtime and default handlers with version 22: equal. AI, AI_GLOBAL_RATE, AI_RATE, META_KV, PLAYER_RATE and SUPERCELL_API_TOKEN were inherited; no secret values exported. No optional fast model binding added.
+- Post-upload deployment check: version 22 still receives 100% traffic. No deployment POST, gateway change, frontend asset upload, quota change, migration, real player lookup or model inference.
+- Candidate version preview availability was not established by the returned metadata. Do not treat version 23 as a functioning staging site. Next: prepare an isolated authorized web asset/gateway staging route, verify the candidate request/response behavior with existing authentication and bounded real-account smoke, then consider traffic promotion. Recheck active/rollback versions before any promotion. Android Vision stays off.
