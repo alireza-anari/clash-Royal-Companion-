@@ -17,6 +17,13 @@ export function coachModelPlan(question,inferencePlan,action,env,defaultModel){
 }
 export function coachModelText(generated){
   if(typeof generated?.response==='string'&&generated.response.trim())return generated.response;
+  // JSON-mode providers can return a parsed object instead of a JSON string.
+  // Never coerce unrelated provider metadata into an answer.
+  const parsed=generated?.response;
+  if(parsed&&typeof parsed==='object'&&!Array.isArray(parsed)&&Object.keys(parsed).length===4&&
+    ['answer','swap_index','fact_keys','source_ids'].every(k=>Object.hasOwn(parsed,k))){
+    try{return JSON.stringify(parsed);}catch{return '';}
+  }
   if(typeof generated?.choices?.[0]?.message?.content==='string')return generated.choices[0].message.content;
   if(Array.isArray(generated?.output))return generated.output.map(x=>x?.content||x?.text||'').join('\n');
   return '';
