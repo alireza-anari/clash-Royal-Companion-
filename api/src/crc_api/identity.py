@@ -265,9 +265,10 @@ class OIDCIdentityService:
             raise OIDCProviderUnavailable()
         nonce_claims = self._nonce_claims(nonce_token)
         claims = await self._verified_id_claims(id_token, nonce_claims["nonce"])
-        account_subject, subject_key, provider_key = self._account_identity(claims["sub"])
+        account_subject, identity_key, provider_key = self._account_identity(claims["sub"])
         now = int(time.time())
         async with connection.transaction():
+            await connection.execute("DELETE FROM auth_oidc_nonce_uses WHERE expires_at < now()")
             consumed = await connection.fetchval(
                 """INSERT INTO auth_oidc_nonce_uses(jti,expires_at)
                    VALUES($1,to_timestamp($2)) ON CONFLICT(jti) DO NOTHING
@@ -277,15 +278,15 @@ class OIDCIdentityService:
             if consumed is None:
                 raise OIDCNonceReplay()
             await connection.execute(
-                """INSERT INTO auth_accounts(account_subject,subject_key)
+                """INSERT INTO auth_accounts(account_subject,identity_key)
                    VALUES($1,$2) ON CONFLICT(account_subject) DO NOTHING""",
-                account_subject, subject_key,
+                account_subject, identity_key,
             )
             account = await connection.fetchrow(
-                "SELECT subject_key,status FROM auth_accounts WHERE account_subject=$1 FOR UPDATE",
+                "SELECT identity_key,status FROM auth_accounts WHERE account_subject=$1 FOR UPDATE",
                 account_subject,
             )
-            if account is None or account["subject_key"] != subject_key or account["status"] != "active":
+            if account is None or account["identity_key"] != identity_key or account["status"] != "active":
                 raise OIDCInvalidToken()
             await connection.execute(
                 """INSERT INTO auth_identities(provider_key,account_subject)
@@ -298,11 +299,6 @@ class OIDCIdentityService:
             )
             if identity != account_subject:
                 raise OIDCInvalidToken()
-            await connection.execute(
-                """INSERT INTO vision_credit_accounts(subject_key,balance)
-                   VALUES($1,0) ON CONFLICT(subject_key) DO NOTHING""",
-                subject_key,
-            )
             await connection.execute(
                 "UPDATE auth_accounts SET last_login_at=now() WHERE account_subject=$1",
                 account_subject,
