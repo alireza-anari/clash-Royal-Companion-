@@ -26,6 +26,7 @@ CLIENT_ID="crc-native-client"
 REDIRECT_URI="com.crc.companion:/oauth2redirect"
 WORKER_SECRET=b"oidc-test-worker-secret-123456789012345"
 ACCOUNT_SECRET=b"oidc-test-stable-account-secret-123456789"
+VISION_SECRET=b"oidc-test-vision-key-1234567890123456789"
 PRIVATE_KEY=rsa.generate_private_key(public_exponent=65537,key_size=2048)
 PUBLIC_JWK=json.loads(jwt.algorithms.RSAAlgorithm.to_jwk(PRIVATE_KEY.public_key()))
 PUBLIC_JWK.update({"kid":"test-rsa-key","use":"sig","alg":"RS256"})
