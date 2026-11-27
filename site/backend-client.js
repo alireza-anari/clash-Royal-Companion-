@@ -122,7 +122,7 @@
       kingTowerLevel:src.king_tower_level,arena:src.arena||null,
       cards,supportCards:supports
     };
-    if(Array.isArray(ids)&&ids.length===8&&ids.every(Number.isSafeInteger))
+    if(Array.isArray(ids)&&ids.length<=8&&ids.every(id=>Number.isSafeInteger(id)&&id>0)&&new Set(ids).size===ids.length)
       result.currentDeck=ids.map(lookupOrStub);
     if(Array.isArray(supportIds))result.currentDeckSupportCards=supportIds.map(lookupOrStub);
     return result;
