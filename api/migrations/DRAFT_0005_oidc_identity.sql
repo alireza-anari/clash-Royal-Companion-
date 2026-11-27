@@ -24,3 +24,15 @@ CREATE INDEX IF NOT EXISTS auth_oidc_nonce_expiry_idx
 
 -- No email, display name, provider subject, refresh token or ID token is stored.
 -- Vision credits are provisioned separately through a reviewed owner-only path.
+
+
+CREATE TABLE IF NOT EXISTS vision_account_access (
+  account_subject CHAR(37) PRIMARY KEY
+    REFERENCES auth_accounts(account_subject) ON DELETE CASCADE,
+  enabled BOOLEAN NOT NULL DEFAULT FALSE,
+  granted_at TIMESTAMPTZ,
+  granted_by TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CHECK ((enabled AND granted_at IS NOT NULL AND granted_by IS NOT NULL)
+      OR (NOT enabled AND granted_at IS NULL AND granted_by IS NULL))
+);

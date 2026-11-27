@@ -60,6 +60,7 @@ class OIDCIdentityService:
         beta_issuer: str,
         worker_secret: bytes,
         account_secret: bytes,
+        vision_hmac_secret: bytes = b"",
         transport: httpx.AsyncBaseTransport | None = None,
     ):
         self.issuer = issuer
@@ -69,6 +70,7 @@ class OIDCIdentityService:
         self.beta_issuer = beta_issuer
         self.worker_secret = worker_secret
         self.account_secret = account_secret
+        self.vision_hmac_secret = vision_hmac_secret
         self.transport = transport
         self._jwks: dict[str, dict[str, Any]] | None = None
         self._jwks_loaded_at = 0.0
@@ -299,6 +301,20 @@ class OIDCIdentityService:
             )
             if identity != account_subject:
                 raise OIDCInvalidToken()
+            await connection.execute(
+                """INSERT INTO vision_account_access(account_subject,enabled)
+                   VALUES($1,false) ON CONFLICT(account_subject) DO NOTHING""",
+                account_subject,
+            )
+            if len(self.vision_hmac_secret) >= 32:
+                vision_key = hmac.new(
+                    self.vision_hmac_secret, account_subject.encode(), hashlib.sha256
+                ).hexdigest()
+                await connection.execute(
+                    """INSERT INTO vision_credit_accounts(subject_key,balance)
+                       VALUES($1,0) ON CONFLICT(subject_key) DO NOTHING""",
+                    vision_key,
+                )
             await connection.execute(
                 "UPDATE auth_accounts SET last_login_at=now() WHERE account_subject=$1",
                 account_subject,

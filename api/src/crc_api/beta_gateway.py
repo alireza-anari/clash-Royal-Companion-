@@ -73,9 +73,10 @@ class BetaConfig:
 
     @property
     def vision_enabled(self) -> bool:
-        return (self.vision_requested and self.vision_processor_ready and bool(self.vision_subjects)
-                and self.vision_subjects.issubset(self.allowed_subjects)
-                and len(self.vision_hmac_secret) >= 32)
+        static_access = bool(self.vision_subjects) and self.vision_subjects.issubset(self.allowed_subjects)
+        account_access = self.oidc_enabled
+        return (self.vision_requested and self.vision_processor_ready and
+                len(self.vision_hmac_secret) >= 32 and (static_access or account_access))
 
     @property
     def oidc_enabled(self) -> bool:
@@ -264,7 +265,7 @@ def create_beta_app(
     oidc_identity = oidc_service or (OIDCIdentityService(
         issuer=settings.oidc_issuer, client_id=settings.oidc_client_id, jwks_url=settings.oidc_jwks_url,
         redirect_uri=settings.oidc_redirect_uri, beta_issuer=settings.auth_issuer,
-        worker_secret=settings.worker_assertion_secret, account_secret=settings.account_hmac_secret,
+        worker_secret=settings.worker_assertion_secret, account_secret=settings.account_hmac_secret,\n        vision_hmac_secret=settings.vision_hmac_secret,
     ) if settings.oidc_enabled else None)
 
     if pool_factory is None:
@@ -558,8 +559,8 @@ def create_beta_app(
         return {"request_id":rid,**result}
 
     @app.get("/api/v1/vision/capabilities")
-    def vision_capabilities(request: Request):
-        account_enabled = settings.vision_enabled and request.state.verified_subject in settings.vision_subjects
+    async def vision_capabilities(request: Request):
+        account_enabled = await vision_account(request)
         reason = None if account_enabled else (
             "VISION_ACCOUNT_NOT_ELIGIBLE" if settings.vision_enabled else "VISION_NOT_CONFIGURED"
         )
@@ -575,16 +576,28 @@ def create_beta_app(
             "processing": "queued" if account_enabled else "disabled",
         }
 
-    def vision_account(request: Request) -> str | None:
+    async def vision_account(request: Request) -> str | None:
         subject = getattr(request.state, "verified_subject", None)
-        if not settings.vision_enabled or subject not in settings.vision_subjects:
+        if not settings.vision_enabled or not isinstance(subject,str):
             return None
-        return subject
+        if subject in settings.vision_subjects:
+            return subject
+        if not settings.oidc_enabled or not ACCOUNT_SUBJECT.fullmatch(subject):
+            return None
+        try:
+            async with request.app.state.pool.acquire() as connection:
+                row=await connection.fetchrow(
+                    """SELECT a.status,v.enabled FROM auth_accounts a
+                       JOIN vision_account_access v USING(account_subject)
+                       WHERE a.account_subject=$1""",subject)
+            return subject if row is not None and row["status"]=="active" and row["enabled"] is True else None
+        except Exception:
+            return None
 
     @app.post("/api/v1/vision/jobs", status_code=202)
     async def create_vision_job(payload: VisionJobRequest, request: Request):
         rid = request.state.request_id
-        subject = vision_account(request)
+        subject = await vision_account(request)
         if subject is None or request.app.state.vision_jobs is None:
             return error(503, "VISION_ANALYSIS_DISABLED", rid)
         if payload.consent_to_upload is not True or payload.consent_to_external_ai is not True:
