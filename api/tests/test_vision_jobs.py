@@ -136,6 +136,7 @@ async def test_worker_claim_complete_erases_images_and_consumes_one_reserved_cre
  try:
   async with pool.acquire() as c:
    await apply_worker_schema(c)
+   await c.execute("DELETE FROM vision_jobs")
    key=svc.subject_key(owner)
    await c.execute("DELETE FROM vision_credit_ledger WHERE subject_key=$1",key)
    await c.execute("DELETE FROM vision_jobs WHERE subject_key=$1",key)
@@ -165,6 +166,7 @@ async def test_worker_failure_and_stale_lease_refund_once_without_replaying_prov
  try:
   async with pool.acquire() as c:
    await apply_worker_schema(c)
+   await c.execute("DELETE FROM vision_jobs")
    key=svc.subject_key(owner)
    await c.execute("DELETE FROM vision_credit_ledger WHERE subject_key=$1",key)
    await c.execute("DELETE FROM vision_jobs WHERE subject_key=$1",key)
@@ -195,6 +197,7 @@ async def test_expiry_erases_successful_report_but_does_not_refund_consumed_cred
  try:
   async with pool.acquire() as c:
    await apply_worker_schema(c)
+   await c.execute("DELETE FROM vision_jobs")
    key=svc.subject_key(owner)
    await c.execute("DELETE FROM vision_credit_ledger WHERE subject_key=$1",key)
    await c.execute("DELETE FROM vision_jobs WHERE subject_key=$1",key)
