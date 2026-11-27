@@ -121,8 +121,8 @@ class VisionWorkerResult(BaseModel):
     model:Literal["@cf/google/gemma-4-26b-a4b-it"]
     replay_analyzed:Literal[False]
     selected:list[int]=Field(min_length=1,max_length=MAX_FRAMES)
-    calls:int=Field(ge=0,le=MAX_FRAMES)
-    results:list[VisionFrameObservation]=Field(max_length=MAX_FRAMES)
+    calls:int=Field(ge=1,le=MAX_FRAMES)
+    results:list[VisionFrameObservation]=Field(min_length=1,max_length=MAX_FRAMES)
     @model_validator(mode="after")
     def bounded_result(self):
         if any(isinstance(t,bool) or t<0 or t>=MAX_CAPTURE_MS for t in self.selected):
@@ -252,8 +252,8 @@ class PostgresVisionJobs:
                 """SELECT id,subject_key,frame_count,total_bytes,expires_at
                    FROM vision_jobs
                    WHERE status='queued' AND expires_at>now()
-                   ORDER BY created_at,id
-                   FOR UPDATE SKIP LOCKED LIMIT 1"""
+                   ORDER BY created_at,id LIMIT 1
+                   FOR UPDATE SKIP LOCKED"""
             )
             if row is None:return None
             lease=uuid4()
@@ -352,7 +352,7 @@ class PostgresVisionJobs:
             rows=await connection.fetch(
                 """SELECT id,subject_key FROM vision_jobs
                    WHERE status='processing' AND lease_expires_at<=now()
-                   ORDER BY lease_expires_at FOR UPDATE SKIP LOCKED LIMIT $1""",limit)
+                   ORDER BY lease_expires_at LIMIT $1 FOR UPDATE SKIP LOCKED""",limit)
             for row in rows:
                 key=row["subject_key"]
                 balance=await connection.fetchval(
@@ -379,7 +379,7 @@ class PostgresVisionJobs:
             rows=await connection.fetch(
                 """SELECT id,subject_key,status FROM vision_jobs
                    WHERE status<>'expired' AND expires_at<=now()
-                   ORDER BY expires_at FOR UPDATE SKIP LOCKED LIMIT $1""",limit)
+                   ORDER BY expires_at LIMIT $1 FOR UPDATE SKIP LOCKED""",limit)
             for row in rows:
                 key=row["subject_key"]
                 if row["status"] in ("queued","processing"):
