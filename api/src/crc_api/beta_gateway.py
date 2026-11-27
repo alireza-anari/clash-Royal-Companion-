@@ -383,17 +383,21 @@ def create_beta_app(
         }
 
     @app.get("/api/v1/vision/capabilities")
-    def vision_capabilities():
+    def vision_capabilities(request: Request):
+        account_enabled = settings.vision_enabled and request.state.verified_subject in settings.vision_subjects
+        reason = None if account_enabled else (
+            "VISION_ACCOUNT_NOT_ELIGIBLE" if settings.vision_enabled else "VISION_NOT_CONFIGURED"
+        )
         return {
-            "schema_version": "1.0", "enabled": settings.vision_enabled,
-            "upload_enabled": settings.vision_enabled, "analysis_enabled": settings.vision_enabled,
-            "credits_enabled": settings.vision_enabled, "account_identity_required": True,
+            "schema_version": "1.0", "enabled": account_enabled, "reason": reason,
+            "upload_enabled": account_enabled, "analysis_enabled": account_enabled,
+            "credits_enabled": account_enabled, "account_identity_required": True,
             "upload_consent_required": True, "external_ai_consent_required": True,
             "max_frames": MAX_FRAMES, "max_frame_bytes": MAX_FRAME_BYTES,
             "max_total_bytes": MAX_TOTAL_BYTES, "max_side": MAX_SIDE,
             "max_capture_ms": MAX_CAPTURE_MS, "image_format": "image/jpeg",
-            "storage": "private-postgresql-bytea" if settings.vision_enabled else None,
-            "processing": "queued" if settings.vision_enabled else "disabled",
+            "storage": "private-postgresql-bytea" if account_enabled else None,
+            "processing": "queued" if account_enabled else "disabled",
         }
 
     def vision_account(request: Request) -> str | None:
