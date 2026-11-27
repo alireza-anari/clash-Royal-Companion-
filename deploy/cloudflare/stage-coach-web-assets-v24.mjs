@@ -1,4 +1,4 @@
-// Stage 24: attach the approved web assets to a zero-traffic gateway candidate.
+// Stage 25: attach the approved web assets to a zero-traffic gateway candidate.
  // Intentionally separate from the existing production PUT deployment script.
 import { readFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
@@ -7,9 +7,9 @@ import path from 'node:path';
 import { ASSET_PATHS, buildAssetManifest, SCRIPT_NAME, PRIVATE_BETA_HOST, LEGACY_LIVE_WORKER_NAME } from './deploy-private-beta.mjs';
 
 export const GATEWAY_OLD='a0b9d034-f7c2-4a3c-abd0-fc86ef5b07fe';
-export const GATEWAY_PIN='ea969d9a-d1a4-4fcf-8bef-15f6d07f0c56';
+export const GATEWAY_PIN='29b0d088-b283-481b-aadc-ffb311113d5c';
 export const LEGACY_OLD='690453ba-6aac-4a28-9951-61ada639ede0';
-export const LEGACY_NEW='a561d2fa-5d4a-4942-9686-9362d9880bc1';
+export const LEGACY_NEW='033a5b30-625d-4e2e-ad02-b26439cf0bba';
 const EXPECTED_BINDINGS=['ASSETS:assets','BETA_AI_CHAT_ENABLED:plain_text','BETA_ALLOW_WORKERS_DEV:plain_text','BETA_ASSERTION_HMAC_HEX:secret_text','BETA_AUTH_AUDIENCE:plain_text','BETA_AUTH_ISSUER:plain_text','BETA_ENABLED:plain_text','BETA_HOSTNAME:plain_text','BETA_INVITE_CODES_JSON:secret_text','BETA_SESSION_HMAC_HEX:secret_text','LEGACY_LIVE:service','PRIVATE_API:vpc_service'].sort();
 function check(ok,code){if(!ok)throw new Error(code);}
 const canonical=value=>value===null||typeof value!=='object'?value:Array.isArray(value)?value.map(canonical):Object.fromEntries(Object.keys(value).sort().map(k=>[k,canonical(value[k])]));
@@ -26,7 +26,7 @@ export function gatewayMetadata(runtime,bindings,completionToken){
  return {main_module:'worker.js',compatibility_date:runtime.compatibility_date,compatibility_flags:runtime.compatibility_flags??[],usage_model:runtime.usage_model,
   bindings:bindings.map(b=>b.type==='assets'?{name:b.name,type:'assets'}:{name:b.name,type:'inherit'}),
   assets:{jwt:completionToken,config:{html_handling:'none',not_found_handling:'404-page',run_worker_first:false}},
-  annotations:{'workers/message':'CRC stage 24: web assets candidate, no normal traffic'}};
+  annotations:{'workers/message':'CRC stage 25: web assets candidate, no normal traffic'}};
 }
 export function readGatewayModule(raw){
  const boundary=raw.split(/\r?\n/)[0];check(boundary.startsWith('--'),'MODULE_FORMAT_CHANGED');
@@ -97,7 +97,7 @@ export async function stageAssets(env=process.env,fetchImpl=fetch){
  const next=await get(gateway+'/versions/'+id);
  check(equivalent(next.resources.bindings,old.resources.bindings)&&equivalent(next.resources.script_runtime,old.resources.script_runtime)&&equivalent(next.resources.script.handlers,old.resources.script.handlers),'NEW_VERSION_SETTINGS_MISMATCH');
  check(exactSplit(await active(gateway),GATEWAY_OLD,GATEWAY_PIN)&&exactSplit(await active(legacy),LEGACY_OLD,LEGACY_NEW)&&await latest(gateway)===id,'CONCURRENT_DEPLOYMENT_CHANGE');
- await request(gateway+'/deployments',{method:'POST',body:{strategy:'percentage',versions:[{version_id:GATEWAY_OLD,percentage:100},{version_id:id,percentage:0}],annotations:{'workers/message':'CRC stage 24: new web assets, zero normal traffic'}}});
+ await request(gateway+'/deployments',{method:'POST',body:{strategy:'percentage',versions:[{version_id:GATEWAY_OLD,percentage:100},{version_id:id,percentage:0}],annotations:{'workers/message':'CRC stage 25: new web assets, zero normal traffic'}}});
  check(exactSplit(await active(gateway),GATEWAY_OLD,id),'ZERO_TRAFFIC_VERIFICATION_FAILED');
  // Check actual returned assets, not merely version metadata. No inference.
  const baseUrl='https://'+PRIVATE_BETA_HOST;
