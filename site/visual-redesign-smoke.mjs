@@ -100,6 +100,14 @@ try{
   assert.equal(await page.locator('#crcHomeHint').isVisible(),false);
   await page.evaluate(()=>location.hash='coach');await page.locator('#page-coach.active').waitFor();
   assert.equal(await page.locator('#crcCoachHint').isVisible(),false);
+  // A new profile with an incomplete deck must not reuse the previous profile's eighth card.
+  await page.evaluate(()=>location.hash='player');await page.locator('#page-player.active').waitFor();
+  await page.locator('#profileFile').setInputFiles({name:'partial-profile.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify({tag:'#TEST456',name:'Partial',cards:owned,currentDeck:owned.slice(0,7)}))});
+  await page.waitForFunction(()=>document.querySelector('#profileSummary').textContent.includes('Partial'));
+  assert.match(await page.locator('#crcIncompleteProfileDeck').textContent(),/7 از ۸/);
+  await page.evaluate(()=>location.hash='home');await page.locator('#page-home.active').waitFor();
+  assert.equal(await page.locator('#homeDeck .deck-slot').count(),8);
+  assert.equal(await page.locator('#homeDeck .deck-slot.empty').count(),1);
   assert.equal(aiCalls,0);
   assert.deepEqual(errors,[]);
   await page.close();
