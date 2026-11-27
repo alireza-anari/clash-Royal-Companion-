@@ -41,6 +41,8 @@ public class VisionUploadPackageTest {
         CaptureBuffer b=ready(120);
         VisionUploadPackage.PreparedUpload result=VisionUploadPackage.build(b,new Session(true,SUBJECT,TOKEN),true,true);
         assertEquals(8,result.frameCount());assertEquals(8*32,result.totalBytes());
+        assertEquals(java.util.List.of(0L,34000L,68000L,102000L,136000L,170000L,204000L,238000L),result.selectedTimes());
+        try{result.selectedTimes().add(100L);fail();}catch(UnsupportedOperationException expected){}
         assertFalse(result.jsonBody().contains(SUBJECT));assertFalse(result.jsonBody().contains(TOKEN));
         assertTrue(result.jsonBody().contains("\"client_request_id\":\""+result.requestId()+"\""));
         assertTrue(result.jsonBody().contains("\"consent_to_upload\":true"));
