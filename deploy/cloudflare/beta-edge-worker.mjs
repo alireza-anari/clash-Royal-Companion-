@@ -13,12 +13,14 @@ const TAG = /^#[A-Z0-9]{3,16}$/;
 const HOST = /^(?=.{4,253}$)[a-z0-9](?:[a-z0-9.-]*[a-z0-9])$/;
 const API_PREFIX = "/api/v1/";
 const MAX_JSON_BYTES = 512 * 1024;
+const MAX_VISION_JSON_BYTES = 3 * 1024 * 1024;
 const COOKIE_NAME = "__Host-crc_beta_session";
 const SESSION_TTL = 8 * 60 * 60;
 const ASSERTION_TTL = 60;
 const HTML_ANCHOR = '<script src="/app.js" defer></script>';
 const LEGACY_LIVE_HOST = "crc-mvp-live-test-20261123.alirezaanari117.workers.dev";
 const SUBJECT = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$/;
+const VISION_ACCOUNT_SUBJECT = /^acct_[a-f0-9]{32}$/;
 const HEX_KEY = /^(?:[a-f0-9]{2}){32}$/;
 const HEX_HASH = /^[a-f0-9]{64}$/;
 
@@ -41,11 +43,18 @@ function privateHost(value,allowWorkersDev=false){
   return h;
 }
 function apiRoute(url,method="GET"){
-  if(method==="POST")return url.pathname==="/api/v1/coach/chat"&&url.search===""?url.pathname:null;
+  if(method==="POST")return ["/api/v1/coach/chat","/api/v1/vision/jobs"].includes(url.pathname)&&url.search===""?url.pathname:null;
+  if(method==="DELETE"){
+    const job=/^\/api\/v1\/vision\/jobs\/([0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i.exec(url.pathname);
+    return job&&url.search===""?"/api/v1/vision/jobs/"+job[1].toLowerCase():null;
+  }
   if(method!=="GET")return null;
   if(url.pathname==="/api/v1/health/ready"&&url.search==="")return url.pathname;
   if(url.pathname==="/api/v1/capabilities"&&url.search==="")return url.pathname;
   if(url.pathname==="/api/v1/catalog/cards"&&url.search==="")return url.pathname;
+  if(url.pathname==="/api/v1/vision/capabilities"&&url.search==="")return url.pathname;
+  const job=/^\/api\/v1\/vision\/jobs\/([0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i.exec(url.pathname);
+  if(job&&url.search==="")return "/api/v1/vision/jobs/"+job[1].toLowerCase();
   const match=/^\/api\/v1\/players\/([^/]+)\/snapshot$/.exec(url.pathname);
   if(!match)return null;
   let tag;
@@ -219,8 +228,10 @@ async function routeRequest(request,env){
   const config=authConfig(env,expected);
   if(!config)return json(503,"BETA_AUTH_NOT_CONFIGURED");
   const api=url.pathname==="/api"||url.pathname.startsWith("/api/");
+  const visionDelete=request.method==="DELETE"&&/^\/api\/v1\/vision\/jobs\/[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(url.pathname)&&url.search==="";
   if(!["GET","HEAD"].includes(request.method)&&
-     !(request.method==="POST"&&["/api/v1/auth/login","/api/v1/auth/logout","/api/v1/coach/chat"].includes(url.pathname)))
+     !(request.method==="POST"&&["/api/v1/auth/login","/api/v1/auth/logout","/api/v1/coach/chat","/api/v1/vision/jobs"].includes(url.pathname))&&
+     !visionDelete)
     return json(405,"METHOD_NOT_ALLOWED");
 
   if(request.method==="POST"&&url.pathname==="/api/v1/auth/login")
@@ -261,12 +272,26 @@ async function routeRequest(request,env){
     });
 
   if(api){
-    if(!["GET","POST"].includes(request.method))return json(405,"METHOD_NOT_ALLOWED");
+    if(!["GET","POST","DELETE"].includes(request.method))return json(405,"METHOD_NOT_ALLOWED");
     const route=apiRoute(url,request.method);
     if(!route)return json(404,"NOT_FOUND");
     if(request.headers.get("Origin")&&request.headers.get("Origin")!=="https://"+expected)
       return json(403,"CROSS_ORIGIN_DENIED");
     if(request.headers.get("Sec-Fetch-Site")==="cross-site")return json(403,"CROSS_ORIGIN_DENIED");
+    if(route==="/api/v1/vision/capabilities"&&
+       (env.BETA_VISION_ENABLED!=="true"||!VISION_ACCOUNT_SUBJECT.test(session.subject))){
+      const reason=!VISION_ACCOUNT_SUBJECT.test(session.subject)?"ACCOUNT_IDENTITY_REQUIRED":"VISION_NOT_ENABLED";
+      return new Response(JSON.stringify({schema_version:"1.0",enabled:false,upload_enabled:false,
+        analysis_enabled:false,credits_enabled:false,account_identity_required:true,
+        upload_consent_required:true,external_ai_consent_required:true,max_frames:8,
+        max_frame_bytes:262144,max_total_bytes:2097152,max_side:320,max_capture_ms:240000,
+        image_format:"image/jpeg",reason}),{status:200,headers:{"Content-Type":"application/json; charset=utf-8",
+        "Cache-Control":"no-store","X-Content-Type-Options":"nosniff","Referrer-Policy":"no-referrer"}});
+    }
+    if(route.startsWith("/api/v1/vision/")){
+      if(env.BETA_VISION_ENABLED!=="true")return json(503,"VISION_ANALYSIS_DISABLED");
+      if(!VISION_ACCOUNT_SUBJECT.test(session.subject))return json(403,"VISION_ACCOUNT_IDENTITY_REQUIRED");
+    }
     const useLegacy = route==="/api/v1/capabilities" ||
       route.startsWith("/api/v1/players/") ||
       (request.method==="POST" && route==="/api/v1/coach/chat");
@@ -281,13 +306,26 @@ async function routeRequest(request,env){
     let bodyForOrigin;
     const upstreamHost=useLegacy?LEGACY_LIVE_HOST:expected;
     if(request.method==="POST"){
-      if(env.BETA_AI_CHAT_ENABLED!=="true")return json(503,"AI_COACH_DISABLED");
       if(!sameOrigin(request,expected))return json(403,"CROSS_ORIGIN_DENIED");
-      bodyForOrigin=await boundedJson(request,4096).catch(()=>null);
-      if(bodyForOrigin===null)return json(422,"INVALID_INPUT");
-      const parsed=JSON.parse(new TextDecoder().decode(bodyForOrigin));
-      if(!parsed||parsed.consent_to_external_ai!==true)return json(403,"AI_CONSENT_REQUIRED");
+      if(route==="/api/v1/coach/chat"){
+        if(env.BETA_AI_CHAT_ENABLED!=="true")return json(503,"AI_COACH_DISABLED");
+        bodyForOrigin=await boundedJson(request,4096).catch(()=>null);
+        if(bodyForOrigin===null)return json(422,"INVALID_INPUT");
+        const parsed=JSON.parse(new TextDecoder().decode(bodyForOrigin));
+        if(!parsed||parsed.consent_to_external_ai!==true)return json(403,"AI_CONSENT_REQUIRED");
+        if(typeof parsed.question!=="string"||parsed.question.length>2000)return json(422,"INVALID_INPUT");
+      }else if(route==="/api/v1/vision/jobs"){
+        bodyForOrigin=await boundedJson(request,MAX_VISION_JSON_BYTES).catch(()=>null);
+        if(bodyForOrigin===null)return json(422,"INVALID_INPUT");
+        const parsed=JSON.parse(new TextDecoder().decode(bodyForOrigin));
+        if(!parsed||parsed.consent_to_upload!==true||parsed.consent_to_external_ai!==true)
+          return json(403,"VISION_CONSENT_REQUIRED");
+      }else return json(404,"NOT_FOUND");
       headers.set("Content-Type","application/json");
+      headers.set("Origin","https://"+upstreamHost);
+    }
+    if(request.method==="DELETE"){
+      if(!sameOrigin(request,expected))return json(403,"CROSS_ORIGIN_DENIED");
       headers.set("Origin","https://"+upstreamHost);
     }
     const target=(useLegacy?"https://":"http://")+upstreamHost+route;

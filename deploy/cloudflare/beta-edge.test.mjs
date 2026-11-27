@@ -26,6 +26,12 @@ const SESSION=signJwt(SESSION_KEY,{
   jti:'test-session-token-identifier'
 });
 const SESSION_HEADER={Cookie:'__Host-crc_beta_session='+SESSION};
+const ACCOUNT_SUBJECT='acct_'+'a'.repeat(32);
+const ACCOUNT_SESSION=signJwt(SESSION_KEY,{
+  iss:BASE,aud:'crc-beta-session',sub:ACCOUNT_SUBJECT,iat:now,exp:now+8*60*60,
+  jti:'account-session-token-identifier'
+});
+const ACCOUNT_SESSION_HEADER={Cookie:'__Host-crc_beta_session='+ACCOUNT_SESSION};
 const snapshot={
   profile:{tag:'#ABC123',display_name:'Test Player',trophies:7000,king_tower_level:14,arena:null},
   current_deck:{card_ids:[1,2,3,4,5,6,7,8],support_card_ids:[]},
@@ -77,6 +83,11 @@ test('API allowlist is strict and normalizes Player Tags',()=>{
   assert.equal(apiRoute(new URL(BASE+'/api/v1/health/ready')),'/api/v1/health/ready');
   assert.equal(apiRoute(new URL(BASE+'/api/v1/capabilities')),'/api/v1/capabilities');
   assert.equal(apiRoute(new URL(BASE+'/api/v1/catalog/cards')),'/api/v1/catalog/cards');
+  assert.equal(apiRoute(new URL(BASE+'/api/v1/vision/capabilities')),'/api/v1/vision/capabilities');
+  const job='/api/v1/vision/jobs/123e4567-e89b-42d3-a456-426614174000';
+  assert.equal(apiRoute(new URL(BASE+job),'GET'),job);
+  assert.equal(apiRoute(new URL(BASE+job),'DELETE'),job);
+  assert.equal(apiRoute(new URL(BASE+'/api/v1/vision/jobs?x=1'),'POST'),null);
   assert.equal(apiRoute(new URL(BASE+'/api/v1/players/%23abc123/snapshot?limit=5')),
     '/api/v1/players/%23ABC123/snapshot?limit=5');
   for(const path of [
@@ -288,4 +299,70 @@ test('unconfigured static assets fail closed and service worker stays disabled',
   assert.equal((await routeRequest(req('/'),env)).status,503);
   const normal=sandbox();
   assert.equal((await routeRequest(req('/sw.js'),normal.env)).status,410);
+});
+
+
+test('vision capability is fail-closed for the current shared beta subject',async()=>{
+  const {env,privateCalls}=sandbox({BETA_VISION_ENABLED:'true'});
+  const response=await routeRequest(req('/api/v1/vision/capabilities'),env);
+  assert.equal(response.status,200);
+  const data=await response.json();
+  assert.equal(data.enabled,false);
+  assert.equal(data.upload_enabled,false);
+  assert.equal(data.reason,'ACCOUNT_IDENTITY_REQUIRED');
+  assert.equal(privateCalls.length,0);
+});
+
+test('vision upload requires explicit feature, unique account identity and both consents',async()=>{
+  const body=JSON.stringify({client_request_id:'123e4567-e89b-42d3-a456-426614174000',
+    consent_to_upload:true,consent_to_external_ai:true,frames:[]});
+  const disabled=sandbox({BETA_VISION_ENABLED:'false'});
+  const noFeature=await routeRequest(req('/api/v1/vision/jobs',{
+    ...SESSION_HEADER,Origin:BASE,'Content-Type':'application/json'
+  },{method:'POST',body}),disabled.env);
+  assert.equal(noFeature.status,503);
+  assert.equal((await noFeature.json()).error.code,'VISION_ANALYSIS_DISABLED');
+  assert.equal(disabled.privateCalls.length,0);
+
+  const shared=sandbox({BETA_VISION_ENABLED:'true'});
+  const sharedDenied=await routeRequest(req('/api/v1/vision/jobs',{
+    ...SESSION_HEADER,Origin:BASE,'Content-Type':'application/json'
+  },{method:'POST',body}),shared.env);
+  assert.equal(sharedDenied.status,403);
+  assert.equal((await sharedDenied.json()).error.code,'VISION_ACCOUNT_IDENTITY_REQUIRED');
+  assert.equal(shared.privateCalls.length,0);
+
+  const account=sandbox({BETA_VISION_ENABLED:'true'});
+  const consentDenied=await routeRequest(req('/api/v1/vision/jobs',{
+    ...ACCOUNT_SESSION_HEADER,Origin:BASE,'Content-Type':'application/json'
+  },{method:'POST',body:JSON.stringify({consent_to_upload:true,consent_to_external_ai:false})}),account.env);
+  assert.equal(consentDenied.status,403);
+  assert.equal((await consentDenied.json()).error.code,'VISION_CONSENT_REQUIRED');
+  assert.equal(account.privateCalls.length,0);
+
+  const response=await routeRequest(req('/api/v1/vision/jobs',{
+    ...ACCOUNT_SESSION_HEADER,Origin:BASE,'Content-Type':'application/json'
+  },{method:'POST',body}),account.env);
+  assert.equal(response.status,200);
+  assert.equal(account.privateCalls.length,1);
+  const forwarded=account.privateCalls[0];
+  assert.equal(new URL(forwarded.url).pathname,'/api/v1/vision/jobs');
+  assert.equal(forwarded.headers.get('Cookie'),null);
+  assert.equal(forwarded.headers.get('Authorization'),null);
+  const claims=JSON.parse(Buffer.from(forwarded.headers.get('X-CRC-Worker-Assertion').split('.')[1],'base64url').toString());
+  assert.equal(claims.sub,ACCOUNT_SUBJECT);
+  assert.equal(await forwarded.text(),body);
+});
+
+test('vision job status and deletion use only the private API and require account identity',async()=>{
+  const {env,privateCalls,legacyCalls}=sandbox({BETA_VISION_ENABLED:'true'});
+  const path='/api/v1/vision/jobs/123e4567-e89b-42d3-a456-426614174000';
+  const status=await routeRequest(req(path,ACCOUNT_SESSION_HEADER),env);
+  assert.equal(status.status,200);
+  const removed=await routeRequest(req(path,{...ACCOUNT_SESSION_HEADER,Origin:BASE},{method:'DELETE'}),env);
+  assert.equal(removed.status,200);
+  assert.equal(privateCalls.length,2);
+  assert.equal(new URL(privateCalls[0].url).pathname,path);
+  assert.equal(privateCalls[1].method,'DELETE');
+  assert.equal(legacyCalls.length,0);
 });

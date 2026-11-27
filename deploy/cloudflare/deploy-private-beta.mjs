@@ -52,6 +52,7 @@ export function buildWorkerMetadata(assetJwt) {
     "BETA_AUTH_AUDIENCE",
     "BETA_ALLOW_WORKERS_DEV",
     "BETA_AI_CHAT_ENABLED",
+    "BETA_VISION_ENABLED",
     "BETA_SESSION_HMAC_HEX",
     "BETA_ASSERTION_HMAC_HEX",
     "BETA_INVITE_CODES_JSON",
