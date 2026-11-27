@@ -32,6 +32,7 @@ public final class VisionApiClient {
         public String requestId(){return payload.requestId();}
         public int frameCount(){return payload.frameCount();}
         public int totalBytes(){return payload.totalBytes();}
+        public java.util.List<Long> selectedTimes(){return payload.selectedTimes();}
         @Override public String toString(){return "Vision attempt: "+payload.requestId();}
     }
 
