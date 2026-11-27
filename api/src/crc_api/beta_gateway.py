@@ -32,6 +32,7 @@ from .ai_daily_budget import SharedAIDailyBudget, AIDailyBudgetExceeded
 from .ssm_secret import load_openrouter_key_from_ssm, SSMSecretUnavailable
 from .beta_db_tls import verified_beta_ssl_context
 from .beta_db_secret import credential_dsn, BetaDatabaseCredentialUnavailable
+from .identity import (OIDCIdentityService, OIDCExchangeRequest, OIDCInvalidToken, OIDCNonceReplay, OIDCProviderUnavailable)
 from .vision_jobs import (PostgresVisionJobs, VisionJobRequest, VisionCreditsExhausted,
                            VisionIdempotencyConflict, VisionInputError, VisionJobStateConflict, VisionJobNotFound,
                            VisionWorkerResult, VisionWorkerCompleteRequest, VisionWorkerFailRequest, VISION_WORKER_SUBJECT,
@@ -63,12 +64,22 @@ class BetaConfig:
     vision_worker_requested: bool = False
     vision_subjects: frozenset[str] = frozenset()
     vision_hmac_secret: bytes = b""
+    oidc_issuer: str = ""
+    oidc_client_id: str = ""
+    oidc_jwks_url: str = ""
+    oidc_redirect_uri: str = ""
+    account_hmac_secret: bytes = b""
 
     @property
     def vision_enabled(self) -> bool:
         return (self.vision_requested and self.vision_processor_ready and bool(self.vision_subjects)
                 and self.vision_subjects.issubset(self.allowed_subjects)
                 and len(self.vision_hmac_secret) >= 32)
+
+    @property
+    def oidc_enabled(self) -> bool:
+        return (bool(self.oidc_issuer and self.oidc_client_id and self.oidc_jwks_url and self.oidc_redirect_uri)
+                and len(self.account_hmac_secret) >= 32)
 
     @property
     def vision_worker_enabled(self) -> bool:
@@ -110,10 +121,20 @@ class BetaConfig:
             vision_secret = bytes.fromhex(os.environ.get("CRC_BETA_VISION_HMAC_HEX", ""))
         except ValueError:
             raise UnsafeBetaConfiguration("Invalid vision signing key configuration.") from None
+        oidc_issuer = os.environ.get("CRC_BETA_OIDC_ISSUER", "").strip()
+        oidc_client_id = os.environ.get("CRC_BETA_OIDC_CLIENT_ID", "").strip()
+        oidc_jwks_url = os.environ.get("CRC_BETA_OIDC_JWKS_URL", "").strip()
+        oidc_redirect_uri = os.environ.get("CRC_BETA_OIDC_REDIRECT_URI", "").strip()
+        try:
+            account_secret = bytes.fromhex(os.environ.get("CRC_BETA_ACCOUNT_ID_HMAC_HEX", ""))
+        except ValueError:
+            raise UnsafeBetaConfiguration("Invalid account identity key configuration.") from None
         config = cls(host, issuer, audience, subjects, secret_bytes, assertion_bytes, dsn,
                      live_lookup_enabled=live, vision_requested=vision_requested,
                      vision_processor_ready=vision_processor_ready, vision_subjects=vision_subjects,
-                     vision_hmac_secret=vision_secret)
+                     vision_hmac_secret=vision_secret, oidc_issuer=oidc_issuer,
+                     oidc_client_id=oidc_client_id, oidc_jwks_url=oidc_jwks_url,
+                     oidc_redirect_uri=oidc_redirect_uri, account_hmac_secret=account_secret)
         config.validate()
         return config
 
@@ -139,6 +160,25 @@ class BetaConfig:
         if self.vision_subjects and (not self.vision_subjects.issubset(self.allowed_subjects) or
                                      any(not ACCOUNT_SUBJECT.fullmatch(s) for s in self.vision_subjects)):
             raise UnsafeBetaConfiguration("Vision subjects must be explicit stable account identities in the invite allowlist.")
+        if self.vision_worker_requested and not self.vision_enabled:
+            raise UnsafeBetaConfiguration("Vision worker cannot be enabled before the vision processor and account gates are ready.")
+        oidc_values = (self.oidc_issuer, self.oidc_client_id, self.oidc_jwks_url, self.oidc_redirect_uri)
+        if any(oidc_values) and not all(oidc_values):
+            raise UnsafeBetaConfiguration("OIDC issuer, client ID, JWKS URL and redirect URI must be configured together.")
+        if all(oidc_values):
+            issuer_url, jwks_url, redirect_url = map(urlsplit, (self.oidc_issuer, self.oidc_jwks_url, self.oidc_redirect_uri))
+            if (issuer_url.scheme != "https" or not issuer_url.hostname or issuer_url.username is not None or issuer_url.password is not None
+                    or issuer_url.query or issuer_url.fragment or not self.oidc_client_id or len(self.oidc_client_id) > 512
+                    or jwks_url.scheme != "https" or not jwks_url.hostname or jwks_url.username is not None or jwks_url.password is not None
+                    or jwks_url.fragment or len(self.account_hmac_secret) < 32):
+                raise UnsafeBetaConfiguration("OIDC provider or stable account identity key is invalid.")
+            if redirect_url.scheme == "https":
+                redirect_ok = bool(redirect_url.hostname and redirect_url.username is None and redirect_url.password is None and not redirect_url.fragment)
+            else:
+                redirect_ok = bool(re.fullmatch(r"[a-z][a-z0-9+.-]{1,63}", redirect_url.scheme)
+                                    and not redirect_url.netloc and redirect_url.path.startswith("/") and not redirect_url.fragment)
+            if not redirect_ok:
+                raise UnsafeBetaConfiguration("OIDC native redirect URI is invalid.")
         try:
             parsed = urlsplit(self.database_dsn)
             if parsed.scheme not in ("postgres", "postgresql") or not parsed.hostname:
@@ -165,6 +205,7 @@ def create_beta_app(
     ai_client: OpenRouterCoach | None = None,
     ai_budget: SharedAIDailyBudget | None = None,
     vision_jobs: PostgresVisionJobs | None = None,
+    oidc_service: OIDCIdentityService | None = None,
 ) -> FastAPI:
     """Separate --factory ASGI target, never imported by local crc_api.main.
 
@@ -182,7 +223,7 @@ def create_beta_app(
     if settings.live_lookup_enabled and not api.configured:
         raise UnsafeBetaConfiguration("Private beta Supercell provider is not configured.")
     identity_subjects = settings.allowed_subjects | ({VISION_WORKER_SUBJECT} if settings.vision_worker_requested else set())
-    identity = verifier or WorkerAssertionVerifier(settings.auth_issuer, settings.audience, frozenset(identity_subjects), settings.worker_assertion_secret)
+    identity = verifier or WorkerAssertionVerifier(settings.auth_issuer, settings.audience, frozenset(identity_subjects), settings.worker_assertion_secret, allow_account_subjects=settings.oidc_enabled)
     budget = quota or PostgresSharedQuota(settings.quota_hmac_secret)
     # Even a configured API key cannot activate inference by itself.
     ai_switch = os.environ.get("CRC_BETA_AI_ENABLED", "false").strip().lower() == "true"
@@ -209,6 +250,11 @@ def create_beta_app(
     )
     ai_active = ai_switch and chat.configured
     vision_service = vision_jobs or (PostgresVisionJobs(settings.vision_hmac_secret) if settings.vision_enabled else None)
+    oidc_identity = oidc_service or (OIDCIdentityService(
+        issuer=settings.oidc_issuer, client_id=settings.oidc_client_id, jwks_url=settings.oidc_jwks_url,
+        redirect_uri=settings.oidc_redirect_uri, beta_issuer=settings.auth_issuer,
+        worker_secret=settings.worker_assertion_secret, account_secret=settings.account_hmac_secret,
+    ) if settings.oidc_enabled else None)
 
     if pool_factory is None:
         async def default_pool(dsn: str):
@@ -248,6 +294,7 @@ def create_beta_app(
     app.state.ai_chat = chat
     app.state.ai_daily_budget = daily_ai
     app.state.vision_jobs = vision_service
+    app.state.oidc_identity = oidc_identity
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=[settings.hostname])
 
     def error(status: int, code: str, rid: str, retry: int | None = None):
@@ -344,6 +391,41 @@ def create_beta_app(
             return normalize_tag(value)
         except ValueError as exc:
             raise HTTPException(status_code=422, detail="INVALID_PLAYER_TAG") from exc
+
+    @app.get("/api/v1/auth/oidc/config")
+    def oidc_public_config(request: Request):
+        service=request.app.state.oidc_identity
+        if service is None:
+            return error(503,"OIDC_SIGN_IN_DISABLED",request.state.request_id)
+        return service.public_config()
+
+    @app.post("/api/v1/auth/oidc/nonce")
+    def oidc_nonce(request: Request):
+        service=request.app.state.oidc_identity
+        if service is None:
+            return error(503,"OIDC_SIGN_IN_DISABLED",request.state.request_id)
+        try:
+            return service.create_nonce()
+        except OIDCProviderUnavailable:
+            return error(503,"OIDC_SIGN_IN_DISABLED",request.state.request_id)
+
+    @app.post("/api/v1/auth/oidc/exchange")
+    async def oidc_exchange(payload: OIDCExchangeRequest,request: Request):
+        rid=request.state.request_id
+        service=request.app.state.oidc_identity
+        if service is None:
+            return error(503,"OIDC_SIGN_IN_DISABLED",rid)
+        try:
+            async with request.app.state.pool.acquire() as connection:
+                return await service.exchange(connection,payload.id_token,payload.nonce_token)
+        except OIDCNonceReplay:
+            return error(409,"OIDC_NONCE_REPLAYED",rid)
+        except OIDCInvalidToken:
+            return error(401,"OIDC_TOKEN_INVALID",rid)
+        except OIDCProviderUnavailable:
+            return error(503,"OIDC_PROVIDER_UNAVAILABLE",rid)
+        except Exception:
+            return error(503,"OIDC_IDENTITY_UNAVAILABLE",rid)
 
     @app.get("/api/v1/capabilities")
     def capabilities():
