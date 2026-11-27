@@ -2,10 +2,9 @@ package com.crc.companion;
 
 import org.junit.Test;
 import static org.junit.Assert.*;
-import android.util.Base64;
-import org.json.JSONObject;
-import org.json.JSONArray;
-import java.nio.charset.StandardCharsets;
+import java.util.Base64;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class VisionUploadPackageTest {
     private static final String SUBJECT="acct_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
@@ -38,23 +37,22 @@ public class VisionUploadPackageTest {
         try{VisionUploadPackage.build(b,new Session(true,SUBJECT,""),true,true);fail();}
         catch(SecurityException expected){}
     }
-    @Test public void buildsOnlyBoundedPostBattleManifestAndNeverEmbedsAccountCredentials() throws Exception {
+    @Test public void buildsOnlyBoundedPostBattleManifestAndNeverEmbedsAccountCredentials(){
         CaptureBuffer b=ready(120);
         VisionUploadPackage.PreparedUpload result=VisionUploadPackage.build(b,new Session(true,SUBJECT,TOKEN),true,true);
         assertEquals(8,result.frameCount());assertEquals(8*32,result.totalBytes());
         assertFalse(result.jsonBody().contains(SUBJECT));assertFalse(result.jsonBody().contains(TOKEN));
-        JSONObject root=new JSONObject(result.jsonBody());
-        assertEquals(result.requestId(),root.getString("client_request_id"));
-        assertTrue(root.getBoolean("consent_to_upload"));assertTrue(root.getBoolean("consent_to_external_ai"));
-        JSONArray frames=root.getJSONArray("frames");assertEquals(8,frames.length());
-        long previous=-1;
-        for(int i=0;i<frames.length();i++){
-            JSONObject frame=frames.getJSONObject(i);
-            assertEquals("image/jpeg",frame.getString("mime"));
-            assertTrue(frame.getLong("at_ms")>previous);previous=frame.getLong("at_ms");
-            byte[] decoded=Base64.decode(frame.getString("data_base64"),Base64.NO_WRAP);
-            assertEquals(32,decoded.length);assertEquals(255,decoded[0]&255);
+        assertTrue(result.jsonBody().contains("\"client_request_id\":\""+result.requestId()+"\""));
+        assertTrue(result.jsonBody().contains("\"consent_to_upload\":true"));
+        assertTrue(result.jsonBody().contains("\"consent_to_external_ai\":true"));
+        Pattern pattern=Pattern.compile("\\{\"at_ms\":(\\d+),\"mime\":\"image/jpeg\",\"width\":180,\"height\":320,\"data_base64\":\"([A-Za-z0-9+/=]+)\"\\}");
+        Matcher matcher=pattern.matcher(result.jsonBody());int count=0;long previous=-1;
+        while(matcher.find()){
+            long at=Long.parseLong(matcher.group(1));assertTrue(at>previous);previous=at;
+            byte[] decoded=Base64.getDecoder().decode(matcher.group(2));
+            assertEquals(32,decoded.length);assertEquals(255,decoded[0]&255);count++;
         }
+        assertEquals(8,count);
         assertFalse(result.toString().contains("data_base64"));
     }
     @Test public void refusesActiveOrMissingCapture(){

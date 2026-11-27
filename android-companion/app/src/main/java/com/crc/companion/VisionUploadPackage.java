@@ -1,10 +1,6 @@
 package com.crc.companion;
 
-import android.util.Base64;
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
-import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.List;
 import java.util.UUID;
 import java.util.regex.Pattern;
@@ -38,8 +34,7 @@ public final class VisionUploadPackage {
     private VisionUploadPackage() {}
 
     public static PreparedUpload build(CaptureBuffer buffer,AccountSession session,
-                                        boolean uploadConsent,boolean externalAiConsent)
-            throws JSONException {
+                                        boolean uploadConsent,boolean externalAiConsent) {
         if(!uploadConsent||!externalAiConsent)throw new SecurityException("Both upload and external AI consent are required.");
         if(session==null||!session.isAuthenticated())throw new SecurityException("Account sign-in is required.");
         String subject=session.stableAccountSubject();
@@ -52,11 +47,14 @@ public final class VisionUploadPackage {
         if(indices.isEmpty()||indices.size()>MAX_FRAMES)
             throw new IllegalArgumentException("No bounded post-battle frames are available.");
 
-        JSONArray frames=new JSONArray();
+        String id=UUID.randomUUID().toString();
+        StringBuilder json=new StringBuilder(1024);
+        json.append("{\"client_request_id\":\"").append(id)
+            .append("\",\"consent_to_upload\":true,\"consent_to_external_ai\":true,\"frames\":[");
         int total=0;
         long previous=-1;
-        for(int index:indices){
-            CaptureBuffer.Frame frame=buffer.frame(index);
+        for(int i=0;i<indices.size();i++){
+            CaptureBuffer.Frame frame=buffer.frame(indices.get(i));
             if(frame==null)throw new IllegalStateException("Capture frame is no longer available.");
             byte[] jpeg=frame.jpeg();
             if(frame.atMs()<=previous||frame.atMs()<0||frame.atMs()>=CaptureBuffer.DURATION_MS||
@@ -67,21 +65,15 @@ public final class VisionUploadPackage {
                 throw new IllegalArgumentException("Captured frame does not meet the upload contract.");
             previous=frame.atMs();total+=jpeg.length;
             if(total>MAX_TOTAL_BYTES)throw new IllegalArgumentException("Upload exceeds the total image budget.");
-            JSONObject item=new JSONObject();
-            item.put("at_ms",frame.atMs());
-            item.put("mime","image/jpeg");
-            item.put("width",frame.width());
-            item.put("height",frame.height());
-            item.put("data_base64",Base64.encodeToString(jpeg,Base64.NO_WRAP));
-            frames.put(item);
+            if(i>0)json.append(',');
+            json.append("{\"at_ms\":").append(frame.atMs())
+                .append(",\"mime\":\"image/jpeg\",\"width\":").append(frame.width())
+                .append(",\"height\":").append(frame.height())
+                .append(",\"data_base64\":\"")
+                .append(Base64.getEncoder().encodeToString(jpeg)).append("\"}");
         }
-        String id=UUID.randomUUID().toString();
-        JSONObject body=new JSONObject();
-        body.put("client_request_id",id);
-        body.put("consent_to_upload",true);
-        body.put("consent_to_external_ai",true);
-        body.put("frames",frames);
-        // The account subject and access token are deliberately excluded from JSON.
-        return new PreparedUpload(id,body.toString(),indices.size(),total);
+        json.append("]}");
+        // Account subject and bearer token are deliberately excluded from JSON.
+        return new PreparedUpload(id,json.toString(),indices.size(),total);
     }
 }
