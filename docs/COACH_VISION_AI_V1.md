@@ -22,3 +22,7 @@ Workers AI official model docs and pricing reviewed 2026-11-27:
 2. Manual frame-level ground truth with independent review; actual model comparison and latency/usage logs. Suggested initial targets (not achieved): hand F1 >=0.90, visible elixir exact >=0.90 across labeled frames, unit F1 >=0.80, plus review of false positives, missed observations and cost. No tactical conclusions without validated temporal tracking and battle boundaries.
 3. Native Android MediaProjection and iOS feasibility; post-battle only. No game automation.
 4. Authenticated upload, consent, image validation/redaction, encrypted short-lived storage, deletion and per-user access isolation; explicit reserved analysis credit and idempotent job handling. Separate included analyses and additional packages only after actual unit economics. No new service enabled.
+
+
+## Stage 15 — integration boundary
+The private backend now contains a draft PostgreSQL job queue/credit ledger and gated API routes. The edge gateway has an exact allowlist and rejects the current shared beta session as a user identity. The migration is not applied; no processor, cleanup scheduler, credits or uploads are enabled. See COACH_VISION_INTEGRATION_V1.md.

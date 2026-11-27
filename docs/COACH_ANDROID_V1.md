@@ -18,3 +18,7 @@ Dedicated PR workflow compiles debug APK and runs JVM tests covering state, samp
 - https://supercell.com/en/fan-content-policy/ (review before distribution and paid coaching; no game modification or live tactical assist).
 
 Next: native device validation and an independently reviewed, separately consented post-battle vision upload/analysis path with per-user identity, credits, retention and deletion. iOS ReplayKit feasibility is a separate task. No billing or production model adapter activated.
+
+
+## Stage 15 — upload manifest preparation
+The Android project now defines an AccountSession contract and a VisionUploadPackage builder. It only prepares a bounded in-memory manifest after explicit upload and external-AI consent and requires a stable acct_ account identity. No OIDC provider, account session implementation, Internet permission or HTTP upload exists yet. See COACH_VISION_INTEGRATION_V1.md.
