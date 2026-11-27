@@ -33,6 +33,7 @@ from .ssm_secret import load_openrouter_key_from_ssm, SSMSecretUnavailable
 from .beta_db_tls import verified_beta_ssl_context
 from .beta_db_secret import credential_dsn, BetaDatabaseCredentialUnavailable
 from .identity import (OIDCIdentityService, OIDCExchangeRequest, OIDCInvalidToken, OIDCNonceReplay, OIDCProviderUnavailable)
+from .ssm_secret import load_account_identity_key_from_ssm, ACCOUNT_ID_PARAMETER_NAME, AccountIdentityKeyUnavailable
 from .vision_jobs import (PostgresVisionJobs, VisionJobRequest, VisionCreditsExhausted,
                            VisionIdempotencyConflict, VisionInputError, VisionJobStateConflict, VisionJobNotFound,
                            VisionWorkerResult, VisionWorkerCompleteRequest, VisionWorkerFailRequest, VISION_WORKER_SUBJECT,
@@ -126,8 +127,16 @@ class BetaConfig:
         oidc_client_id = os.environ.get("CRC_BETA_OIDC_CLIENT_ID", "").strip()
         oidc_jwks_url = os.environ.get("CRC_BETA_OIDC_JWKS_URL", "").strip()
         oidc_redirect_uri = os.environ.get("CRC_BETA_OIDC_REDIRECT_URI", "").strip()
+        account_secret_hex = os.environ.get("CRC_BETA_ACCOUNT_ID_HMAC_HEX", "").strip()
+        if any((oidc_issuer, oidc_client_id, oidc_jwks_url, oidc_redirect_uri)) and not account_secret_hex:
+            try:
+                account_secret_hex = load_account_identity_key_from_ssm(
+                    enabled=True, parameter=ACCOUNT_ID_PARAMETER_NAME
+                )
+            except AccountIdentityKeyUnavailable:
+                raise UnsafeBetaConfiguration("Stable account identity key is unavailable.") from None
         try:
-            account_secret = bytes.fromhex(os.environ.get("CRC_BETA_ACCOUNT_ID_HMAC_HEX", ""))
+            account_secret = bytes.fromhex(account_secret_hex)
         except ValueError:
             raise UnsafeBetaConfiguration("Invalid account identity key configuration.") from None
         config = cls(host, issuer, audience, subjects, secret_bytes, assertion_bytes, dsn,

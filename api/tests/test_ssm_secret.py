@@ -7,6 +7,7 @@ import pytest
 
 from crc_api.ssm_secret import (
     load_openrouter_key_from_ssm, SSMSecretUnavailable, PARAMETER_NAME,
+    load_account_identity_key_from_ssm, AccountIdentityKeyUnavailable, ACCOUNT_ID_PARAMETER_NAME,
 )
 
 
@@ -113,3 +114,33 @@ def test_aws_timeout_fails_closed_without_leak():
             enabled=True, parameter=PARAMETER_NAME, runner=timed_out,
         )
     assert SAMPLE_KEY not in str(exc.value)
+
+
+def test_account_id_key_loader_is_disabled_without_oidc_configuration():
+    calls=[]
+    assert load_account_identity_key_from_ssm(enabled=False,parameter=ACCOUNT_ID_PARAMETER_NAME,
+        runner=success_runner(calls))==""
+    assert calls==[]
+
+def test_account_id_key_loader_reads_only_exact_64_hex_secure_parameter():
+    value="a1"*32;calls=[]
+    def runner(argv,**options):
+        calls.append((argv,options))
+        return SimpleNamespace(returncode=0,stderr="",stdout=json.dumps({"Parameter":{
+            "Name":ACCOUNT_ID_PARAMETER_NAME,"Type":"SecureString","Value":value}}))
+    assert load_account_identity_key_from_ssm(enabled=True,parameter=ACCOUNT_ID_PARAMETER_NAME,runner=runner)==value
+    assert calls[0][0][calls[0][0].index("--name")+1]==ACCOUNT_ID_PARAMETER_NAME
+
+@pytest.mark.parametrize("value",["", "x"*64, "a"*63, "a"*64+"\\nsecret"])
+def test_account_id_key_loader_rejects_malformed_secret_values(value):
+    def runner(argv,**options):
+        return SimpleNamespace(returncode=0,stderr="",stdout=json.dumps({"Parameter":{
+            "Name":ACCOUNT_ID_PARAMETER_NAME,"Type":"SecureString","Value":value}}))
+    with pytest.raises(AccountIdentityKeyUnavailable):
+        load_account_identity_key_from_ssm(enabled=True,parameter=ACCOUNT_ID_PARAMETER_NAME,runner=runner)
+
+def test_account_id_key_loader_rejects_other_ssm_paths_without_aws_call():
+    calls=[]
+    with pytest.raises(AccountIdentityKeyUnavailable):
+        load_account_identity_key_from_ssm(enabled=True,parameter=PARAMETER_NAME,runner=success_runner(calls))
+    assert calls==[]
