@@ -378,3 +378,72 @@ test('mobile bearer token alone is not accepted until device identity exchange e
   assert.equal((await response.json()).error.code,'SESSION_REQUIRED');
   assert.equal(privateCalls.length,0);
 });
+
+
+test('vision scheduled processor stays disabled unless both worker and feature gates are explicitly enabled',async()=>{
+ const {runVisionQueue}=await import('./beta-edge-worker.mjs');
+ const {env,privateCalls}=sandbox({BETA_VISION_ENABLED:'true'});
+ const disabled=await runVisionQueue(env);
+ assert.equal(disabled.status,'disabled');
+ assert.equal(privateCalls.length,0);
+ const noAI=sandbox({BETA_VISION_ENABLED:'true',BETA_VISION_WORKER_ENABLED:'true'});
+ assert.equal((await runVisionQueue(noAI.env)).status,'disabled');
+ assert.equal(noAI.privateCalls.length,0);
+});
+
+test('vision worker uses private claims and Workers AI, validates observations and stores no image bytes in reports',async()=>{
+ const {runVisionQueue}=await import('./beta-edge-worker.mjs');
+ const calls=[],modelCalls=[];
+ const jpeg=Buffer.from([255,216,1,2,3,4,255,217]).toString('base64');
+ const job={job_id:'123e4567-e89b-42d3-a456-426614174000',
+  lease_token:'123e4567-e89b-42d3-a456-426614174001',attempt_count:1,
+  frames:[{at_ms:0,mime:'image/jpeg',width:180,height:320,data_base64:jpeg}]};
+ const env=sandbox({
+  BETA_VISION_ENABLED:'true',BETA_VISION_WORKER_ENABLED:'true',
+  ASSETS:{async fetch(){return Response.json({cards:[{id:1,name:'Knight'},{id:2,name:'Archer'}]});}},
+  PRIVATE_API:{async fetch(request){
+   const path=new URL(request.url).pathname;const body=await request.clone().text();
+   const claims=JSON.parse(Buffer.from(request.headers.get('X-CRC-Worker-Assertion').split('.')[1],'base64url').toString());
+   assert.equal(claims.sub,'crc-vision-worker');assert.equal(request.headers.get('Authorization'),null);
+   calls.push({path,body});
+   if(path.endsWith('/claim'))return json({job},200);
+   if(path.endsWith('/complete'))return json({status:'succeeded'},200);
+   if(path.endsWith('/fail'))return json({status:'failed'},200);
+   return json({error:{code:'NOT_FOUND'}},404);
+  }},
+  AI:{async run(model,input,options){
+   modelCalls.push({model,input,options});
+   return {choices:[{message:{content:JSON.stringify({screen:'battle',game_clock_s:120,elixir:5,
+    hand:[1],units:[{card_id:2,x:0.4,y:0.5,side:'opponent'}]})}}],usage:{input_tokens:1000,output_tokens:100}};
+  }}
+ }).env;
+ const result=await runVisionQueue(env);
+ assert.equal(result.status,'completed');
+ assert.equal(modelCalls.length,1);
+ assert.equal(modelCalls[0].model,'@cf/google/gemma-4-26b-a4b-it');
+ assert.equal(modelCalls[0].options.rejectIfBusy,true);
+ assert.match(modelCalls[0].input.messages[1].content[1].image_url.url,/^data:image\/jpeg;base64,/);
+ assert.deepEqual(calls.map(x=>x.path),['/api/v1/vision/worker/claim','/api/v1/vision/worker/complete']);
+ const completed=JSON.parse(calls[1].body);
+ assert.equal(completed.result.replay_analyzed,false);
+ assert.equal(completed.result.results[0].observation.hand[0],1);
+ assert.equal(JSON.stringify(completed).includes(jpeg),false);
+});
+
+test('vision worker fails the lease when the model cannot return an observation',async()=>{
+ const {runVisionQueue}=await import('./beta-edge-worker.mjs');
+ const calls=[];const jpeg=Buffer.from([255,216,1,2,255,217]).toString('base64');
+ const env=sandbox({
+  BETA_VISION_ENABLED:'true',BETA_VISION_WORKER_ENABLED:'true',
+  ASSETS:{async fetch(){return Response.json({cards:[{id:1,name:'Knight'}]});}},
+  PRIVATE_API:{async fetch(request){const path=new URL(request.url).pathname;calls.push(path);
+   if(path.endsWith('/claim'))return json({job:{job_id:'123e4567-e89b-42d3-a456-426614174000',
+    lease_token:'123e4567-e89b-42d3-a456-426614174001',frames:[{at_ms:0,mime:'image/jpeg',width:180,height:320,data_base64:jpeg}] }});
+   return json({status:'failed'});
+  }},
+  AI:{async run(){throw new Error('provider private detail');}}
+ }).env;
+ const result=await runVisionQueue(env);
+ assert.equal(result.status,'failed');
+ assert.deepEqual(calls,['/api/v1/vision/worker/claim','/api/v1/vision/worker/fail']);
+});

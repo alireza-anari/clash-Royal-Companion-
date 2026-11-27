@@ -37,10 +37,12 @@ test("private beta deployment preserves secrets and attaches isolated live Worke
   const bindings = Object.fromEntries(metadata.bindings.map((binding) => [binding.name, binding]));
   for (const name of [
     "BETA_ENABLED", "BETA_HOSTNAME", "BETA_AUTH_ISSUER", "BETA_AUTH_AUDIENCE",
-    "BETA_ALLOW_WORKERS_DEV", "BETA_AI_CHAT_ENABLED", "BETA_VISION_ENABLED", "BETA_SESSION_HMAC_HEX",
+    "BETA_ALLOW_WORKERS_DEV", "BETA_AI_CHAT_ENABLED", "BETA_VISION_ENABLED", "BETA_VISION_WORKER_ENABLED", "BETA_SESSION_HMAC_HEX",
     "BETA_ASSERTION_HMAC_HEX", "BETA_INVITE_CODES_JSON", "PRIVATE_API",
   ]) assert.equal(bindings[name].type, "inherit", name);
   assert.ok(bindings.ASSETS);
+  assert.equal(bindings.AI.type, "ai");
+  assert.deepEqual(metadata.triggers.crons, ["*/2 * * * *"]);
   assert.equal(bindings.LEGACY_LIVE.type, "service");
   assert.equal(bindings.LEGACY_LIVE.service, LEGACY_LIVE_WORKER_NAME);
   assert.equal(metadata.keep_bindings.includes("vpc_service"), true);
