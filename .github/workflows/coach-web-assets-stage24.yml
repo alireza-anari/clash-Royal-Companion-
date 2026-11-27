@@ -1,4 +1,4 @@
-name: CRC stage 24 web assets
+name: CRC stage 25 corrected web assets
 on:
   push:
     branches:
@@ -28,7 +28,7 @@ jobs:
         run: |
           node --check deploy/cloudflare/stage-coach-web-assets-v24.mjs
           node deploy/cloudflare/build-site.mjs --check
-          node --test deploy/cloudflare/stage-coach-web-assets-v24.test.mjs deploy/cloudflare/private-beta-deploy.test.mjs deploy/cloudflare/beta-edge.test.mjs
+          node --test deploy/cloudflare/stage-coach-web-assets-v24.test.mjs deploy/cloudflare/private-beta-deploy.test.mjs deploy/cloudflare/beta-edge.test.mjs deploy/cloudflare/coach-quality-v1.test.mjs deploy/cloudflare/coach-router-v1.test.mjs deploy/cloudflare/coach-core-v1.test.mjs site/backend-client.test.mjs
       - name: Attach assets and verify zero-traffic version
         env:
           CF_ACCOUNT_ID: ${{ vars.CRC_CLOUDFLARE_ACCOUNT_ID }}
