@@ -50,7 +50,7 @@ try{
   assert.equal(await page.locator('#crcCoachPending').count(),0,'no spinner for unavailable coach');
   // Test pending, success and failure with a deferred mock of the online coach.
   const injected=await fs.readFile(path.join(root,'app.js'),'utf8');
-  const harness=injected.replace(/\}\)\(\);\s*$/, "window.__crcPendingTest={run:async function(fail){coachAICap={ai_coach_enabled:true};window.CRCBetaSession={enabled:true,fetch:()=>new Promise((resolve,reject)=>{window.__crcPendingTest.finish=()=>fail?reject(new Error(\"test failure\")):resolve({ok:true,json:async()=>({answer:\"پاسخ آزمایشی\",model:\"@cf/google/gemma-4-26b-a4b-it\",external_inference:true,replay_analyzed:false,evidence_status:\"client_submitted_unverified\"})});})};return askCoachChat(\"تست انتظار\",\"overview\");}};})();");
+  const harness=injected.replace(/\}\)\(\);\s*$/, "window.__crcPendingTest={run:async function(fail){coachAICap={ai_coach_enabled:true};window.CRCBetaSession={enabled:true,fetch:()=>new Promise((resolve,reject)=>{window.__crcPendingTest.finish=()=>fail?reject(new Error(\"test failure\")):resolve({ok:true,json:async()=>({answer:\"## نتیجه آزمایشی\\n- تمرین دفاع\",model:\"@cf/google/gemma-4-26b-a4b-it\",external_inference:true,replay_analyzed:false,evidence_status:\"client_submitted_unverified\",quality_version:\"crc-coach-quality-v1\",quality_status:\"limited\",quality_swap:null,model_route:\"quality\",fallback_used:false,knowledge_sources:[{id:\"K01\",title:\"Official source\",url:\"https://support.supercell.com/clash-royale/en/articles/cards-and-decks.html\",authority:\"official-support\"},{id:\"K99\",title:\"Unsafe source\",url:\"https://example.invalid/\",authority:\"official-support\"}]})});})};return askCoachChat(\"تست انتظار\",\"overview\");}};})();");
   const loadingPage=await browser.newPage({viewport});
   await loadingPage.route('**/*',route=>route.request().url().endsWith('/app.js')?route.fulfill({contentType:'application/javascript',body:harness}):route.request().url().startsWith('http://127.0.0.1:')?route.continue():route.abort());
   await loadingPage.goto('http://127.0.0.1:'+server.address().port+'/#coach');
@@ -64,6 +64,14 @@ try{
     await loadingPage.evaluate(()=>{const finish=window.__crcPendingTest.finish;delete window.__crcPendingTest.finish;finish();});
     await loadingPage.locator('#crcCoachPending').waitFor({state:'detached'});
     assert.ok(await loadingPage.locator(fail?'#coachChatMessages .is-status':'#coachChatMessages .is-coach').count());
+    if(!fail){
+      const answer=loadingPage.locator('#coachChatMessages .is-coach').last();
+      assert.match(await answer.locator('.coach-chat-evidence').textContent(),/پاسخ محدودشده/);
+      assert.equal(await answer.locator('.crc-answer-heading').count(),1);
+      assert.equal(await answer.locator('.crc-answer-bullet').count(),1);
+      assert.equal(await answer.locator('.coach-chat-sources a').count(),1);
+      assert.match(await answer.locator('.coach-chat-sources a').getAttribute('href'),/^https:\/\/support\.supercell\.com\//);
+    }
   }
   await loadingPage.close();
   await toggle.click();await menu.locator('#crcCaptureOpen').click();
