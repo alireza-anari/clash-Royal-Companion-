@@ -34,12 +34,27 @@ class Vision:
   self.calls.append(("cancel",subject,job_id))
   return {"job_id":str(job_id),"status":"cancelled","frame_count":1,"total_bytes":0,
    "created_at":None,"updated_at":None,"expires_at":None,"reused":False}
+ async def recover_stale(self,connection,limit=20): return 0
+ async def expire_due(self,connection,limit=50): return 0
+ async def claim_next(self,connection,lease_seconds=900):
+  self.calls.append(("claim",lease_seconds))
+  return {"job_id":"123e4567-e89b-42d3-a456-426614174000",
+   "lease_token":"123e4567-e89b-42d3-a456-426614174001","attempt_count":1,
+   "frames":[{"at_ms":0,"mime":"image/jpeg","width":160,"height":240,"data_base64":"AA=="}]}
+ async def complete(self,connection,job_id,lease_token,result):
+  self.calls.append(("complete",job_id,lease_token,result.model))
+  return {"job_id":str(job_id),"status":"succeeded","frame_count":1,"total_bytes":0,
+   "created_at":None,"updated_at":None,"expires_at":None,"reused":False}
+ async def fail(self,connection,job_id,lease_token,error_code):
+  self.calls.append(("fail",job_id,lease_token,error_code))
+  return {"job_id":str(job_id),"status":"failed","frame_count":1,"total_bytes":0,
+   "created_at":None,"updated_at":None,"expires_at":None,"reused":False}
 def config(**changes):
  from dataclasses import replace
  base=BetaConfig(hostname=HOST,auth_issuer=ISSUER,audience=AUD,allowed_subjects=frozenset({SUBJECT}),
   quota_hmac_secret=QUOTA,worker_assertion_secret=WORKER,
   database_dsn="postgresql://demo:local-test@postgres:5432/crc_test?sslmode=verify-full",
-  vision_requested=True,vision_processor_ready=True,vision_subjects=frozenset({SUBJECT}),vision_hmac_secret=VISION)
+  vision_requested=True,vision_processor_ready=True,vision_worker_requested=False,vision_subjects=frozenset({SUBJECT}),vision_hmac_secret=VISION)
  return replace(base,**changes)
 def token(subject=SUBJECT):
  now=int(time.time())
@@ -53,7 +68,7 @@ async def pool_factory(_):return Pool()
 def app(settings=None,vision=None):
  cfg=settings or config()
  return create_beta_app(config=cfg,
-  verifier=WorkerAssertionVerifier(ISSUER,AUD,cfg.allowed_subjects,WORKER),quota=Quota(),
+  verifier=WorkerAssertionVerifier(ISSUER,AUD,cfg.allowed_subjects | (frozenset({"crc-vision-worker"}) if cfg.vision_worker_requested else frozenset()),WORKER),quota=Quota(),
   supercell=SupercellClient(token=""),pool_factory=pool_factory,vision_jobs=vision or Vision())
 def test_vision_capability_and_fail_closed_gate():
  with TestClient(app(config(vision_requested=False)),base_url='https://'+HOST) as c:
@@ -89,3 +104,36 @@ def test_status_and_cancel_are_account_scoped():
   assert c.get(f"/api/v1/vision/jobs/{job}",headers=h).status_code==200
   assert c.delete(f"/api/v1/vision/jobs/{job}",headers=h).status_code==200
   assert [x[0] for x in vision.calls]==["get","cancel"]
+
+
+def test_worker_claim_routes_are_separate_from_user_and_vision_routes():
+ vision=Vision();settings=config(vision_worker_requested=True)
+ with TestClient(app(settings,vision=vision),base_url='https://'+HOST) as c:
+  worker={"X-CRC-Worker-Assertion":token("crc-vision-worker")}
+  account={"X-CRC-Worker-Assertion":token()}
+  denied=c.post("/api/v1/vision/worker/claim",headers=account,json={})
+  assert denied.status_code==403
+  claim=c.post("/api/v1/vision/worker/claim",headers=worker,json={})
+  assert claim.status_code==200
+  assert claim.json()["job"]["attempt_count"]==1
+  assert vision.calls[0]==("claim",900)
+  # A valid worker assertion is not a general-purpose API identity.
+  denied=c.get("/api/v1/vision/capabilities",headers=worker)
+  assert denied.status_code==403
+  complete=c.post("/api/v1/vision/worker/complete",headers=worker,json={
+   "job_id":"123e4567-e89b-42d3-a456-426614174000",
+   "lease_token":"123e4567-e89b-42d3-a456-426614174001",
+   "result":{"version":"crc-vision-lab-v1","model":"@cf/google/gemma-4-26b-a4b-it",
+    "replay_analyzed":False,"selected":[0],"calls":1,
+    "results":[{"at_ms":0,"status":"unverified","observation":{
+     "screen":"battle","game_clock_s":120,"elixir":5,"hand":[1],"units":[]}}]}})
+  assert complete.status_code==200 and complete.json()["status"]=="succeeded"
+  bad=c.post("/api/v1/vision/worker/fail",headers=account,json={
+   "job_id":"123e4567-e89b-42d3-a456-426614174000",
+   "lease_token":"123e4567-e89b-42d3-a456-426614174001",
+   "error_code":"VISION_PROVIDER_UNAVAILABLE"})
+  assert bad.status_code==403
+
+def test_worker_subject_cannot_be_enabled_without_vision_processor_readiness():
+ with pytest.raises(Exception):
+  config(vision_worker_requested=True,vision_processor_ready=False).validate()
