@@ -41,9 +41,9 @@ def config(**changes):
   database_dsn="postgresql://demo:local-test@postgres:5432/crc_test?sslmode=verify-full",
   vision_requested=True,vision_processor_ready=True,vision_subjects=frozenset({SUBJECT}),vision_hmac_secret=VISION)
  return replace(base,**changes)
-def token():
+def token(subject=SUBJECT):
  now=int(time.time())
- return jwt.encode({"iss":ISSUER,"aud":AUD,"sub":SUBJECT,"iat":now,"exp":now+60,"jti":"vision-test-token-123456"},
+ return jwt.encode({"iss":ISSUER,"aud":AUD,"sub":subject,"iat":now,"exp":now+60,"jti":"vision-test-token-123456"},
   WORKER,algorithm="HS256")
 def image_payload(upload=True,external=True):
  im=Image.new("RGB",(160,240),(100,120,180));s=BytesIO();im.save(s,format="JPEG");im.close()
@@ -51,8 +51,9 @@ def image_payload(upload=True,external=True):
   "frames":[{"at_ms":0,"mime":"image/jpeg","width":160,"height":240,"data_base64":base64.b64encode(s.getvalue()).decode()}]}
 async def pool_factory(_):return Pool()
 def app(settings=None,vision=None):
- return create_beta_app(config=settings or config(),
-  verifier=WorkerAssertionVerifier(ISSUER,AUD,frozenset({SUBJECT}),WORKER),quota=Quota(),
+ cfg=settings or config()
+ return create_beta_app(config=cfg,
+  verifier=WorkerAssertionVerifier(ISSUER,AUD,cfg.allowed_subjects,WORKER),quota=Quota(),
   supercell=SupercellClient(token=""),pool_factory=pool_factory,vision_jobs=vision or Vision())
 def test_vision_capability_and_fail_closed_gate():
  with TestClient(app(config(vision_requested=False)),base_url='https://'+HOST) as c:
@@ -65,6 +66,12 @@ def test_vision_capability_and_fail_closed_gate():
   with TestClient(app(settings),base_url='https://'+HOST) as c:
    r=c.post("/api/v1/vision/jobs",headers={"X-CRC-Worker-Assertion":token()},json=image_payload())
    assert r.status_code==503 and r.json()["error"]["code"]=="VISION_ANALYSIS_DISABLED"
+ other="acct_"+"b"*32
+ cfg=config(allowed_subjects=frozenset({SUBJECT,other}))
+ with TestClient(app(cfg),base_url='https://'+HOST) as c:
+  r=c.get("/api/v1/vision/capabilities",headers={"X-CRC-Worker-Assertion":token(other)})
+  assert r.status_code==200 and r.json()["enabled"] is False
+  assert r.json()["reason"]=="VISION_ACCOUNT_NOT_ELIGIBLE"
 def test_upload_requires_both_consents_and_returns_only_job_metadata():
  vision=Vision()
  with TestClient(app(vision=vision),base_url='https://'+HOST) as c:
