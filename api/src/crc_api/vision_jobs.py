@@ -20,6 +20,7 @@ MAX_SIDE=320
 MAX_CAPTURE_MS=240_000
 MAX_BASE64_FRAME_CHARS=((MAX_FRAME_BYTES+2)//3)*4
 ACCOUNT_SUBJECT=re.compile(r"^acct_[a-f0-9]{32}$")
+VISION_WORKER_SUBJECT="crc-vision-worker"
 
 class VisionInputError(ValueError): pass
 class VisionCreditsExhausted(Exception): pass
@@ -135,6 +136,20 @@ class VisionWorkerResult(BaseModel):
         if len(set(times))!=len(times) or any(t not in self.selected for t in times):
             raise ValueError("Result frames must be a unique subset of selected times.")
         return self
+
+
+class VisionWorkerCompleteRequest(BaseModel):
+    model_config=ConfigDict(extra="forbid")
+    job_id:UUID
+    lease_token:UUID
+    result:VisionWorkerResult
+
+class VisionWorkerFailRequest(BaseModel):
+    model_config=ConfigDict(extra="forbid")
+    job_id:UUID
+    lease_token:UUID
+    error_code:Literal["VISION_PROVIDER_UNAVAILABLE","VISION_PROVIDER_REJECTED",
+        "VISION_PROCESSOR_INTERRUPTED","VISION_CATALOG_UNAVAILABLE","VISION_INVALID_MODEL_RESPONSE"]
 
 class PostgresVisionJobs:
     """Atomic one-credit reservation, idempotent enqueue and owner-scoped status."""

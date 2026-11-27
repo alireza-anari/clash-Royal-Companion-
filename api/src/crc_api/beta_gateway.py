@@ -33,7 +33,8 @@ from .ssm_secret import load_openrouter_key_from_ssm, SSMSecretUnavailable
 from .beta_db_tls import verified_beta_ssl_context
 from .beta_db_secret import credential_dsn, BetaDatabaseCredentialUnavailable
 from .vision_jobs import (PostgresVisionJobs, VisionJobRequest, VisionCreditsExhausted,
-                           VisionIdempotencyConflict, VisionInputError, VisionJobStateConflict,
+                           VisionIdempotencyConflict, VisionInputError, VisionJobStateConflict, VisionJobNotFound,
+                           VisionWorkerResult, VisionWorkerCompleteRequest, VisionWorkerFailRequest, VISION_WORKER_SUBJECT,
                            ACCOUNT_SUBJECT, MAX_FRAMES, MAX_FRAME_BYTES, MAX_TOTAL_BYTES,
                            MAX_SIDE, MAX_CAPTURE_MS)
 
@@ -59,6 +60,7 @@ class BetaConfig:
     live_lookup_enabled: bool = False
     vision_requested: bool = False
     vision_processor_ready: bool = False
+    vision_worker_requested: bool = False
     vision_subjects: frozenset[str] = frozenset()
     vision_hmac_secret: bytes = b""
 
@@ -67,6 +69,10 @@ class BetaConfig:
         return (self.vision_requested and self.vision_processor_ready and bool(self.vision_subjects)
                 and self.vision_subjects.issubset(self.allowed_subjects)
                 and len(self.vision_hmac_secret) >= 32)
+
+    @property
+    def vision_worker_enabled(self) -> bool:
+        return self.vision_enabled and self.vision_worker_requested
 
     @classmethod
     def from_environment(cls) -> "BetaConfig":
@@ -175,7 +181,7 @@ def create_beta_app(
     api = supercell if supercell is not None else SupercellClient()
     if settings.live_lookup_enabled and not api.configured:
         raise UnsafeBetaConfiguration("Private beta Supercell provider is not configured.")
-    identity = verifier or WorkerAssertionVerifier(settings.auth_issuer, settings.audience, settings.allowed_subjects, settings.worker_assertion_secret)
+    identity_subjects = settings.allowed_subjects | ({VISION_WORKER_SUBJECT} if settings.vision_worker_requested else set())\n    identity = verifier or WorkerAssertionVerifier(settings.auth_issuer, settings.audience, frozenset(identity_subjects), settings.worker_assertion_secret)
     budget = quota or PostgresSharedQuota(settings.quota_hmac_secret)
     # Even a configured API key cannot activate inference by itself.
     ai_switch = os.environ.get("CRC_BETA_AI_ENABLED", "false").strip().lower() == "true"
@@ -276,11 +282,31 @@ def create_beta_app(
             response = error(401, "WORKER_ASSERTION_MISSING", rid)
         else:
             try:
-                pool = request.app.state.pool
-                async with pool.acquire() as connection:
-                    admission = await request.app.state.admission.admit(assertion, connection)
-                request.state.verified_subject = admission["subject"]
-                response = await call_next(request)
+                worker_routes = {
+                    "/api/v1/vision/worker/claim",
+                    "/api/v1/vision/worker/complete",
+                    "/api/v1/vision/worker/fail",
+                }
+                is_worker_route = request.url.path in worker_routes
+                if is_worker_route:
+                    if request.method != "POST" or not settings.vision_worker_requested:
+                        response = error(403, "VISION_WORKER_NOT_AUTHORIZED", rid)
+                    else:
+                        subject = await identity.verify(assertion)
+                        if subject != VISION_WORKER_SUBJECT:
+                            response = error(403, "VISION_WORKER_NOT_AUTHORIZED", rid)
+                        else:
+                            request.state.verified_subject = subject
+                            response = await call_next(request)
+                else:
+                    pool = request.app.state.pool
+                    async with pool.acquire() as connection:
+                        admission = await request.app.state.admission.admit(assertion, connection)
+                    if admission["subject"] == VISION_WORKER_SUBJECT:
+                        response = error(403, "VISION_WORKER_ROUTE_REQUIRED", rid)
+                    else:
+                        request.state.verified_subject = admission["subject"]
+                        response = await call_next(request)
             except WorkerAssertionDenied as exc:
                 response = error(403, exc.code, rid)
             except QuotaDenied as exc:
@@ -381,6 +407,61 @@ def create_beta_app(
             "partial": partial, "battles_error_code": battle_code,
             "source": source, "battle_source": battle_source,
         }
+
+    def vision_worker_authorized(request: Request) -> bool:
+        return (settings.vision_worker_enabled and
+                getattr(request.state, "verified_subject", None) == VISION_WORKER_SUBJECT and
+                request.app.state.vision_jobs is not None)
+
+    @app.post("/api/v1/vision/worker/claim")
+    async def claim_vision_job(request: Request):
+        rid=request.state.request_id
+        if not vision_worker_authorized(request):
+            return error(503,"VISION_WORKER_DISABLED",rid)
+        try:
+            async with request.app.state.pool.acquire() as connection:
+                await request.app.state.vision_jobs.recover_stale(connection,limit=20)
+                await request.app.state.vision_jobs.expire_due(connection,limit=50)
+                job=await request.app.state.vision_jobs.claim_next(connection,lease_seconds=900)
+        except Exception:
+            return error(503,"VISION_QUEUE_UNAVAILABLE",rid)
+        return {"request_id":rid,"job":job}
+
+    @app.post("/api/v1/vision/worker/complete")
+    async def complete_vision_job(payload: VisionWorkerCompleteRequest,request: Request):
+        rid=request.state.request_id
+        if not vision_worker_authorized(request):
+            return error(503,"VISION_WORKER_DISABLED",rid)
+        try:
+            async with request.app.state.pool.acquire() as connection:
+                result=await request.app.state.vision_jobs.complete(
+                    connection,payload.job_id,payload.lease_token,payload.result)
+        except VisionJobNotFound:
+            return error(404,"VISION_JOB_NOT_FOUND",rid)
+        except VisionJobStateConflict:
+            return error(409,"VISION_JOB_LEASE_INVALID",rid)
+        except VisionInputError:
+            return error(422,"VISION_RESULT_INVALID",rid)
+        except Exception:
+            return error(503,"VISION_QUEUE_UNAVAILABLE",rid)
+        return {"request_id":rid,**result}
+
+    @app.post("/api/v1/vision/worker/fail")
+    async def fail_vision_job(payload: VisionWorkerFailRequest,request: Request):
+        rid=request.state.request_id
+        if not vision_worker_authorized(request):
+            return error(503,"VISION_WORKER_DISABLED",rid)
+        try:
+            async with request.app.state.pool.acquire() as connection:
+                result=await request.app.state.vision_jobs.fail(
+                    connection,payload.job_id,payload.lease_token,payload.error_code)
+        except VisionJobNotFound:
+            return error(404,"VISION_JOB_NOT_FOUND",rid)
+        except VisionJobStateConflict:
+            return error(409,"VISION_JOB_LEASE_INVALID",rid)
+        except Exception:
+            return error(503,"VISION_QUEUE_UNAVAILABLE",rid)
+        return {"request_id":rid,**result}
 
     @app.get("/api/v1/vision/capabilities")
     def vision_capabilities(request: Request):
