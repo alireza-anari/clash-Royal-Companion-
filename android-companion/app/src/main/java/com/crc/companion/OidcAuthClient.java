@@ -94,6 +94,7 @@ public final class OidcAuthClient {
 
     public boolean handleActivityResult(int requestCode,int resultCode,Intent data){
         if(requestCode!=REQUEST_CODE)return false;
+        if(data==null){nonceToken=null;status("ورود لغو شد یا پاسخ ارائه‌دهنده دریافت نشد.");return true;}
         AuthorizationException exception=AuthorizationException.fromIntent(data);
         AuthorizationResponse response=AuthorizationResponse.fromIntent(data);
         if(exception!=null||response==null){
