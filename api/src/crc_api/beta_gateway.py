@@ -265,7 +265,8 @@ def create_beta_app(
     oidc_identity = oidc_service or (OIDCIdentityService(
         issuer=settings.oidc_issuer, client_id=settings.oidc_client_id, jwks_url=settings.oidc_jwks_url,
         redirect_uri=settings.oidc_redirect_uri, beta_issuer=settings.auth_issuer,
-        worker_secret=settings.worker_assertion_secret, account_secret=settings.account_hmac_secret,\n        vision_hmac_secret=settings.vision_hmac_secret,
+        worker_secret=settings.worker_assertion_secret, account_secret=settings.account_hmac_secret,
+        vision_hmac_secret=settings.vision_hmac_secret,
     ) if settings.oidc_enabled else None)
 
     if pool_factory is None:
@@ -560,7 +561,8 @@ def create_beta_app(
 
     @app.get("/api/v1/vision/capabilities")
     async def vision_capabilities(request: Request):
-        account_enabled = await vision_account(request)
+        account_subject = await vision_account(request)
+        account_enabled = account_subject is not None
         reason = None if account_enabled else (
             "VISION_ACCOUNT_NOT_ELIGIBLE" if settings.vision_enabled else "VISION_NOT_CONFIGURED"
         )
@@ -618,7 +620,7 @@ def create_beta_app(
     @app.get("/api/v1/vision/jobs/{job_id}")
     async def get_vision_job(job_id: UUID, request: Request):
         rid = request.state.request_id
-        subject = vision_account(request)
+        subject = await vision_account(request)
         if subject is None or request.app.state.vision_jobs is None:
             return error(503, "VISION_ANALYSIS_DISABLED", rid)
         try:
@@ -633,7 +635,7 @@ def create_beta_app(
     @app.delete("/api/v1/vision/jobs/{job_id}")
     async def cancel_vision_job(job_id: UUID, request: Request):
         rid = request.state.request_id
-        subject = vision_account(request)
+        subject = await vision_account(request)
         if subject is None or request.app.state.vision_jobs is None:
             return error(503, "VISION_ANALYSIS_DISABLED", rid)
         try:
