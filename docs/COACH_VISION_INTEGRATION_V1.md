@@ -36,3 +36,6 @@ The draft migration api/migrations/DRAFT_0003_vision_jobs.sql is not applied. Th
 
 ## CI / release boundary
 The Android debug build and JVM tests cover the in-memory manifest builder. Backend CI covers request validation, account-scoped routes, PostgreSQL credit reservation/idempotency/cancellation and existing private-beta checks. Gateway CI covers exact routes, origin, consent, shared-subject denial and private-only forwarding. CI does not apply the draft migration to production, upload real images, call a model, grant credits, deploy a Worker, restart the backend or change the live site.
+
+
+Mobile auth boundary: the current edge Worker accepts the browser's HttpOnly session cookie and mints a private Worker assertion. It does not accept Android bearer tokens. The Android AccountSession interface is only a contract; a future OIDC/device-link exchange must verify the token at the edge and mint a scoped assertion. Passing a caller-supplied Authorization header through to the private API is not allowed.
