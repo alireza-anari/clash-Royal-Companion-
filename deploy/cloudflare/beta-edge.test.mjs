@@ -501,3 +501,65 @@ test('short-lived OIDC bearer tokens authenticate native vision requests without
  assert.equal(privateCalls[0].headers.get('Authorization'),null);
  assert.equal(privateCalls[0].headers.get('Cookie'),null);
 });
+
+
+// Stage 22: real client serialization -> authenticated gateway -> real Coach router/quality
+// with a synthetic model adapter. No external network, account or provider calls.
+test('web release contract connects browser client to gateway and Coach quality engine',async()=>{
+ const {readFile}=await import('node:fs/promises');
+ const vm=await import('node:vm');
+ const {coachInferencePlan}=await import('./coach-core-v1.mjs');
+ const {coachRetrieve,COACH_KNOWLEDGE_VERSION}=await import('./coach-knowledge-v1.mjs');
+ const {coachQualityEvaluate,QUALITY_VERSION}=await import('./coach-quality-v1.mjs');
+ const {coachModelPlan,coachModelExecute}=await import('./coach-router-v1.mjs');
+ const clientContext={TextEncoder,URL};
+ vm.runInNewContext(await readFile(new URL('../../site/backend-client.js',import.meta.url),'utf8'),clientContext);
+ const api=clientContext.CRCBackendClient;
+ const model='@cf/google/gemma-4-26b-a4b-it';
+ const deck=Array.from({length:8},(_,i)=>({id:i+1,name:'Card '+(i+1),elixir:3,active_form:'base',rarity:'common'}));
+ const candidate={id:20,name:'Musketeer',elixir:4,rarity:'rare',active_form:'base'};
+ const pair={remove:'Card 1',add:'Musketeer',remove_id:1,add_id:20,elixir_delta:1,level_gap:0,gain:['air'],loss:['splash']};
+ const personal={deck_source:'profile-live',deck_cards:deck,owned_candidates:[candidate],selected_deck_results:{wins:2,losses:1,draws:0,unknown:1},player_tag:'#PRIVATE_FIXTURE',name:'PRIVATE_NAME'};
+ const facts={errors:[],items:deck,average:3,cycle:12};
+ const evidence={filter:'all',matched_records:10,outcomes:{wins:5,losses:3,draws:1,unknown:1}};
+ let raw='',mode='normal',modelCalls=0,upstreamCalls=0;
+ const {env,privateCalls}=sandbox({LEGACY_LIVE:{async fetch(request){
+  upstreamCalls++;
+  assert.equal(request.headers.get('Cookie'),null);
+  assert.equal(request.headers.get('Authorization'),null);
+  assert.equal(request.headers.get('Origin'),'https://'+LEGACY_HOST);
+  const body=await request.text();assert.ok(Buffer.byteLength(body)<=4096);
+  assert.doesNotMatch(body,/PRIVATE_FIXTURE|PRIVATE_NAME/);
+  const data=JSON.parse(body);
+  assert.equal(data.consent_to_external_ai,true);
+  assert.equal(data.personal.deck_cards.length,8);
+  assert.equal(data.personal.owned_candidates[0].id,20);
+  if(mode==='rate')return json({error:{code:'UPSTREAM_RATE_LIMITED'}},429);
+  const plan=coachInferencePlan(data.question,data.action);
+  const docs=coachRetrieve(data.question,data.action||plan.intent,data.personal.deck_cards);
+  const fakeEnv={AI:{async run(id,options){modelCalls++;assert.equal(id,model);assert.equal(options.response_format.type,'json_object');return {response:raw};}}};
+  // The legacy sanitizer normally calculates allowed swaps. This fixture supplies
+  // a known server-side allowed pair; it does not test the private legacy sanitizer.
+  const context={battles:data.battles,personal:{...data.personal,allowed_single_swaps:[pair]},docs,intent:plan.intent,question:data.question};
+  const execution=await coachModelExecute(fakeEnv,coachModelPlan(data.question,plan,data.action,fakeEnv,model),[],context,coachQualityEvaluate);
+  const q=execution.quality;
+  return json({answer:q.answer,model:execution.model,external_inference:true,replay_analyzed:false,evidence_status:'client_submitted_unverified',
+   knowledge_version:COACH_KNOWLEDGE_VERSION,knowledge_sources:docs.filter(d=>q.sources.includes(d.id)),
+   quality_version:QUALITY_VERSION,quality_status:q.status,quality_checks:q.checks,quality_swap:q.swap,
+   model_route:execution.route,fallback_used:execution.fallbackUsed});
+ }}});
+ const session={enabled:true,fetch:(path,options)=>routeRequest(req(path,{...SESSION_HEADER,Origin:BASE,'Content-Type':'application/json'},options),env)};
+ const call=(question,action)=>api.askAI(session,question,facts,evidence,{ai_coach_enabled:true},personal,action);
+ const payload=extra=>JSON.stringify({answer:'تمرین دفاع و چرخه کارت',swap_index:null,fact_keys:[],source_ids:[],...extra});
+ raw=payload({swap_index:0,fact_keys:['selected']});
+ let reply=await call('پیشنهاد تعویض کارت','suggestions');
+ assert.equal(reply.qualityStatus,'checked_structure');assert.equal(reply.swap.add_id,20);assert.equal(reply.swap.remove_id,1);
+ assert.match(reply.answer,/Musketeer/);assert.equal(reply.modelRoute,'quality');assert.equal(reply.fallbackUsed,false);
+ raw=payload({answer:'نرخ برد دک ۸۰٪ است'});
+ reply=await call('تحلیل دک','deck');assert.equal(reply.qualityStatus,'limited');assert.equal(reply.swap,null);assert.doesNotMatch(reply.answer,/۸۰/);
+ raw=payload({answer:'invented tactical replay observation'});
+ reply=await call('تحلیل ویدیو و بازپخش نبرد');assert.doesNotMatch(reply.answer,/invented tactical/);
+ mode='rate';
+ await assert.rejects(call('تحلیل دک','deck'),e=>e.code==='UPSTREAM_RATE_LIMITED'&&e.status===429);
+ assert.equal(modelCalls,3);assert.equal(upstreamCalls,4);assert.equal(privateCalls.length,0);
+});
