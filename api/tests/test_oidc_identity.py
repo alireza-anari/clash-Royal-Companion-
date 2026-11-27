@@ -34,7 +34,7 @@ def service(transport=None):
  return OIDCIdentityService(
   issuer=ISSUER,client_id=CLIENT_ID,jwks_url="https://keys.example.test/jwks.json",
   redirect_uri=REDIRECT_URI,beta_issuer=BETA_ISSUER,worker_secret=WORKER_SECRET,
-  account_secret=ACCOUNT_SECRET,transport=transport)
+  account_secret=ACCOUNT_SECRET,vision_hmac_secret=VISION_SECRET,transport=transport)
 
 def id_token(nonce,sub=None,**changes):
  now=int(time.time())
@@ -99,7 +99,11 @@ async def test_verified_oidc_exchange_creates_pseudonymous_account_and_one_time_
    account=await c.fetchrow("SELECT identity_key,status FROM auth_accounts WHERE account_subject=$1",result["account_subject"])
    assert account["status"]=="active" and len(account["identity_key"])==64
    assert await c.fetchval("SELECT count(*) FROM auth_identities WHERE account_subject=$1",result["account_subject"])==1
-   assert await c.fetchval("SELECT count(*) FROM vision_credit_accounts WHERE subject_key=$1",account["identity_key"])==0
+   vision_key=hmac.new(VISION_SECRET,result["account_subject"].encode(),hashlib.sha256).hexdigest()
+   credit=await c.fetchrow("SELECT balance FROM vision_credit_accounts WHERE subject_key=$1",vision_key)
+   assert credit["balance"]==0
+   access=await c.fetchrow("SELECT enabled,granted_at,granted_by FROM vision_account_access WHERE account_subject=$1",result["account_subject"])
+   assert access["enabled"] is False and access["granted_at"] is None and access["granted_by"] is None
    # Neither raw provider subject nor provider email is persisted.
    assert provider_sub not in json.dumps(dict(account))
    with pytest.raises(OIDCNonceReplay):

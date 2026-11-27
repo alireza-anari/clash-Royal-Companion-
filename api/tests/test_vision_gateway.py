@@ -66,11 +66,17 @@ def image_payload(upload=True,external=True):
  return {"client_request_id":str(uuid4()),"consent_to_upload":upload,"consent_to_external_ai":external,
   "frames":[{"at_ms":0,"mime":"image/jpeg","width":160,"height":240,"data_base64":base64.b64encode(s.getvalue()).decode()}]}
 async def pool_factory(_):return Pool()
-def app(settings=None,vision=None):
+class AccessPool(Pool):
+ def __init__(self,enabled): self.enabled=enabled
+ async def fetchrow(self,query,subject):
+  return {"status":"active","enabled":self.enabled}
+
+def app(settings=None,vision=None,pool=None):
  cfg=settings or config()
+ async def make_pool(_): return pool or Pool()
  return create_beta_app(config=cfg,
-  verifier=WorkerAssertionVerifier(ISSUER,AUD,cfg.allowed_subjects | (frozenset({"crc-vision-worker"}) if cfg.vision_worker_requested else frozenset()),WORKER),quota=Quota(),
-  supercell=SupercellClient(token=""),pool_factory=pool_factory,vision_jobs=vision or Vision())
+  verifier=WorkerAssertionVerifier(ISSUER,AUD,cfg.allowed_subjects | (frozenset({"crc-vision-worker"}) if cfg.vision_worker_requested else frozenset()),WORKER,allow_account_subjects=cfg.oidc_enabled),quota=Quota(),
+  supercell=SupercellClient(token=""),pool_factory=make_pool,vision_jobs=vision or Vision())
 def test_vision_capability_and_fail_closed_gate():
  with TestClient(app(config(vision_requested=False)),base_url='https://'+HOST) as c:
   r=c.get("/api/v1/vision/capabilities",headers={"X-CRC-Worker-Assertion":token()})
@@ -138,3 +144,20 @@ def test_worker_claim_routes_are_separate_from_user_and_vision_routes():
 def test_worker_subject_cannot_be_enabled_without_vision_processor_readiness():
  with pytest.raises(UnsafeBetaConfiguration):
   config(vision_worker_requested=True,vision_processor_ready=False).validate()
+
+
+def test_oidc_account_vision_access_requires_an_explicit_database_grant():
+ other="acct_"+"b"*32
+ settings=config(vision_subjects=frozenset(),oidc_issuer="https://accounts.example.test",
+  oidc_client_id="crc-client",oidc_jwks_url="https://accounts.example.test/jwks",
+  oidc_redirect_uri="com.crc.companion:/oauth2redirect",account_hmac_secret=b"account-hmac-key-12345678901234567890")
+ assert settings.vision_enabled is True
+ denied_pool=AccessPool(False)
+ with TestClient(app(settings,vision=Vision(),pool=denied_pool),base_url="https://"+HOST) as c:
+  denied=c.get("/api/v1/vision/capabilities",headers={"X-CRC-Worker-Assertion":token(other)})
+  assert denied.status_code==200 and denied.json()["enabled"] is False
+  assert denied.json()["reason"]=="VISION_ACCOUNT_NOT_ELIGIBLE"
+ granted_pool=AccessPool(True)
+ with TestClient(app(settings,vision=Vision(),pool=granted_pool),base_url="https://"+HOST) as c:
+  granted=c.get("/api/v1/vision/capabilities",headers={"X-CRC-Worker-Assertion":token(other)})
+  assert granted.status_code==200 and granted.json()["enabled"] is True
