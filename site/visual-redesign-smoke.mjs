@@ -68,7 +68,7 @@ try{
   await loadingPage.close();
   await toggle.click();await menu.locator('#crcCaptureOpen').click();
   assert.equal(await page.locator('#crcCaptureDialog').isVisible(),true);assert.equal(await page.locator('#crcCaptureStop').isDisabled(),true);
-  assert.match(await page.locator('#crcCaptureDialog').textContent(),/تحلیل تاکتیکی هنوز فعال نیست/);
+  assert.match(await page.locator('#crcCaptureDialog').textContent(),/تحلیل تاکتیکی هنوز فعال نیست/);assert.equal(await page.locator('#crcCaptureCoverage').isVisible(),false);
   await page.screenshot({path:'visual-check/'+name+'-capture.png'});
   await page.locator('#crcCaptureClose').click();assert.equal(await page.locator('#crcCaptureDialog').isVisible(),false);
   await page.locator('#clearCoachChat').click();assert.equal(await welcome.isVisible(),true);assert.equal(await page.locator('#coachChatMessages .is-user').count(),0);

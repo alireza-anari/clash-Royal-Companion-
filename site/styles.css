@@ -721,3 +721,5 @@ body.crc-coach-view .content > .footer{display:none!important}
 .crc-capture-actions .btn{min-height:44px}.crc-capture-dialog .btn:disabled{opacity:.5;cursor:not-allowed}
 .crc-capture-dialog [hidden]{display:none!important}.crc-capture-dialog select{width:100%;margin:12px 0}
 #crcCapturePreview{display:block;max-width:100%;height:auto;margin:10px auto;border-radius:8px;background:#0b1120}
+
+.crc-capture-coverage{padding:10px;border:1px solid #485781;border-radius:10px;background:#121b33;color:#d4def2}

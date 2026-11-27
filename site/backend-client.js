@@ -603,10 +603,16 @@
   }
   // Local, user-initiated screen sampling only. No recorder, microphone, persistence, upload or inference.
   const CAPTURE_LIMITS=Object.freeze({durationMs:240000,intervalMs:2000,maxFrames:120,maxBytes:24*1024*1024,maxSide:320});
+  function battleCaptureCoverage(timestamps){
+    if(!Array.isArray(timestamps)||!timestamps.length||timestamps.length>CAPTURE_LIMITS.maxFrames||timestamps.some((v,i)=>!Number.isInteger(v)||v<0||v>=CAPTURE_LIMITS.durationMs||(i>0&&v<=timestamps[i-1])))return null;
+    let largestGap=0,missingIntervals=0;
+    for(let i=1;i<timestamps.length;i++){const gap=timestamps[i]-timestamps[i-1];largestGap=Math.max(largestGap,gap);if(gap>CAPTURE_LIMITS.intervalMs*1.5)missingIntervals++;}
+    return {samples:timestamps.length,first_ms:timestamps[0],last_ms:timestamps.at(-1),largest_gap_ms:largestGap,long_gap_count:missingIntervals,replay_analyzed:false};
+  }
   function createBattleCapture(deps,onChange=()=>{}){
     let state='idle',reason=null,stream=null,timer=null,started=null,frames=[],bytes=0,epoch=0,last=-Infinity;
     const supported=typeof deps?.request==='function'&&typeof deps?.attach==='function'&&typeof deps?.sample==='function'&&typeof deps?.now==='function'&&typeof deps?.schedule==='function'&&typeof deps?.cancel==='function';
-    const summary=()=>({state,reason,frames:frames.length,bytes,durationMs:frames.length?frames[frames.length-1].at_ms:0,replay_analyzed:false});
+    const summary=()=>({state,reason,frames:frames.length,bytes,durationMs:frames.length?frames[frames.length-1].at_ms:0,coverage:state==='ready'?battleCaptureCoverage(frames.map(f=>f.at_ms)):null,replay_analyzed:false});
     const emit=()=>onChange(summary());
     const release=s=>{try{s?.getTracks().forEach(t=>{try{t.stop();}catch{}});}catch{}};
     const cleanup=()=>{if(timer!==null){deps.cancel(timer);timer=null;}release(stream);stream=null;try{deps.detach?.();}catch{}};
@@ -676,5 +682,5 @@
     }
     return {version:1,replay_analyzed:false,observations:observations.sort((a,b)=>a.at_ms-b.at_ms)};
   }
-  root.CRCBackendClient=Object.freeze({createBattleCapture,validateBattleObservations,CAPTURE_LIMITS,VERSION,BackendError,normalizeTag,route,capabilities,loadPlayer,normalizedToProfile,normalizedToBattles,personalCoachContext,coachPayload,askAI,createCoachSession,cleanCoachHistory,createCoachMemory,cleanCoachMemory,cleanCoachMemorySnapshot,coachDistinctBattles,coachPracticeDelta,coachPracticePlan,coachProactiveHint,createCoachHintSession,cardFormProgress,collectionLevel,COACH_MEMORY_VERSION});
+  root.CRCBackendClient=Object.freeze({createBattleCapture,battleCaptureCoverage,validateBattleObservations,CAPTURE_LIMITS,VERSION,BackendError,normalizeTag,route,capabilities,loadPlayer,normalizedToProfile,normalizedToBattles,personalCoachContext,coachPayload,askAI,createCoachSession,cleanCoachHistory,createCoachMemory,cleanCoachMemory,cleanCoachMemorySnapshot,coachDistinctBattles,coachPracticeDelta,coachPracticePlan,coachProactiveHint,createCoachHintSession,cardFormProgress,collectionLevel,COACH_MEMORY_VERSION});
 })(typeof window!=='undefined'?window:globalThis);

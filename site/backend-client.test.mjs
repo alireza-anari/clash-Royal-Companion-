@@ -464,3 +464,9 @@ test('capture stops on source end or byte budget and disallows unsupported obser
  for(const o of [{...v.observations[0],card_id:2},{...v.observations[0],status:'verified'},{...v.observations[0],at_ms:3000},{...v.observations[0],x:2},{...v.observations[0],claim:'mistake'}])assert.equal(api.validateBattleObservations({...v,observations:[o]},[1],[2000]),null);
  assert.equal(api.validateBattleObservations({...v,replay_analyzed:true},[1],[2000]),null);
 });
+
+test('capture coverage reflects observed samples and gaps, never reconstructed game events',()=>{
+ const c=api.battleCaptureCoverage([0,2000,9000]);
+ assert.equal(c.samples,3);assert.equal(c.last_ms,9000);assert.equal(c.largest_gap_ms,7000);assert.equal(c.long_gap_count,1);assert.equal(c.replay_analyzed,false);
+ assert.equal(api.battleCaptureCoverage([0,0]),null);assert.equal(api.battleCaptureCoverage([240000]),null);assert.equal(api.battleCaptureCoverage([]),null);
+});

@@ -26,7 +26,7 @@ test('design system has readable surfaces, mobile controls and reduced-motion su
 
 test('theme and service worker cache are refreshed for the new CSS', () => {
   assert.match(html, /name="theme-color" content="#080f1e"/);
-  assert.match(sw, /crc-mvp-static-v30/);
+  assert.match(sw, /crc-mvp-static-v31/);
 });
 
 test('coach is online-only and no per-message approval or local fallback is exposed',()=>{
@@ -55,7 +55,7 @@ test('onboarding has a single profile-fetch path and prepares the online coach w
 });
 test('battle evidence is shipped as a support module, not an offline coach',()=>{
   assert.match(html,/src="\/battle-evidence\.js"/);assert.doesNotMatch(html,/offline-coach\.js|coach-chat\.js/);
-  assert.match(sw,/crc-mvp-static-v30/);assert.match(sw,/\/battle-evidence\.js/);assert.doesNotMatch(sw,/offline-coach\.js|coach-chat\.js/);
+  assert.match(sw,/crc-mvp-static-v31/);assert.match(sw,/\/battle-evidence\.js/);assert.doesNotMatch(sw,/offline-coach\.js|coach-chat\.js/);
 });
 
 test('minimal coach keeps composer and tools separate from the welcome state',()=>{const app=fs.readFileSync(new URL('./app.js',import.meta.url),'utf8');for(const id of ['crcChatWelcome','crcChatScroll','crcCoachToolsToggle','crcCoachTools','coachChatQuestion','clearCoachChat'])assert.ok(html.includes('id="'+id+'"'),id);assert.match(html,/aria-expanded="false" aria-controls="crcCoachTools"/);assert.match(app,/\$\("crcChatWelcome"\)\.hidden=true/);assert.match(app,/\$\("crcChatWelcome"\)\.hidden=false/);assert.match(css,/body\.crc-coach-view/);assert.match(css,/\.crc-chat-scroll\{[^}]*overflow:auto/);});
@@ -166,3 +166,5 @@ test('capture is separate from online coach, explicit, temporary and non-network
  assert.doesNotMatch(section,/fetch\(|localStorage|sessionStorage|MediaRecorder|askCoachChat/);
  assert.match(app,/function coachAccountChanged\(\)\{discardBattleCapture/);
 });
+
+test('capture report only shows observed coverage',()=>{const app=fs.readFileSync(new URL('./app.js',import.meta.url),'utf8');assert.match(html,/id="crcCaptureCoverage"[^>]*hidden/);assert.match(app,/coverage\.textContent/);assert.match(app,/تشخیص کارت، اکسیر و نقشه نیروها هنوز فعال نیست/);});

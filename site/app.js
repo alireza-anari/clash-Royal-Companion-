@@ -658,7 +658,7 @@ function renderAll(){renderDeck();renderCoach();renderCatalog();crcRender();}
 var battleCapture=null;
 function setupBattleCapture(){
   const dialog=$("crcCaptureDialog"),video=$("crcCaptureVideo"),preview=$("crcCapturePreview"),select=$("crcCaptureFrame"),status=$("crcCaptureStatus");
-  const start=$("crcCaptureStart"),stop=$("crcCaptureStop"),clear=$("crcCaptureClear");
+  const start=$("crcCaptureStart"),stop=$("crcCaptureStop"),clear=$("crcCaptureClear"),coverage=$("crcCaptureCoverage");
   if(!dialog||!window.CRCBackendClient)return;
   const canvas=document.createElement("canvas"),ctx=canvas.getContext("2d",{willReadFrequently:true}),out=preview.getContext("2d");
   const supported=window.isSecureContext&&!!navigator.mediaDevices&&typeof navigator.mediaDevices.getDisplayMedia==="function"&&!!ctx&&!!out;
@@ -672,6 +672,7 @@ function setupBattleCapture(){
     status.textContent=!supported?"این مرورگر ضبط پنجره را پشتیبانی نمی‌کند؛ برای ثبت بازی روی موبایل به اپ بومی نیاز است.":s.state==="requesting"?"منتظر انتخاب پنجره در مرورگر…":s.state==="capturing"?"● ثبت محلی فعال است · "+s.frames+" تصویر":(labels[s.reason]||"آماده ثبت محلی.")+(s.frames?" "+s.frames+" نمونه تصویری؛ تحلیل نشده.":"");
     start.disabled=!supported||s.state!=="idle";stop.disabled=!["requesting","capturing"].includes(s.state);clear.disabled=s.state==="idle"&&!s.frames;
     select.hidden=s.state!=="ready";select.disabled=s.state!=="ready";
+    const v=s.coverage;coverage.hidden=!v;coverage.textContent=v?"خلاصه ثبت: "+v.samples+" تصویر؛ بازه مشاهده "+((v.last_ms-v.first_ms)/1000).toFixed(1)+" ثانیه؛ بزرگ‌ترین فاصله "+(v.largest_gap_ms/1000).toFixed(1)+" ثانیه. "+(v.long_gap_count?"بعضی فاصله‌ها طولانی‌اند؛ ثبت پیوسته نیست. ":"")+"تشخیص کارت، اکسیر و نقشه نیروها هنوز فعال نیست.":"";
     if(s.state==="ready"){
       select.replaceChildren();for(let i=0;i<s.frames;i++){const f=battleCapture.frame(i),option=document.createElement("option");option.value=String(i);option.textContent="تصویر "+(i+1)+" · "+(f.at_ms/1000).toFixed(1)+" ثانیه از شروع ثبت";select.append(option);}
       renderFrame();
