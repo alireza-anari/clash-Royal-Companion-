@@ -26,3 +26,11 @@ The Android project now defines an AccountSession contract and a VisionUploadPac
 
 ## Stage 16 — native account sign-in
 The app now includes provider-neutral AppAuth Authorization Code + S256 PKCE sign-in, a backend nonce challenge and ID-token exchange. The backend returns a 15-minute account-scoped bearer token; Android stores only that token and the opaque acct_ subject using an AES-GCM key held by Android Keystore. The provider redirect URI is fixed to com.crc.companion:/oauth2redirect. Set CRC_BETA_BASE_URL at build time and configure the backend OIDC issuer/client/JWKS/redirect values before sign-in can work. No image upload transport is implemented; capture remains local until separate upload consent and release gates are complete.
+
+
+## Stage 17 — native Vision transport foundation
+The native VisionApiClient implements only the allowlisted HTTPS capability, submit, status and cancellation routes. It accepts an opaque per-account mobile bearer session, rejects redirects, restricts job IDs to canonical UUIDs, uses bounded request/response sizes and timeouts, and does not automatically retry. An in-memory Attempt binds one prepared upload and its request UUID to the account that prepared it. Both explicit consents are required again at submission; changing accounts blocks the request. Do not log, persist or expose raw response bodies or Attempt image data.
+
+This is deliberately not wired to MainActivity or any automatic action. A fresh capability/credit check, explicit final confirmation with the exact selected-frame review, verified backend job response/status/error contract, account-bound job recovery, expiry handling and Persian report rendering are required before enabling a submit control. The private backend repository was not visible to the connector in this stage, so the response schema could not be verified; no assumptions about job IDs in responses, credits, or result fields are made. No user data or images were sent; no feature flags, secrets, quotas, billing, production deployment or migrations were changed.
+
+JVM tests cover origin and route restrictions, denied consents, cross-account rejection and safe debug output. They do not contact a server. End-to-end HTTP and physical-device tests remain outstanding.
