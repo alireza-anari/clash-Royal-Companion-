@@ -46,7 +46,8 @@ function privateHost(value,allowWorkersDev=false){
   return h;
 }
 function apiRoute(url,method="GET"){
-  if(method==="POST")return ["/api/v1/coach/chat","/api/v1/vision/jobs"].includes(url.pathname)&&url.search===""?url.pathname:null;
+  if(method==="POST")return ["/api/v1/coach/chat","/api/v1/vision/jobs",
+    "/api/v1/auth/oidc/nonce","/api/v1/auth/oidc/exchange"].includes(url.pathname)&&url.search===""?url.pathname:null;
   if(method==="DELETE"){
     const job=/^\/api\/v1\/vision\/jobs\/([0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i.exec(url.pathname);
     return job&&url.search===""?"/api/v1/vision/jobs/"+job[1].toLowerCase():null;
@@ -56,6 +57,7 @@ function apiRoute(url,method="GET"){
   if(url.pathname==="/api/v1/capabilities"&&url.search==="")return url.pathname;
   if(url.pathname==="/api/v1/catalog/cards"&&url.search==="")return url.pathname;
   if(url.pathname==="/api/v1/vision/capabilities"&&url.search==="")return url.pathname;
+  if(url.pathname==="/api/v1/auth/oidc/config"&&url.search==="")return url.pathname;
   const job=/^\/api\/v1\/vision\/jobs\/([0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i.exec(url.pathname);
   if(job&&url.search==="")return "/api/v1/vision/jobs/"+job[1].toLowerCase();
   const match=/^\/api\/v1\/players\/([^/]+)\/snapshot$/.exec(url.pathname);
@@ -144,7 +146,13 @@ function authConfig(env,expected){
   for(const [hash,subject] of Object.entries(invites)){
     if(!HEX_HASH.test(hash)||typeof subject!=="string"||!SUBJECT.test(subject))return null;
   }
-  return {sessionSecret,assertionSecret,issuer,audience,invites};
+  const inviteSubjects=[...new Set(Object.values(invites))];
+  const configuredIdentitySubject=env.BETA_IDENTITY_EXCHANGE_SUBJECT;
+  const identityExchangeSubject=configuredIdentitySubject
+    ? (SUBJECT.test(configuredIdentitySubject)&&inviteSubjects.includes(configuredIdentitySubject)?configuredIdentitySubject:null)
+    : (inviteSubjects.length===1?inviteSubjects[0]:null);
+  if(configuredIdentitySubject&&!identityExchangeSubject)return null;
+  return {sessionSecret,assertionSecret,issuer,audience,invites,identityExchangeSubject};
 }
 function cookieValue(request){
   const raw=request.headers.get("Cookie")||"";
@@ -162,6 +170,23 @@ async function currentSession(request,config){
   });
   return claims?{subject:claims.sub}:null;
 }
+
+async function deriveMobileSessionSecret(assertionSecret){
+  const key=await crypto.subtle.importKey("raw",assertionSecret,{name:"HMAC",hash:"SHA-256"},false,["sign"]);
+  return new Uint8Array(await crypto.subtle.sign("HMAC",key,new TextEncoder().encode("crc-mobile-session-v1")));
+}
+async function currentMobileSession(request,config){
+  const authorization=request.headers.get("Authorization")||"";
+  if(!authorization.startsWith("Bearer ")||authorization.length>8192)return null;
+  const token=authorization.slice(7);
+  const secret=await deriveMobileSessionSecret(config.assertionSecret);
+  const claims=await verifyJwt(secret,token,{
+    issuer:config.issuer,audience:"crc-mobile-session",maxTtl:900
+  });
+  if(!claims||claims.token_use!=="mobile_access"||!VISION_ACCOUNT_SUBJECT.test(claims.sub))return null;
+  return {subject:claims.sub,mobile:true};
+}
+
 function configuredSubject(config){
   const subjects=[...new Set(Object.values(config.invites))];
   return subjects.length===1?subjects[0]:null;
@@ -397,7 +422,8 @@ async function routeRequest(request,env){
   const api=url.pathname==="/api"||url.pathname.startsWith("/api/");
   const visionDelete=request.method==="DELETE"&&/^\/api\/v1\/vision\/jobs\/[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(url.pathname)&&url.search==="";
   if(!["GET","HEAD"].includes(request.method)&&
-     !(request.method==="POST"&&["/api/v1/auth/login","/api/v1/auth/logout","/api/v1/coach/chat","/api/v1/vision/jobs"].includes(url.pathname))&&
+     !(request.method==="POST"&&["/api/v1/auth/login","/api/v1/auth/logout","/api/v1/coach/chat","/api/v1/vision/jobs",
+       "/api/v1/auth/oidc/nonce","/api/v1/auth/oidc/exchange"].includes(url.pathname))&&
      !visionDelete)
     return json(405,"METHOD_NOT_ALLOWED");
 
@@ -406,7 +432,16 @@ async function routeRequest(request,env){
   if(request.method==="GET"&&["/login","/beta-login.html","/beta-login.js"].includes(url.pathname))
     return Response.redirect("https://"+expected+"/",303);
 
+  const oidcBootstrap=(request.method==="GET"&&url.pathname==="/api/v1/auth/oidc/config")||
+    (request.method==="POST"&&["/api/v1/auth/oidc/nonce","/api/v1/auth/oidc/exchange"].includes(url.pathname));
   let session=await currentSession(request,config);
+  if(!session)session=await currentMobileSession(request,config);
+  let identityBootstrap=false;
+  if(!session&&oidcBootstrap){
+    if(!config.identityExchangeSubject)return json(503,"OIDC_SIGN_IN_DISABLED");
+    session={subject:config.identityExchangeSubject,identityBootstrap:true};
+    identityBootstrap=true;
+  }
   let automaticCookie=null;
   if(!session){
     if(api)return json(401,"SESSION_REQUIRED");
@@ -473,7 +508,9 @@ async function routeRequest(request,env){
     let bodyForOrigin;
     const upstreamHost=useLegacy?LEGACY_LIVE_HOST:expected;
     if(request.method==="POST"){
-      if(!sameOrigin(request,expected))return json(403,"CROSS_ORIGIN_DENIED");
+      const nativeRequest=!request.headers.get("Origin")&&request.headers.get("Sec-Fetch-Site")!=="cross-site";
+      if(!sameOrigin(request,expected)&&!((identityBootstrap||session.mobile)&&nativeRequest))
+        return json(403,"CROSS_ORIGIN_DENIED");
       if(route==="/api/v1/coach/chat"){
         if(env.BETA_AI_CHAT_ENABLED!=="true")return json(503,"AI_COACH_DISABLED");
         bodyForOrigin=await boundedJson(request,4096).catch(()=>null);
@@ -487,6 +524,16 @@ async function routeRequest(request,env){
         const parsed=JSON.parse(new TextDecoder().decode(bodyForOrigin));
         if(!parsed||parsed.consent_to_upload!==true||parsed.consent_to_external_ai!==true)
           return json(403,"VISION_CONSENT_REQUIRED");
+      }else if(route==="/api/v1/auth/oidc/nonce"||route==="/api/v1/auth/oidc/exchange"){
+        bodyForOrigin=await boundedJson(request,16*1024).catch(()=>null);
+        if(bodyForOrigin===null)return json(422,"INVALID_INPUT");
+        let parsed;
+        try{parsed=JSON.parse(new TextDecoder().decode(bodyForOrigin));}catch{return json(422,"INVALID_INPUT");}
+        if(!parsed||typeof parsed!=="object"||Array.isArray(parsed))return json(422,"INVALID_INPUT");
+        if(route.endsWith("/nonce")&&Object.keys(parsed).length!==0)return json(422,"INVALID_INPUT");
+        if(route.endsWith("/exchange")&&
+           (typeof parsed.id_token!=="string"||typeof parsed.nonce_token!=="string"||
+            Object.keys(parsed).length!==2))return json(422,"INVALID_INPUT");
       }else return json(404,"NOT_FOUND");
       headers.set("Content-Type","application/json");
       headers.set("Origin","https://"+upstreamHost);
@@ -549,5 +596,5 @@ async function routeRequest(request,env){
   headers.set("X-Content-Type-Options","nosniff");
   return new Response(staticResponse.body,{status:staticResponse.status,headers});
 }
-export {apiRoute,privateHost,routeRequest,verifyJwt,signJwt,authConfig,runVisionQueue,visionObservation,visionPrompt};
+export {apiRoute,privateHost,routeRequest,verifyJwt,signJwt,authConfig,runVisionQueue,visionObservation,visionPrompt,currentMobileSession,deriveMobileSessionSecret};
 export default {fetch:routeRequest,scheduled};

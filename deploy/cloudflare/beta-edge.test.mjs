@@ -447,3 +447,54 @@ test('vision worker fails the lease when the model cannot return an observation'
  assert.equal(result.status,'failed');
  assert.deepEqual(calls,['/api/v1/vision/worker/claim','/api/v1/vision/worker/fail']);
 });
+
+
+test('OIDC native bootstrap is allowlisted without a browser cookie and rejects cross-origin requests',async()=>{
+ const {env,privateCalls}=sandbox();
+ const config=await routeRequest(req('/api/v1/auth/oidc/config',{}),env);
+ assert.equal(config.status,200);
+ const nonce=await routeRequest(req('/api/v1/auth/oidc/nonce',{},{
+  method:'POST',body:'{}',headers:{'Content-Type':'application/json'}
+ }),env);
+ assert.equal(nonce.status,200);
+ assert.equal(privateCalls.length,2);
+ for(const call of privateCalls){
+  const claims=JSON.parse(Buffer.from(call.headers.get('X-CRC-Worker-Assertion').split('.')[1],'base64url').toString());
+  assert.equal(claims.sub,SUBJECT);
+  assert.equal(call.headers.get('Cookie'),null);
+  assert.equal(call.headers.get('Authorization'),null);
+ }
+ const before=privateCalls.length;
+ const cross=await routeRequest(req('/api/v1/auth/oidc/nonce',{},{
+  method:'POST',body:'{}',headers:{Origin:'https://evil.example','Content-Type':'application/json'}
+ }),env);
+ assert.equal(cross.status,403);
+ assert.equal(privateCalls.length,before);
+});
+
+test('OIDC exchange rejects unexpected payload keys before forwarding ID tokens',async()=>{
+ const {env,privateCalls}=sandbox();
+ const response=await routeRequest(req('/api/v1/auth/oidc/exchange',{},{
+  method:'POST',body:JSON.stringify({id_token:'x'.repeat(100),nonce_token:'y'.repeat(100),email:'x'}),
+  headers:{'Content-Type':'application/json'}
+ }),env);
+ assert.equal(response.status,422);
+ assert.equal(privateCalls.length,0);
+});
+
+test('short-lived OIDC bearer tokens authenticate native vision requests without forwarding caller credentials',async()=>{
+ const {currentMobileSession,deriveMobileSessionSecret}=await import('./beta-edge-worker.mjs');
+ const {env,privateCalls}=sandbox({BETA_VISION_ENABLED:'true'});
+ const secret=await deriveMobileSessionSecret(Buffer.from(ASSERTION_KEY,'hex'));
+ const token=signJwt(Buffer.from(secret).toString('hex'),{
+  iss:BASE,aud:'crc-mobile-session',sub:ACCOUNT_SUBJECT,iat:now,exp:now+600,
+  jti:'mobile-access-token-identifier',token_use:'mobile_access'
+ });
+ const request=req('/api/v1/vision/capabilities',{Authorization:'Bearer '+token});
+ assert.equal((await currentMobileSession(request,authConfig(env,HOST))).subject,ACCOUNT_SUBJECT);
+ const response=await routeRequest(request,env);
+ assert.equal(response.status,200);
+ assert.equal(privateCalls.length,1);
+ assert.equal(privateCalls[0].headers.get('Authorization'),null);
+ assert.equal(privateCalls[0].headers.get('Cookie'),null);
+});
