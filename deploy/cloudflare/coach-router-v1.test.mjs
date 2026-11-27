@@ -69,3 +69,10 @@ test('router patch is fail-closed and inserts route metadata once',()=>{
  assert.doesNotMatch(out,/env\.AI\.run\(LIVE_AI_MODEL/);
  assert.throws(()=>patchCoachRouter(out));
 });
+
+test('parsed JSON response is serialized without bypassing the quality gate',()=>{
+ const response={answer:'راهنما',swap_index:null,fact_keys:[],source_ids:[]};
+ assert.deepEqual(JSON.parse(coachModelText({response})),response);
+ assert.equal(coachModelText({response:{...response,extra:'unknown'}}),'');
+ assert.equal(coachModelText({response:[]}), '');
+});
