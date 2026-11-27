@@ -1,41 +1,77 @@
-# Vision integration v1 — stage 15
+# Coach Vision + Account Identity — stage 16
 
-## What exists in code
-- Android AccountSession interface requires a signed-in per-account identity and a short-lived access token. VisionUploadPackage creates a bounded in-memory JSON request only after the user explicitly confirms both image upload and external-AI processing. It selects at most eight post-battle frames and never places the account subject or token in the JSON body.
-- The Cloudflare beta gateway has an exact route allowlist for capability, create-job, status and cancel operations. Upload JSON is limited to 3 MiB. Create and cancel require same-origin requests; the Worker never forwards browser cookies or caller Authorization headers to the private API. A short-lived Worker assertion is minted from the verified session.
-- The gateway requires BETA_VISION_ENABLED=true and a subject matching acct_ followed by 32 lowercase hex characters before it forwards any job request. The current automatic beta session subject is shared and does not match; the local capability response therefore remains disabled with ACCOUNT_IDENTITY_REQUIRED.
-- The private FastAPI backend has account-scoped capabilities and job routes. It requires a verified Worker assertion, an explicit allowlisted account subject, both consents and a ready-processor flag. Images are strict-base64 decoded, fully opened with Pillow, dimension checked, re-encoded as JPEG to remove metadata, then stored as bounded PostgreSQL BYTEA frames.
-- The draft PostgreSQL queue schema supports idempotent client request IDs, per-account one-credit reservation, a ledger, account-scoped status reads and cancellation. A queued cancellation deletes frame bytes and releases the reservation exactly once. Job responses never return image bytes or raw account IDs.
+## Account identity now implemented in code
 
-## API contract
-- GET /api/v1/vision/capabilities
-- POST /api/v1/vision/jobs
-- GET /api/v1/vision/jobs/{uuid}
-- DELETE /api/v1/vision/jobs/{uuid}
+The native companion now has a provider-neutral OpenID Connect Authorization Code + PKCE flow:
+- GET /api/v1/auth/oidc/config returns the configured public issuer, client ID and redirect URI.
+- POST /api/v1/auth/oidc/nonce returns a random nonce plus a short-lived HMAC-signed nonce token.
+- POST /api/v1/auth/oidc/exchange accepts only an ID token and the nonce token. The backend verifies RS256, the exact configured issuer/client ID, signature, expiry, issued-at, nonce and kid against the pinned JWKS URL. Nonce jti values are consumed once in PostgreSQL.
+- The backend derives a stable acct_ plus 32-hex identifier using a dedicated account HMAC key. It stores only HMAC-derived provider/account keys; it does not store the provider subject, email, ID token or refresh token.
+- The backend issues a 15-minute app bearer token signed with a domain-separated key derived from the Worker assertion secret. The Cloudflare edge validates that token and mints its own private Worker assertion. Caller Authorization and Cookie headers are never forwarded to the private API.
+- Android uses AppAuth with S256 PKCE and a Keystore AES-GCM encrypted session store. Only the app's short-lived access token and opaque account subject are stored locally. The ID token is exchanged and then discarded.
 
-Create-job JSON fields: client_request_id (UUID), consent_to_upload (boolean true), consent_to_external_ai (boolean true), and 1–8 ordered frames. Each frame has at_ms, mime=image/jpeg, width, height, and data_base64. The server rejects extra fields, duplicate/out-of-order times, non-JPEG data, mismatched dimensions, invalid JPEGs, more than 256 KiB/frame or 2 MiB total, and captures beyond four minutes / 320px side. The Worker accepts at most 3 MiB encoded JSON.
+The native redirect URI is fixed in the app as com.crc.companion:/oauth2redirect. The OIDC provider must register that exact URI. The native app base URL is supplied at build time through Gradle property crcBetaBaseUrl or environment variable CRC_BETA_BASE_URL; an empty value leaves sign-in disabled.
 
-The backend derives a keyed HMAC account key from the verified opaque account subject. It never trusts a Player Tag as identity. Idempotency is scoped to the account; a repeated key with different image content returns conflict. One credit is reserved atomically before enqueue. No public credit-grant or payment endpoint exists.
+## OIDC server configuration
 
-## Deliberately not activated
-All switches are off or unset:
-- Worker: BETA_VISION_ENABLED (absent means off)
-- Backend: CRC_BETA_VISION_ENABLED=false
-- Backend: CRC_BETA_VISION_PROCESSOR_READY=false
-- Backend: CRC_BETA_VISION_ALLOWED_SUBJECTS empty
-- Backend: CRC_BETA_VISION_HMAC_HEX unset
+OIDC remains disabled until all of these are configured together:
+- CRC_BETA_OIDC_ISSUER — exact HTTPS issuer.
+- CRC_BETA_OIDC_CLIENT_ID — native public client ID; must match the ID token audience.
+- CRC_BETA_OIDC_JWKS_URL — pinned HTTPS JWKS endpoint; redirects are not followed.
+- CRC_BETA_OIDC_REDIRECT_URI — exact com.crc.companion:/oauth2redirect.
+- CRC_BETA_ACCOUNT_ID_HMAC_HEX — 32-byte stable key encoded as 64 lowercase hex characters, or the exact SSM SecureString /crc/mvp/account-id-hmac.
 
-The draft migration api/migrations/DRAFT_0003_vision_jobs.sql is not applied. The job rows carry a 24-hour expiry timestamp, but no cleanup scheduler exists yet. The PostgreSQL queue has no running consumer/model adapter, so processor readiness must remain false. No account credits are granted. Android has no Internet permission, no OIDC implementation and no HTTP transport. The manifest builder is tested but does not send anything.
+The EC2 instance role needs ssm:GetParameter on only the account-key parameter ARN if the key is loaded from SSM. The account HMAC key must be backed up securely and must not be rotated without an account-ID migration. The existing shared beta session remains a separate browser-only identity; it is never accepted as an Android account.
 
-## Required before any live upload
-1. Add a real per-user OIDC account identity and verified Android sign-in/device linking (PKCE or an approved device authorization flow). The existing shared automatic beta subject and Player Tag must never be accepted as account identity.
-2. Implement and deploy a bounded queue consumer with a real, evaluated vision model adapter, retry/timeout policy, per-user/global budgets and measured unit costs. Only then may processor readiness be enabled.
-3. Apply the reviewed schema through a separate migration process, grant credits through an owner-only auditable path, and add retention/deletion cleanup plus operational monitoring before storing user images.
-4. Implement mobile HTTPS transport with short-lived scoped tokens, TLS, token refresh/revocation, retry/idempotency and user-visible upload status.
-5. Run real-device Android tests for consent, selected-app-only capture, process death, upload cancellation, battery and image quality; then build the website report UI and test account isolation end to end.
+BETA_IDENTITY_EXCHANGE_SUBJECT is optional at the edge. If omitted, the Worker permits OIDC bootstrap only when all configured invite codes resolve to one identical existing beta subject. With multiple different invite subjects, configure this variable to one existing invited subject; it cannot introduce a new subject.
+
+Mobile access tokens expire after 15 minutes. There is deliberately no refresh token yet; the user signs in again after expiry. This avoids long-lived refresh credentials before revocation and device-management flows exist.
+
+## Vision account access and credit safety
+
+An OIDC login creates:
+- an opaque auth_accounts row and provider-key mapping;
+- a one-time nonce-use record;
+- a vision_account_access row with enabled=false;
+- a zero-balance vision_credit_accounts row when the vision HMAC key is configured.
+
+Signing in does not grant Vision access or credits. An owner-approved database grant must explicitly set enabled=true, granted_at and granted_by; a separate audited credit grant must add a positive balance. There is no public credit-grant, payment or admin endpoint. Static beta allowlist subjects remain supported for the existing private test account.
+
+## Vision queue consumer now implemented in code
+
+The backend has a private worker-only claim/complete/fail API. It accepts only a signed assertion whose subject is crc-vision-worker, and that identity is rejected on every ordinary user endpoint. The Cloudflare Worker scheduled handler:
+- runs only when both BETA_VISION_ENABLED=true and BETA_VISION_WORKER_ENABLED=true, with a matching backend CRC_BETA_VISION_WORKER_ENABLED=true and processor-ready configuration;
+- claims one queued job with a 15-minute lease, receives only bounded sanitized JPEG samples and has no database credentials;
+- uses the Cloudflare Workers AI binding with @cf/google/gemma-4-26b-a4b-it, one request per selected still frame and at most eight frames;
+- validates model output against a strict observation schema and records each result as unverified; it always sets replay_analyzed=false;
+- never infers hidden cards, unseen actions, elixir spending, match outcome or tactical mistakes from a still image.
+
+A successful completion stores the bounded observation report and deletes the source JPEG bytes in the same database transaction. A terminal provider failure or expired lease deletes image bytes and releases the reserved credit exactly once. Expired jobs erase both frames and report material. Ambiguous failures are not automatically retried because the provider may already have billed the first attempt.
+
+The Worker schedule is every two minutes. It uses the static site catalog.json for known card IDs; this file is still a sample catalog, not yet a verified complete live catalog. Unknown card IDs are rejected by the observation validator. A full authoritative card catalog is a release prerequisite.
+
+## Draft migrations
+
+These migrations are code only and have not been applied:
+- DRAFT_0003_vision_jobs.sql — per-account jobs, frames, credit accounts and ledger.
+- DRAFT_0004_vision_worker.sql — attempt/lease lifecycle and worker indexes.
+- DRAFT_0005_oidc_identity.sql — pseudonymous accounts, provider mappings, nonce replay protection and default-deny Vision access grants.
+
+Apply them only through a separately reviewed migration process after backup/restore and retention checks. The backend requires the schema before OIDC exchange or Vision queue operations can succeed.
+
+## Current release boundary — not activated
+
+No OIDC provider is configured, no account HMAC key has been provisioned, and the Android app has not completed a real-provider sign-in on a physical device. No migration has been applied. No user has been granted Vision access or credits. CRC_BETA_VISION_ENABLED, CRC_BETA_VISION_PROCESSOR_READY and CRC_BETA_VISION_WORKER_ENABLED remain false/unset. The edge BETA_VISION_ENABLED and BETA_VISION_WORKER_ENABLED switches remain off. The Worker has not been deployed with its AI binding/cron changes; no model call or image upload has occurred. The Android app still has no image-upload transport or report UI.
 
 ## CI / release boundary
-The Android debug build and JVM tests cover the in-memory manifest builder. Backend CI covers request validation, account-scoped routes, PostgreSQL credit reservation/idempotency/cancellation and existing private-beta checks. Gateway CI covers exact routes, origin, consent, shared-subject denial and private-only forwarding. CI does not apply the draft migration to production, upload real images, call a model, grant credits, deploy a Worker, restart the backend or change the live site.
 
+Backend CI covers OIDC signature/nonce/replay/account mapping, HMAC-key loading, account access gating, queue leasing, image deletion, credit consumption/refund and existing private-beta checks. Gateway CI covers OIDC bootstrap, bearer validation, origin restrictions, worker claims, model-output validation and private-only forwarding. Android CI builds the AppAuth PKCE client and tests the existing capture/manifest code. These tests do not contact a real OIDC provider, apply production migrations, grant credits, deploy a Worker, upload user images, call a live model, restart EC2 or change the live site.
 
-Mobile auth boundary: the current edge Worker accepts the browser's HttpOnly session cookie and mints a private Worker assertion. It does not accept Android bearer tokens. The Android AccountSession interface is only a contract; a future OIDC/device-link exchange must verify the token at the edge and mint a scoped assertion. Passing a caller-supplied Authorization header through to the private API is not allowed.
+## Remaining before live use
+
+1. Register the native client with the selected OIDC provider and configure the exact issuer, client ID, JWKS URL and redirect URI.
+2. Provision the stable account HMAC SecureString and its narrowly scoped EC2 ssm:GetParameter permission; configure CRC_BETA_BASE_URL for the Android build.
+3. Review and apply migrations 0003–0005 through the approved backup/migration path.
+4. Implement an auditable owner-only Vision access/credit grant workflow and retention monitoring.
+5. Replace the sample card catalog with an authoritative current catalog and evaluate the model on real, consented test captures.
+6. Run physical-device OIDC login, token expiry, capture, consent, deletion and account-isolation tests. Only then consider enabling the Worker and building upload/report transport.
