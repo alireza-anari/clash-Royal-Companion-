@@ -425,6 +425,9 @@ test('vision worker uses private claims and Workers AI, validates observations a
  assert.match(modelCalls[0].input.messages[1].content[1].image_url.url,/^data:image\/jpeg;base64,/);
  assert.deepEqual(calls.map(x=>x.path),['/api/v1/vision/worker/claim','/api/v1/vision/worker/complete']);
  const completed=JSON.parse(calls[1].body);
+ const {readFile}=await import('node:fs/promises');
+ const fixture=JSON.parse(await readFile(new URL('../../android-companion/app/src/test/resources/vision-worker-result-v1.json',import.meta.url),'utf8'));
+ assert.deepEqual(completed.result,fixture);
  assert.equal(completed.result.replay_analyzed,false);
  assert.equal(completed.result.results[0].observation.hand[0],1);
  assert.equal(JSON.stringify(completed).includes(jpeg),false);
