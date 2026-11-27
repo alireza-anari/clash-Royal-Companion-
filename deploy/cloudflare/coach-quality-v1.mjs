@@ -102,11 +102,23 @@ export function coachQualityPersonalStatsClaim(text){
   ];
   return patterns.some(pattern=>pattern.test(s));
 }
+export function coachQualityDeckRoster(personal){
+  const cards=personal?.deck_cards;
+  if(!Array.isArray(cards)||cards.length!==8||cards.some(c=>!Number.isSafeInteger(c?.id)||c.id<=0||typeof c.name!=='string'||!/^[A-Za-z0-9 .,'()&-]{1,65}$/.test(c.name))||new Set(cards.map(c=>c.id)).size!==8)return '';
+  const labels={win:'فشار به برج',air:'دفاع هوایی',splash:'دفاع در برابر گروه نیروها',tankkill:'مقابله با تانک',pull:'منحرف کردن نیرو',smallspell:'طلسم سبک',damage:'آسیب مستقیم',reset:'قطع حمله یا شارژ',control:'کنترل میدان',pressure:'فشار',swarm:'گروه نیروها',tank:'جذب آسیب',utility:'پشتیبانی',cycle:'چرخه کارت',ability:'قابلیت ویژه'};
+  const provenance={'profile-live':'دک ثبت‌شده پروفایل','profile-import':'دک فایل پروفایل','profile-edited':'دک ویرایش‌شده','battle-import':'دک ثبت‌شده در نبرد؛ نه لزوماً دک فعلی','battle-event-import':'دک ثبت‌شده در نبرد رویدادی؛ نه لزوماً دک فعلی','manual':'دک انتخاب دستی','sample':'دک نمونه'};
+  return '## '+(provenance[personal.deck_source]||'دک ارسالی')+'\n'+cards.map(c=>{
+    const roles=[...new Set((Array.isArray(c.coach_roles)?c.coach_roles:[]).filter(r=>Object.hasOwn(labels,r)))].slice(0,4).map(r=>labels[r]);
+    const cost=Number.isInteger(c.elixir)&&c.elixir>=0&&c.elixir<=10?'؛ اکسیر '+c.elixir:'';
+    return '- '+c.name+': '+(roles.length?roles.join('، '):'نقش در کاتالوگ تأیید نشده')+cost;
+  }).join('\n')+'\nنقش‌ها بر اساس کاتالوگ پایه و داده ارسالی‌اند؛ فرم فعال و عملکرد واقعی از این فهرست ثابت نمی‌شود.';
+}
 export function coachQualityEvaluate(raw,context={}){
   const {battles,personal,docs,intent}=context;
   const facts=coachQualityFacts(battles,personal);
   const known=new Map((Array.isArray(docs)?docs:[]).map(d=>[d.id,d]));
-  const fallback=(reason)=>({answer:'پاسخ مدل از بررسی ساختار یا شواهد عبور نکرد. اطلاعات تاییدنشده نمایش داده نشد.'+(Object.keys(facts).length?'\n\n## داده‌های ارسالی قابل محاسبه\n'+Object.values(facts).join('\n'):'\nسؤال را دقیق‌تر بپرس یا اطلاعات حساب و دک را بارگذاری کن.'),status:'limited',reason,checks:{schema:false,selected_facts:false,swap:false,source_ids:false},sources:[],swap:null});
+  const roster=intent==='deck'?coachQualityDeckRoster(personal):'';
+  const fallback=(reason)=>({answer:('پاسخ مدل از بررسی ساختار یا شواهد عبور نکرد. اطلاعات تاییدنشده نمایش داده نشد.'+(Object.keys(facts).length?'\n\n## داده‌های ارسالی قابل محاسبه\n'+Object.values(facts).join('\n'):'\nسؤال را دقیق‌تر بپرس یا اطلاعات حساب و دک را بارگذاری کن.'))+(roster?'\n\n'+roster:''),status:'limited',reason,checks:{schema:false,selected_facts:false,swap:false,source_ids:false},sources:[],swap:null});
   if(typeof raw!=='string'||raw.length>6000)return fallback('INVALID_OUTPUT');
   let v;
   try{v=JSON.parse(raw.trim());}catch{return fallback('INVALID_JSON');}
@@ -134,6 +146,7 @@ export function coachQualityEvaluate(raw,context={}){
   }else if(intent==='vision'){
     answer='بازپخش یا ویدیوی نبرد در این درخواست تحلیل نشده است؛ زمان‌بندی، جایگذاری و علت دقیق باخت از آمار خلاصه قابل اثبات نیست.';
   }
+  if(roster)answer=roster+'\n\n## راهنمای مربی\n'+answer;
   const chosen=v.fact_keys.map(k=>facts[k]);
   if(chosen.length)answer+='\n\n## داده‌های ارسالی قابل محاسبه\n'+chosen.join('\n');
   if(!answer.trim())return fallback('EMPTY_ANSWER');
@@ -142,10 +155,10 @@ export function coachQualityEvaluate(raw,context={}){
 export function patchCoachQuality(source){
   let s=source;
   const once=(old,nu)=>{if(s.split(old).length!==2)throw new Error('Coach quality anchor mismatch: '+old.slice(0,80));s=s.replace(old,()=>nu);};
-  const declarations=[coachMetaDeclarations(),coachEventDeclarations(),'const QUALITY_VERSION='+JSON.stringify(QUALITY_VERSION)+';',coachQualityFacts.toString(),coachQualitySwap.toString(),coachQualityNumericClaim.toString(),coachQualityPersonalStatsClaim.toString(),coachQualityEvaluate.toString()].join('\n');
+  const declarations=[coachMetaDeclarations(),coachEventDeclarations(),'const QUALITY_VERSION='+JSON.stringify(QUALITY_VERSION)+';',coachQualityFacts.toString(),coachQualitySwap.toString(),coachQualityNumericClaim.toString(),coachQualityPersonalStatsClaim.toString(),coachQualityDeckRoster.toString(),coachQualityEvaluate.toString()].join('\n');
   once('async function previewChat(request,env) {',declarations+'\nasync function previewChat(request,env) {');
   once('CRC_COACH_IDENTITY_V1','CRC_COACH_IDENTITY_V1. قالب خروجی الزامی: فقط یک شیء JSON معتبر، بدون Markdown یا کدبلاک بیرونی، با چهار کلید answer (متن ساده حداکثر ۱۵۰۰ نویسه)، swap_index (null یا اندیس صفر تا سه از allowed_single_swaps فقط برای پیشنهاد تعویض)، fact_keys (آرایه حداکثر سه کلید از overall,selected,elixir,memory,practice فقط اگر داده موجود است)، source_ids (آرایه حداکثر سه شناسه منبع بازیابی‌شده که واقعاً استفاده کردی). هیچ آمار شخصی مثل تعداد نبرد، برد/باخت یا میانگین اکسیر و نرخ برد را در answer ننویس؛ سرور آن‌ها را محاسبه می‌کند. پیشنهاد تعویض فقط با اندیس، نه متن. اگر شواهد ناکافی است answer را کوتاه و صادقانه بنویس. مثال ساختاری: '+JSON.stringify({answer:'سلام!',swap_index:null,fact_keys:[],source_ids:[]}).replaceAll('"','\\"')+'.');
   once('    answer=coachFormatAnswer(answer,retrievedKnowledge).trim().slice(0,2900);','    const quality=coachQualityEvaluate(answer,{battles:evidence,personal,docs:retrievedKnowledge,intent:coachPlan.intent});\n    answer=quality.answer;');
-  once('knowledge_sources:coachKnowledgeSources(retrievedKnowledge)','knowledge_sources:coachKnowledgeSources(quality.sources),quality_version:QUALITY_VERSION,quality_status:quality.status,quality_checks:quality.checks,quality_swap:quality.swap');
+  once('knowledge_sources:coachKnowledgeSources(retrievedKnowledge)','knowledge_sources:coachKnowledgeSources(quality.sources),quality_version:QUALITY_VERSION,quality_status:quality.status,quality_reason:quality.reason,quality_checks:quality.checks,quality_swap:quality.swap');
   return s;
 }
