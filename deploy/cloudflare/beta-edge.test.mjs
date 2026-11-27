@@ -571,7 +571,7 @@ test('stage 23 live smoke runner uses fixed gateway override, bound snapshot and
  const snapshotFixture={profile:{tag:'#TEST123'},current_deck:{card_ids:[1,2,3,4,5,6,7,8]},cards:Array.from({length:8},(_,i)=>({id:i+1,name:'Card '+(i+1),elixir_cost:3,rarity:'common'})),battles:[],partial:false};
  const fake=async(url,opts)=>{
   calls.push({url,opts});
-  assert.equal(opts.headers.get('Cloudflare-Workers-Version-Overrides'),'crc-private-beta-gateway="0d1463fe-0822-4869-b3e9-27d15f89b527"');
+  assert.equal(opts.headers.get('Cloudflare-Workers-Version-Overrides'),'crc-private-beta-gateway="b3ae28d1-147a-4c09-a05e-253640ba8995"');
   const path=new URL(url).pathname;
   if(path==='/')return new Response('fixture',{headers:{'Set-Cookie':'__Host-crc_beta_session=test; Secure; HttpOnly; Path=/'}});
   assert.equal(opts.headers.get('Cookie'),'__Host-crc_beta_session=test');
