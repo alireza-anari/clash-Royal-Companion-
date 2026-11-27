@@ -119,7 +119,8 @@ test('coach POST is exact and consent-bound',async()=>{
 
 test('vision browser transport is explicit-consent gated and scoped to known job routes',async()=>{
   const calls=[];
-  const transport=createTransport(async(path,options)=>{calls.push({path,options});return new Response('{}',{status:200});});
+  const {session}=context();
+  const transport=session.createTransport(async(path,options)=>{calls.push({path,options});return new Response('{}',{status:200});});
   const body=JSON.stringify({consent_to_upload:true,consent_to_external_ai:true,frames:[]});
   const denied=await transport('/api/v1/vision/jobs',{method:'POST',body:JSON.stringify({consent_to_external_ai:true})});
   assert.equal(denied.status,403);
@@ -128,11 +129,11 @@ test('vision browser transport is explicit-consent gated and scoped to known job
   assert.equal(calls[0].options.credentials,'same-origin');
   assert.equal(calls[0].options.cache,'no-store');
   const job='/api/v1/vision/jobs/123e4567-e89b-42d3-a456-426614174000';
-  assert.equal(permittedPath('/api/v1/vision/capabilities','GET'),true);
-  assert.equal(permittedPath(job,'GET'),true);
-  assert.equal(permittedPath(job,'DELETE'),true);
-  assert.equal(permittedPath('/api/v1/vision/jobs/not-a-uuid','GET'),false);
-  assert.equal(permittedPath('/api/v1/vision/jobs?target=https://evil.example','POST'),false);
+  assert.equal(session.permittedPath('/api/v1/vision/capabilities','GET'),true);
+  assert.equal(session.permittedPath(job,'GET'),true);
+  assert.equal(session.permittedPath(job,'DELETE'),true);
+  assert.equal(session.permittedPath('/api/v1/vision/jobs/not-a-uuid','GET'),false);
+  assert.equal(session.permittedPath('/api/v1/vision/jobs?target=https://evil.example','POST'),false);
   const removed=await transport(job,{method:'DELETE'});
   assert.equal(removed.status,200);
 });
