@@ -14,7 +14,7 @@ from dataclasses import dataclass
 import os
 import re
 from urllib.parse import urlsplit, parse_qs
-from uuid import uuid4
+from uuid import UUID, uuid4
 from typing import Any, Callable
 
 from fastapi import FastAPI, HTTPException, Query, Request
@@ -32,6 +32,10 @@ from .ai_daily_budget import SharedAIDailyBudget, AIDailyBudgetExceeded
 from .ssm_secret import load_openrouter_key_from_ssm, SSMSecretUnavailable
 from .beta_db_tls import verified_beta_ssl_context
 from .beta_db_secret import credential_dsn, BetaDatabaseCredentialUnavailable
+from .vision_jobs import (PostgresVisionJobs, VisionJobRequest, VisionCreditsExhausted,
+                           VisionIdempotencyConflict, VisionInputError, VisionJobStateConflict,
+                           ACCOUNT_SUBJECT, MAX_FRAMES, MAX_FRAME_BYTES, MAX_TOTAL_BYTES,
+                           MAX_SIDE, MAX_CAPTURE_MS)
 
 
 HOST = re.compile(r"^[a-z0-9](?:[a-z0-9.-]{0,251}[a-z0-9])?$")
@@ -53,6 +57,16 @@ class BetaConfig:
     database_dsn: str
     enabled: bool = True
     live_lookup_enabled: bool = False
+    vision_requested: bool = False
+    vision_processor_ready: bool = False
+    vision_subjects: frozenset[str] = frozenset()
+    vision_hmac_secret: bytes = b""
+
+    @property
+    def vision_enabled(self) -> bool:
+        return (self.vision_requested and self.vision_processor_ready and bool(self.vision_subjects)
+                and self.vision_subjects.issubset(self.allowed_subjects)
+                and len(self.vision_hmac_secret) >= 32)
 
     @classmethod
     def from_environment(cls) -> "BetaConfig":
@@ -82,8 +96,18 @@ class BetaConfig:
         except ValueError as exc:
             raise UnsafeBetaConfiguration("Invalid beta signing key configuration.") from exc
         live = os.environ.get("CRC_BETA_LIVE_LOOKUP_ENABLED", "false") == "true"
+        vision_requested = os.environ.get("CRC_BETA_VISION_ENABLED", "false") == "true"
+        vision_processor_ready = os.environ.get("CRC_BETA_VISION_PROCESSOR_READY", "false") == "true"
+        vision_subjects = frozenset(s.strip() for s in
+            os.environ.get("CRC_BETA_VISION_ALLOWED_SUBJECTS", "").split(",") if s.strip())
+        try:
+            vision_secret = bytes.fromhex(os.environ.get("CRC_BETA_VISION_HMAC_HEX", ""))
+        except ValueError:
+            raise UnsafeBetaConfiguration("Invalid vision signing key configuration.") from None
         config = cls(host, issuer, audience, subjects, secret_bytes, assertion_bytes, dsn,
-                     live_lookup_enabled=live)
+                     live_lookup_enabled=live, vision_requested=vision_requested,
+                     vision_processor_ready=vision_processor_ready, vision_subjects=vision_subjects,
+                     vision_hmac_secret=vision_secret)
         config.validate()
         return config
 
@@ -106,6 +130,9 @@ class BetaConfig:
             raise UnsafeBetaConfiguration("Private beta quota key is not configured.")
         if len(self.worker_assertion_secret) < 32:
             raise UnsafeBetaConfiguration("Worker assertion signing key is not configured.")
+        if self.vision_subjects and (not self.vision_subjects.issubset(self.allowed_subjects) or
+                                     any(not ACCOUNT_SUBJECT.fullmatch(s) for s in self.vision_subjects)):
+            raise UnsafeBetaConfiguration("Vision subjects must be explicit stable account identities in the invite allowlist.")
         try:
             parsed = urlsplit(self.database_dsn)
             if parsed.scheme not in ("postgres", "postgresql") or not parsed.hostname:
@@ -131,6 +158,7 @@ def create_beta_app(
     pool_factory: Callable[[str], Any] | None = None,
     ai_client: OpenRouterCoach | None = None,
     ai_budget: SharedAIDailyBudget | None = None,
+    vision_jobs: PostgresVisionJobs | None = None,
 ) -> FastAPI:
     """Separate --factory ASGI target, never imported by local crc_api.main.
 
@@ -173,6 +201,7 @@ def create_beta_app(
         settings.quota_hmac_secret
     )
     ai_active = ai_switch and chat.configured
+    vision_service = vision_jobs or (PostgresVisionJobs(settings.vision_hmac_secret) if settings.vision_enabled else None)
 
     if pool_factory is None:
         async def default_pool(dsn: str):
@@ -211,6 +240,7 @@ def create_beta_app(
     app.state.admission = PrivateBetaAdmission(identity, budget)
     app.state.ai_chat = chat
     app.state.ai_daily_budget = daily_ai
+    app.state.vision_jobs = vision_service
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=[settings.hostname])
 
     def error(status: int, code: str, rid: str, retry: int | None = None):
@@ -293,7 +323,12 @@ def create_beta_app(
         return {"schema_version": "1.0", "live_lookup_enabled": settings.live_lookup_enabled,
                 "provider": "supercell", "player_tag_verifies_ownership": False,
                 "battle_log_full_history": False, "safe_public_exposure": False,
-                "ai_coach_enabled": ai_active, "ai_external_data_requires_consent": True}
+                "ai_coach_enabled": ai_active, "ai_external_data_requires_consent": True,
+                "vision_analysis_enabled": settings.vision_enabled,
+                "vision_upload_requires_consent": True,
+                "vision_max_frames": MAX_FRAMES,
+                "vision_max_frame_bytes": MAX_FRAME_BYTES,
+                "vision_max_total_bytes": MAX_TOTAL_BYTES}
 
     @app.get("/api/v1/health/ready")
     def protected_readiness(request: Request):
@@ -346,6 +381,79 @@ def create_beta_app(
             "partial": partial, "battles_error_code": battle_code,
             "source": source, "battle_source": battle_source,
         }
+
+    @app.get("/api/v1/vision/capabilities")
+    def vision_capabilities():
+        return {
+            "schema_version": "1.0", "enabled": settings.vision_enabled,
+            "upload_enabled": settings.vision_enabled, "analysis_enabled": settings.vision_enabled,
+            "credits_enabled": settings.vision_enabled, "account_identity_required": True,
+            "upload_consent_required": True, "external_ai_consent_required": True,
+            "max_frames": MAX_FRAMES, "max_frame_bytes": MAX_FRAME_BYTES,
+            "max_total_bytes": MAX_TOTAL_BYTES, "max_side": MAX_SIDE,
+            "max_capture_ms": MAX_CAPTURE_MS, "image_format": "image/jpeg",
+            "storage": "private-postgresql-bytea" if settings.vision_enabled else None,
+            "processing": "queued" if settings.vision_enabled else "disabled",
+        }
+
+    def vision_account(request: Request) -> str | None:
+        subject = getattr(request.state, "verified_subject", None)
+        if not settings.vision_enabled or subject not in settings.vision_subjects:
+            return None
+        return subject
+
+    @app.post("/api/v1/vision/jobs", status_code=202)
+    async def create_vision_job(payload: VisionJobRequest, request: Request):
+        rid = request.state.request_id
+        subject = vision_account(request)
+        if subject is None or request.app.state.vision_jobs is None:
+            return error(503, "VISION_ANALYSIS_DISABLED", rid)
+        if payload.consent_to_upload is not True or payload.consent_to_external_ai is not True:
+            return error(403, "VISION_CONSENT_REQUIRED", rid)
+        try:
+            async with request.app.state.pool.acquire() as connection:
+                result = await request.app.state.vision_jobs.submit(connection, subject, payload)
+        except VisionCreditsExhausted:
+            return error(402, "VISION_CREDITS_EXHAUSTED", rid)
+        except VisionIdempotencyConflict:
+            return error(409, "VISION_IDEMPOTENCY_CONFLICT", rid)
+        except VisionInputError:
+            return error(422, "VISION_IMAGE_INVALID", rid)
+        except Exception:
+            return error(503, "VISION_QUEUE_UNAVAILABLE", rid)
+        return {"request_id": rid, **result}
+
+    @app.get("/api/v1/vision/jobs/{job_id}")
+    async def get_vision_job(job_id: UUID, request: Request):
+        rid = request.state.request_id
+        subject = vision_account(request)
+        if subject is None or request.app.state.vision_jobs is None:
+            return error(503, "VISION_ANALYSIS_DISABLED", rid)
+        try:
+            async with request.app.state.pool.acquire() as connection:
+                result = await request.app.state.vision_jobs.get(connection, subject, job_id)
+        except Exception:
+            return error(503, "VISION_QUEUE_UNAVAILABLE", rid)
+        if result is None:
+            return error(404, "VISION_JOB_NOT_FOUND", rid)
+        return {"request_id": rid, **result}
+
+    @app.delete("/api/v1/vision/jobs/{job_id}")
+    async def cancel_vision_job(job_id: UUID, request: Request):
+        rid = request.state.request_id
+        subject = vision_account(request)
+        if subject is None or request.app.state.vision_jobs is None:
+            return error(503, "VISION_ANALYSIS_DISABLED", rid)
+        try:
+            async with request.app.state.pool.acquire() as connection:
+                result = await request.app.state.vision_jobs.cancel(connection, subject, job_id)
+        except VisionJobStateConflict:
+            return error(409, "VISION_JOB_NOT_CANCELLABLE", rid)
+        except Exception:
+            return error(503, "VISION_QUEUE_UNAVAILABLE", rid)
+        if result is None:
+            return error(404, "VISION_JOB_NOT_FOUND", rid)
+        return {"request_id": rid, **result}
 
     @app.post("/api/v1/coach/chat")
     async def protected_ai_chat(payload: CoachRequest, request: Request):
