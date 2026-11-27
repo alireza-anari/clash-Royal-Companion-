@@ -50,6 +50,7 @@ function view(name){var p=PAGE_IDS.includes(name)?name:"home";document.querySele
 function toPage(p){location.hash=p;view(p);}
 function readDeck(){try{var raw=JSON.parse(localStorage.getItem("crc.deck")||"null");if(Array.isArray(raw)&&raw.length===8&&raw.every(function(id){return Number.isSafeInteger(id);})&&new Set(raw).size===8){return raw;}}catch(e){}return null;}
 function saveDeck(){try{localStorage.setItem("crc.deck",JSON.stringify(deck));}catch(e){}}
+function profileDeckIds(profile){var items=profile&&profile.currentDeck;if(!Array.isArray(items)||items.length>8)return [];var ids=items.map(function(c){return c&&c.id;});return ids.every(function(id){return Number.isSafeInteger(id)&&id>0;})&&new Set(ids).size===ids.length?ids:[];}
 function setDeck(ids,source,quiet){deck=ids.slice(0,8);while(deck.length<8)deck.push(null);deckSource=source;activeSlot=0;saveDeck();renderAll();if(!quiet)notify("دک انتخاب‌شده به‌روز شد.");}
 function deckErrors(){var errors=[];if(deck.length!==8||deck.some(function(x){return x==null;}))errors.push("دک باید دقیقاً ۸ کارت داشته باشد.");var used=deck.filter(function(x){return x!=null;});if(new Set(used).size!==used.length)errors.push("کارت تکراری در دک وجود دارد.");if(used.some(function(id){var c=getCard(id);return !c||c.type==="support";}))errors.push("کارت نامعتبر یا Tower Troop در جایگاه اصلی قرار گرفته است.");return errors;}
 function selectSlot(index){activeSlot=index;crcDeckTab("crcEditDeck");renderDeck();notify("جایگاه "+(index+1)+" انتخاب شد؛ کارت جدید را از فهرست لمس کن.");}
@@ -496,11 +497,9 @@ var text=await file.text();try{return JSON.parse(text);}catch(e){throw Error("م
 }
 async function importProfile(file){
 try{var raw=await parseFile(file);if(!raw||Array.isArray(raw)||typeof raw!=="object"||!tagFormat(raw.tag))throw Error("این فایل پاسخ Player Profile معتبر نیست.");
-var incomingTag=tagFormat(raw.tag),previousTag=player&&tagFormat(player.tag);coachAccountChanged();if(previousTag!==incomingTag){battles=null;battlesSource="file";}profileSource="file";liveFetchedAt=null;player=raw;mergeProfileCards(raw);renderProfile();renderCoach();if(battles)renderBattles();
-if(Array.isArray(raw.currentDeck)&&raw.currentDeck.length===8){
-var ids=raw.currentDeck.map(function(c){return c&&c.id;});
-if(ids.every(function(id){return Number.isSafeInteger(id);})&&new Set(ids).size===8){setDeck(ids,"profile-import",true);notify("پروفایل وارد شد؛ دک ثبت‌شده هم بارگذاری شد.");}
-}else{renderAll();notify("پروفایل بدون دک ۸ کارتی وارد شد.");}
+var incomingTag=tagFormat(raw.tag),previousTag=player&&tagFormat(player.tag);coachAccountChanged();if(previousTag!==incomingTag){battles=null;battlesSource="file";}profileSource="file";liveFetchedAt=null;player=raw;mergeProfileCards(raw);
+var ids=profileDeckIds(raw);setDeck(ids,"profile-import",true);renderProfile();renderCoach();renderBattles();
+notify(ids.length===8?"پروفایل وارد شد؛ دک ثبت‌شده هم بارگذاری شد.":"دک پروفایل کامل نیست؛ فقط کارت‌های ثبت‌شده نمایش داده می‌شوند.");
 $("playerTag").value=raw.tag;renderCatalog();
 }catch(e){notify(e.message||"خواندن پروفایل ناموفق بود.");}finally{$("profileFile").value="";}
 }
@@ -552,13 +551,12 @@ async function loadProfileLive(){
     coachAccountChanged();player=payload.profile;profileSource="live";liveFetchedAt=payload.fetched_at;
     battles=payload.battles;battlesSource="live";
     mergeProfileCards(player);mergeBattleCards(battles);
-    if(Array.isArray(player.currentDeck)&&player.currentDeck.length===8){
-      var ids=player.currentDeck.map(function(c){return c.id;});
-      if(ids.every(Number.isSafeInteger)&&new Set(ids).size===8)setDeck(ids,"profile-live",true);
-    }
+    var ids=profileDeckIds(player);
+    // Replace old/sample selection even when the new account returns a partial deck.
+    setDeck(ids,"profile-live",true);
     renderProfile();renderCoach();renderBattles();renderCatalog();
     status.textContent=payload.partial?"پروفایل دریافت شد؛ بخشی از تاریخچه نبردها در دسترس نبود.":"اطلاعات عمومی دریافت شد؛ مالکیت حساب با Player Tag تأیید نمی‌شود.";
-    try{localStorage.setItem("crc.playerTag",tag);}catch(e){}if(crcConnecting){$("crcLoadProfile").textContent="✓ پروفایل و دک دریافت شد";$("crcLoadBattles").textContent=payload.partial?"! تاریخچه نبردها ناقص است":"✓ نبردها دریافت شد";crcConnecting=false;$("crcOnboard").close();toPage("home");}crcRender();notify("اطلاعات عمومی بازیکن از Backend دریافت شد.");
+    try{localStorage.setItem("crc.playerTag",tag);}catch(e){}if(crcConnecting){$("crcLoadProfile").textContent=ids.length===8?"✓ پروفایل و دک دریافت شد":"! پروفایل دریافت شد؛ دک ناقص است";$("crcLoadBattles").textContent=payload.partial?"! تاریخچه نبردها ناقص است":"✓ نبردها دریافت شد";crcConnecting=false;$("crcOnboard").close();toPage("home");}crcRender();notify("اطلاعات عمومی بازیکن از Backend دریافت شد.");
   }catch(e){
     status.textContent=(e&&e.message)||"اتصال به Backend ناموفق بود.";if(crcConnecting){crcConnecting=false;crcStep(2);$("crcError").textContent=status.textContent;}
     var loginNeeded=!!(window.CRCBetaSession&&e&&
@@ -574,8 +572,9 @@ var wrap=$("profileSummary");if(!player)return;
  $("dataStatus").textContent=profileSource==="live"?"داده دریافت‌شده":"داده واردشده";
 var owned=Array.isArray(player.cards)?player.cards.length:0;var support=Array.isArray(player.supportCards)?player.supportCards.length:0;
 var name=safe(player.name||"بدون نام"),tag=safe(player.tag||""),trophies=safe(player.trophies==null?"نامشخص":player.trophies),arena=safe(player.arena&&player.arena.name||"نامشخص");
-wrap.className="panel";wrap.innerHTML='<div class="panel-top"><div><div class="eyebrow">'+(profileSource==="live"?"LIVE PROFILE · SERVER-SIDE SUPERCELL":"IMPORTED PROFILE · LOCAL ONLY")+'</div><h2>'+name+'</h2><p dir="ltr">'+tag+'</p></div><span class="chip gold">مالکیت احراز نشده</span></div><div class="stat-inline"><div class="stat"><b>'+trophies+'</b><span>Trophies</span></div><div class="stat"><b>'+owned+'</b><span>کارت اصلی در فایل</span></div><div class="stat"><b>'+support+'</b><span>کارت پشتیبان</span></div><div class="stat"><b>'+arena+'</b><span>Arena</span></div></div><div class="message">'+safe(profileSource==="live"?"پاسخ از Backend با کلید سرور دریافت شده است؛ مالکیت حساب تأیید نشده و زمان دریافت: "+(liveFetchedAt||"نامشخص"):"این اطلاعات فقط از فایل واردشده خوانده شده‌اند. تازگی داده و مالکیت حساب مستقل از آن تأیید نشده است.")+'</div>'+(Array.isArray(player.currentDeck)&&player.currentDeck.length===8?'<button type="button" id="useProfileDeck" class="btn primary" style="margin-top:15px">بازکردن دک پروفایل در دک‌ساز ←</button>':"");
-var b=$("useProfileDeck");if(b)b.addEventListener("click",function(){var ids=player.currentDeck.map(function(c){return c.id;});if(new Set(ids).size===8){setDeck(ids,"profile-import");toPage("deck");}});
+wrap.className="panel";wrap.innerHTML='<div class="panel-top"><div><div class="eyebrow">'+(profileSource==="live"?"LIVE PROFILE · SERVER-SIDE SUPERCELL":"IMPORTED PROFILE · LOCAL ONLY")+'</div><h2>'+name+'</h2><p dir="ltr">'+tag+'</p></div><span class="chip gold">مالکیت احراز نشده</span></div><div class="stat-inline"><div class="stat"><b>'+trophies+'</b><span>Trophies</span></div><div class="stat"><b>'+owned+'</b><span>کارت اصلی در فایل</span></div><div class="stat"><b>'+support+'</b><span>کارت پشتیبان</span></div><div class="stat"><b>'+arena+'</b><span>Arena</span></div></div><div class="message">'+safe(profileSource==="live"?"پاسخ از Backend با کلید سرور دریافت شده است؛ مالکیت حساب تأیید نشده و زمان دریافت: "+(liveFetchedAt||"نامشخص"):"این اطلاعات فقط از فایل واردشده خوانده شده‌اند. تازگی داده و مالکیت حساب مستقل از آن تأیید نشده است.")+'</div>'+(profileDeckIds(player).length===8?'<button type="button" id="useProfileDeck" class="btn primary" style="margin-top:15px">بازکردن دک پروفایل در دک‌ساز ←</button>':"");
+var b=$("useProfileDeck");if(b)b.addEventListener("click",function(){var ids=profileDeckIds(player);if(ids.length===8){setDeck(ids,profileSource==="live"?"profile-live":"profile-import");toPage("deck");}});
+if(profileDeckIds(player).length!==8){var warning=document.createElement("div");warning.className="message";warning.id="crcIncompleteProfileDeck";warning.textContent="دک ثبت‌شده در پاسخ حساب کامل نیست ("+profileDeckIds(player).length+" از ۸ کارت معتبر). کارت‌های ناموجود حدس زده نمی‌شوند؛ دک نبرد اخیر لزوماً دک فعلی نیست.";wrap.appendChild(warning);}
   coachMemoryCapture();renderProgressPanel();
 }
 async function importBattles(file){
