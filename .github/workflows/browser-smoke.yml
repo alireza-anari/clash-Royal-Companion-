@@ -1,0 +1,44 @@
+name: CRC browser smoke checks
+on:
+  push:
+    branches: [feat/ux-browser-smoke, feat/mvp-coach-offline]
+  pull_request:
+    branches: [feat/mvp-coach-offline]
+permissions:
+  contents: read
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - name: Verify generated worker
+        run: node deploy/cloudflare/build-site.mjs --check
+      - name: Install browser test dependency
+        run: npm install --no-save --package-lock=false playwright@1.51.1
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Exercise desktop and mobile sample UI
+        run: node site/browser-smoke.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: crc-browser-screenshots
+          path: browser-smoke-output/
+          if-no-files-found: ignore
+  deployed-health:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check public sample deployment without private data
+        run: |
+          set -euo pipefail
+          BASE=https://crc-coach-ci-stage-20261121.alirezaanari117.workers.dev
+          curl --fail --silent --show-error --max-time 20 --retry 2 "$BASE/" -o /tmp/crc-home.html
+          grep -q 'id="homePlayerSummary"' /tmp/crc-home.html
+          grep -q 'data-report-group="coachMetrics"' /tmp/crc-home.html
+          curl --fail --silent --show-error --max-time 20 "$BASE/api/v1/capabilities" -o /tmp/crc-caps.json
+          node -e 'const c=require("/tmp/crc-caps.json"); if(c.live_lookup_enabled!==false) throw Error("Sample must not have live lookup"); console.log("Public UX and sample-only flag verified")'
