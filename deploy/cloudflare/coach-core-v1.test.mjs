@@ -100,6 +100,8 @@ test('full coach-core patch composes and remains syntactically valid',()=>{
  assert.match(patched,/knowledge_sources:coachKnowledgeSources/);
  assert.match(patched,/coachModelExecute\(env,modelRoute,messages/);
  assert.match(patched,/model_route:execution.route/);
+ assert.match(patched,/Object\.keys\(coachQualityFacts\(evidence,personal\)\)/);
+ assert.match(patched,/کلیدهای آماری مجاز همین درخواست/);
  assert.match(patched,/max_completion_tokens:route.maxTokens/);
  assert.doesNotMatch(patched,/max_completion_tokens:720/);
  assert.doesNotThrow(()=>new vm.Script(patched));
