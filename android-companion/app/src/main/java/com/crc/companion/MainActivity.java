@@ -23,6 +23,9 @@ public final class MainActivity extends Activity {
     private Bitmap shown;
     private int index=0, shownIndex=-1;
     private boolean permissionPending;
+    private AndroidAccountSession accountSession;
+    private OidcAuthClient oidcClient;
+    private TextView accountStatus;
     private final Runnable poll=new Runnable(){@Override public void run(){render();handler.postDelayed(this,500);}};
     @Override public void onCreate(Bundle saved){
         super.onCreate(saved);
@@ -41,6 +44,13 @@ public final class MainActivity extends Activity {
         TextView title=new TextView(this);title.setText("CRC Companion · ثبت نبرد");title.setTextSize(24);layout.addView(title);
         TextView intro=new TextView(this);intro.setText("نسخه آزمایشی · بدون اینترنت و بدون تحلیل زنده\nدر پنجره مجوز اندروید، فقط برنامه Clash Royale را انتخاب کن؛ گزینه کل صفحه را انتخاب نکن. برنامه نمی‌تواند انتخاب سیستم را خودش تأیید کند. اگر پنجره بازی در دسترس نیست، لغو کن. پس از شروع، به بازی برو و از اعلان ثبت برای توقف استفاده کن. هیچ صدا یا ویدیوی کامل ثبت نمی‌شود.");
         intro.setTextSize(16);layout.addView(intro);
+        accountSession=new AndroidAccountSession(this);
+        accountStatus=new TextView(this);accountStatus.setTextSize(14);
+        accountStatus.setText(accountSession.isAuthenticated()?"حساب مستقل متصل است.":"برای اتصال حساب، ورود امن لازم است.");
+        layout.addView(accountStatus);
+        oidcClient=new OidcAuthClient(this,BuildConfig.CRC_BETA_BASE_URL,accountSession,accountStatus::setText,saved);
+        button(layout,"ورود امن با حساب کاربری",v->oidcClient.start());
+        button(layout,"خروج از حساب",v->oidcClient.signOut());
         start=button(layout,"شروع ثبت با مجوز اندروید",v->requestCapture());
         stop=button(layout,"توقف ثبت",v->stopCapture());
         clear=button(layout,"پاک کردن تصاویر",v->{if(buffer.discard()){index=0;forgetPreview();render();}});
@@ -79,6 +89,7 @@ public final class MainActivity extends Activity {
     }
     @Override protected void onActivityResult(int request,int result,Intent data){
         super.onActivityResult(request,result,data);
+        if(oidcClient!=null&&oidcClient.handleActivityResult(request,result,data))return;
         if(request!=CONSENT)return;
         permissionPending=false;
         if(result!=RESULT_OK || data==null){render();Toast.makeText(this,"اجازه ثبت صادر نشد.",Toast.LENGTH_SHORT).show();return;}
@@ -91,10 +102,18 @@ public final class MainActivity extends Activity {
         try {startService(new Intent(this,CaptureService.class).setAction(CaptureService.STOP));}
         catch(RuntimeException ex){Toast.makeText(this,"از دکمه توقف اشتراک صفحه اندروید استفاده کن.",Toast.LENGTH_LONG).show();}
     }
-    @Override protected void onSaveInstanceState(Bundle out){out.putBoolean("pending",permissionPending);super.onSaveInstanceState(out);}
+    @Override protected void onSaveInstanceState(Bundle out){
+        out.putBoolean("pending",permissionPending);
+        if(oidcClient!=null)oidcClient.saveState(out);
+        super.onSaveInstanceState(out);
+    }
     @Override protected void onResume(){super.onResume();handler.removeCallbacks(poll);handler.post(poll);}
     @Override protected void onPause(){handler.removeCallbacks(poll);forgetPreview();super.onPause();}
-    @Override protected void onDestroy(){handler.removeCallbacks(poll);forgetPreview();super.onDestroy();}
+    @Override protected void onDestroy(){
+        handler.removeCallbacks(poll);forgetPreview();
+        if(oidcClient!=null)oidcClient.dispose();
+        super.onDestroy();
+    }
     private void forgetPreview(){
         if(preview!=null)preview.setImageDrawable(null);
         if(shown!=null){shown.recycle();shown=null;}shownIndex=-1;

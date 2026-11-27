@@ -1,5 +1,8 @@
 plugins { id 'com.android.application' }
+def betaBaseUrl = (project.findProperty('crcBetaBaseUrl') ?: System.getenv('CRC_BETA_BASE_URL') ?: '').toString()
+def escapedBetaBaseUrl = betaBaseUrl.replace('\\', '\\\\').replace('"', '\\"')
 android {
+    buildFeatures { buildConfig true }
     namespace 'com.crc.companion'
     compileSdk 35
     defaultConfig {
@@ -8,6 +11,7 @@ android {
         targetSdk 35
         versionCode 1
         versionName '0.1.0-capture-alpha'
+        buildConfigField 'String', 'CRC_BETA_BASE_URL', '"' + escapedBetaBaseUrl + '"'
         testInstrumentationRunner 'android.test.InstrumentationTestRunner'
     }
     compileOptions {
@@ -18,4 +22,7 @@ android {
         release { minifyEnabled false }
     }
 }
-dependencies { testImplementation 'junit:junit:4.13.2' }
+dependencies {
+    implementation 'net.openid:appauth:0.11.1'
+    testImplementation 'junit:junit:4.13.2'
+}
