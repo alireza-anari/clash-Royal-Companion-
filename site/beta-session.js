@@ -9,8 +9,11 @@
     try{
       var url=new URL(value,root.location.origin);
       if(url.origin!==root.location.origin||url.hash)return false;
-      if(method==="POST")return url.pathname==="/api/v1/coach/chat"&&url.search==="";
+      if(method==="POST")return ["/api/v1/coach/chat","/api/v1/vision/jobs"].includes(url.pathname)&&url.search==="";
+      if(method==="DELETE")return /^\/api\/v1\/vision\/jobs\/[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(url.pathname)&&url.search==="";
       if(method!=="GET")return false;
+      if(url.pathname==="/api/v1/vision/capabilities"&&url.search==="")return true;
+      if(/^\/api\/v1\/vision\/jobs\/[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(url.pathname)&&url.search==="")return true;
       if(url.pathname==="/api/v1/health/ready"&&url.search==="")return true;
       if(url.pathname==="/api/v1/capabilities"&&url.search==="")return true;
       if(url.pathname==="/api/v1/catalog/cards"&&url.search==="")return true;
@@ -27,14 +30,18 @@
   function createTransport(fetchFn){
     return async function(path,options){
       var method=options&&options.method?String(options.method).toUpperCase():"GET";
-      if(!["GET","POST"].includes(method))return blockedResponse("BETA_METHOD_DENIED",405);
+      if(!["GET","POST","DELETE"].includes(method))return blockedResponse("BETA_METHOD_DENIED",405);
       if(!permittedPath(path,method))return blockedResponse("BETA_ROUTE_DENIED",403);
       var headers={"Accept":"application/json"},body;
       if(method==="POST"){
         body=options&&options.body;
-        if(typeof body!=="string"||body.length>4096)return blockedResponse("INVALID_INPUT",422);
-        try{if(JSON.parse(body).consent_to_external_ai!==true)return blockedResponse("AI_CONSENT_REQUIRED",403);}
-        catch(e){return blockedResponse("INVALID_INPUT",422);}
+        var max=path==="/api/v1/vision/jobs"?3*1024*1024:4096;
+        if(typeof body!=="string"||body.length>max)return blockedResponse("INVALID_INPUT",422);
+        try{
+          var parsed=JSON.parse(body);
+          if(parsed.consent_to_external_ai!==true)return blockedResponse("AI_CONSENT_REQUIRED",403);
+          if(path==="/api/v1/vision/jobs"&&parsed.consent_to_upload!==true)return blockedResponse("VISION_CONSENT_REQUIRED",403);
+        }catch(e){return blockedResponse("INVALID_INPUT",422);}
         headers["Content-Type"]="application/json";
       }
       try{
