@@ -8,6 +8,7 @@ from datetime import datetime
 from hashlib import sha256
 from io import BytesIO
 from typing import Any, Literal
+import base64
 from uuid import UUID, uuid4
 from PIL import Image, UnidentifiedImageError
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, model_validator
@@ -78,6 +79,62 @@ class VisionJobRequest(BaseModel):
         if sum(len(frame["image_bytes"]) for frame in frames)>MAX_TOTAL_BYTES:
             raise VisionInputError("Frame batch exceeds the total byte limit.")
         return frames
+
+
+
+class VisionUnitObservation(BaseModel):
+    model_config=ConfigDict(extra="forbid")
+    card_id:int=Field(ge=1,le=1_000_000_000)
+    x:float=Field(ge=0,le=1)
+    y:float=Field(ge=0,le=1)
+    side:Literal["player","opponent","unknown"]
+
+class VisionObservation(BaseModel):
+    model_config=ConfigDict(extra="forbid")
+    screen:Literal["battle","other","unknown"]
+    game_clock_s:int|None=Field(default=None,ge=0,le=300)
+    elixir:int|None=Field(default=None,ge=0,le=10)
+    hand:list[int]=Field(default_factory=list,max_length=4)
+    units:list[VisionUnitObservation]=Field(default_factory=list,max_length=12)
+    @model_validator(mode="after")
+    def consistent_observation(self):
+        if any(isinstance(x,bool) or x<1 or x>1_000_000_000 for x in self.hand) or len(set(self.hand))!=len(self.hand):
+            raise ValueError("Invalid visible hand.")
+        if self.screen!="battle" and (self.game_clock_s is not None or self.elixir is not None or self.hand or self.units):
+            raise ValueError("Non-battle frames cannot contain battle observations.")
+        return self
+
+class VisionFrameObservation(BaseModel):
+    model_config=ConfigDict(extra="forbid")
+    at_ms:int=Field(ge=0,lt=MAX_CAPTURE_MS)
+    status:Literal["unverified","invalid_output","provider_error"]
+    observation:VisionObservation|None=None
+    @model_validator(mode="after")
+    def status_matches_observation(self):
+        if (self.status=="unverified") != (self.observation is not None):
+            raise ValueError("Observation status and payload do not match.")
+        return self
+
+class VisionWorkerResult(BaseModel):
+    model_config=ConfigDict(extra="forbid")
+    version:Literal["crc-vision-lab-v1"]
+    model:Literal["@cf/google/gemma-4-26b-a4b-it"]
+    replay_analyzed:Literal[False]
+    selected:list[int]=Field(min_length=1,max_length=MAX_FRAMES)
+    calls:int=Field(ge=0,le=MAX_FRAMES)
+    results:list[VisionFrameObservation]=Field(max_length=MAX_FRAMES)
+    @model_validator(mode="after")
+    def bounded_result(self):
+        if any(isinstance(t,bool) or t<0 or t>=MAX_CAPTURE_MS for t in self.selected):
+            raise ValueError("Invalid selected frame times.")
+        if any(b<=a for a,b in zip(self.selected,self.selected[1:])):
+            raise ValueError("Selected frame times must be strictly increasing.")
+        if self.calls!=len(self.results):
+            raise ValueError("Model call count must match returned frame results.")
+        times=[r.at_ms for r in self.results]
+        if len(set(times))!=len(times) or any(t not in self.selected for t in times):
+            raise ValueError("Result frames must be a unique subset of selected times.")
+        return self
 
 class PostgresVisionJobs:
     """Atomic one-credit reservation, idempotent enqueue and owner-scoped status."""
@@ -185,3 +242,158 @@ class PostgresVisionJobs:
                    WHERE id=$1 RETURNING id,status,frame_count,total_bytes,created_at,updated_at,expires_at,result_json,error_code""",
                 job_id)
         return self._public(updated)
+
+    async def claim_next(self,connection:Any,*,lease_seconds:int=900)->dict[str,Any]|None:
+        """Atomically lease one queued job; frame bytes are returned only to the private processor."""
+        if isinstance(lease_seconds,bool) or not 60<=lease_seconds<=900:
+            raise ValueError("Vision worker lease must be between 60 and 900 seconds.")
+        async with connection.transaction():
+            row=await connection.fetchrow(
+                """SELECT id,subject_key,frame_count,total_bytes,expires_at
+                   FROM vision_jobs
+                   WHERE status='queued' AND expires_at>now()
+                   ORDER BY created_at,id
+                   FOR UPDATE SKIP LOCKED LIMIT 1"""
+            )
+            if row is None:return None
+            lease=uuid4()
+            updated=await connection.fetchrow(
+                """UPDATE vision_jobs SET status='processing',attempt_count=attempt_count+1,
+                   lease_token=$2,lease_expires_at=now()+($3 * interval '1 second'),
+                   started_at=COALESCE(started_at,now()),updated_at=now()
+                   WHERE id=$1 AND status='queued'
+                   RETURNING id,frame_count,total_bytes,attempt_count,lease_expires_at""",
+                row["id"],lease,lease_seconds)
+            if updated is None:return None
+            frames=await connection.fetch(
+                """SELECT at_ms,width,height,mime,image_bytes FROM vision_job_frames
+                   WHERE job_id=$1 ORDER BY frame_index""",row["id"])
+            if len(frames)!=int(updated["frame_count"]):
+                raise RuntimeError("Vision job frame set is incomplete.")
+            return {
+                "job_id":str(updated["id"]),"lease_token":str(lease),
+                "attempt_count":int(updated["attempt_count"]),
+                "frames":[{"at_ms":int(f["at_ms"]),"width":int(f["width"]),
+                    "height":int(f["height"]),"mime":f["mime"],
+                    "data_base64":base64.b64encode(bytes(f["image_bytes"])).decode("ascii")}
+                    for f in frames],
+            }
+
+    async def complete(self,connection:Any,job_id:UUID,lease_token:UUID,
+                       result:VisionWorkerResult)->dict[str,Any]:
+        """Commit a validated evidence report and erase source images atomically."""
+        if not isinstance(result,VisionWorkerResult):raise VisionInputError("Invalid worker result.")
+        encoded=json.dumps(result.model_dump(mode="json"),separators=(",",":"),ensure_ascii=True)
+        if len(encoded.encode("utf-8"))>48*1024:raise VisionInputError("Vision result is too large.")
+        async with connection.transaction():
+            row=await connection.fetchrow(
+                """SELECT id,subject_key,status,frame_count,total_bytes,created_at,updated_at,expires_at
+                   FROM vision_jobs WHERE id=$1 FOR UPDATE""",job_id)
+            if row is None:raise VisionJobNotFound()
+            if row["status"]!="processing":raise VisionJobStateConflict()
+            lease=await connection.fetchval("SELECT lease_token FROM vision_jobs WHERE id=$1",job_id)
+            if lease is None or str(lease)!=str(lease_token):raise VisionJobStateConflict()
+            expected=await connection.fetch(
+                "SELECT at_ms FROM vision_job_frames WHERE job_id=$1 ORDER BY frame_index",job_id)
+            if [int(x["at_ms"]) for x in expected]!=result.selected:
+                raise VisionInputError("Worker result does not match the claimed frames.")
+            key=row["subject_key"]
+            await connection.execute("DELETE FROM vision_job_frames WHERE job_id=$1",job_id)
+            await connection.execute(
+                """INSERT INTO vision_credit_ledger(subject_key,job_id,event_type,delta,balance_after,idempotency_key)
+                   SELECT $1,$2,'consume',0,balance,$3 FROM vision_credit_accounts WHERE subject_key=$1
+                   ON CONFLICT(subject_key,idempotency_key) DO NOTHING""",
+                key,job_id,"consume:"+str(job_id))
+            updated=await connection.fetchrow(
+                """UPDATE vision_jobs SET status='succeeded',result_json=$2::jsonb,total_bytes=0,
+                   error_code=NULL,model_name=$3,lease_token=NULL,lease_expires_at=NULL,
+                   completed_at=now(),updated_at=now()
+                   WHERE id=$1 RETURNING id,status,frame_count,total_bytes,created_at,updated_at,
+                   expires_at,result_json,error_code""",job_id,encoded,result.model)
+        return self._public(updated)
+
+    async def fail(self,connection:Any,job_id:UUID,lease_token:UUID,error_code:str)->dict[str,Any]:
+        """Terminal, non-retrying failure: erase frames and release the reserved credit exactly once."""
+        allowed={"VISION_PROVIDER_UNAVAILABLE","VISION_PROVIDER_REJECTED",
+                 "VISION_PROCESSOR_INTERRUPTED","VISION_CATALOG_UNAVAILABLE",
+                 "VISION_INVALID_MODEL_RESPONSE"}
+        if error_code not in allowed:raise ValueError("Unsupported vision worker error code.")
+        async with connection.transaction():
+            row=await connection.fetchrow(
+                """SELECT id,subject_key,status,frame_count,total_bytes,created_at,updated_at,expires_at
+                   FROM vision_jobs WHERE id=$1 FOR UPDATE""",job_id)
+            if row is None:raise VisionJobNotFound()
+            if row["status"]=="failed":return self._public(row)
+            if row["status"]!="processing":raise VisionJobStateConflict()
+            lease=await connection.fetchval("SELECT lease_token FROM vision_jobs WHERE id=$1",job_id)
+            if lease is None or str(lease)!=str(lease_token):raise VisionJobStateConflict()
+            key=row["subject_key"]
+            balance=await connection.fetchval(
+                """UPDATE vision_credit_accounts SET balance=balance+1,updated_at=now()
+                   WHERE subject_key=$1 RETURNING balance""",key)
+            if balance is None:raise RuntimeError("Vision credit account is unavailable.")
+            await connection.execute(
+                """INSERT INTO vision_credit_ledger(subject_key,job_id,event_type,delta,balance_after,idempotency_key)
+                   VALUES($1,$2,'release',1,$3,$4) ON CONFLICT(subject_key,idempotency_key) DO NOTHING""",
+                key,job_id,int(balance),"release:"+str(job_id))
+            await connection.execute("DELETE FROM vision_job_frames WHERE job_id=$1",job_id)
+            updated=await connection.fetchrow(
+                """UPDATE vision_jobs SET status='failed',total_bytes=0,error_code=$2,
+                   lease_token=NULL,lease_expires_at=NULL,completed_at=now(),updated_at=now()
+                   WHERE id=$1 RETURNING id,status,frame_count,total_bytes,created_at,updated_at,
+                   expires_at,result_json,error_code""",job_id,error_code)
+        return self._public(updated)
+
+    async def recover_stale(self,connection:Any,*,limit:int=20)->int:
+        """Fail expired worker leases and refund credits; never replay a possibly billed inference."""
+        if isinstance(limit,bool) or not 1<=limit<=100:raise ValueError("Invalid stale-job batch limit.")
+        recovered=0
+        async with connection.transaction():
+            rows=await connection.fetch(
+                """SELECT id,subject_key FROM vision_jobs
+                   WHERE status='processing' AND lease_expires_at<=now()
+                   ORDER BY lease_expires_at FOR UPDATE SKIP LOCKED LIMIT $1""",limit)
+            for row in rows:
+                key=row["subject_key"]
+                balance=await connection.fetchval(
+                    """UPDATE vision_credit_accounts SET balance=balance+1,updated_at=now()
+                       WHERE subject_key=$1 RETURNING balance""",key)
+                if balance is None:raise RuntimeError("Vision credit account is unavailable.")
+                await connection.execute(
+                    """INSERT INTO vision_credit_ledger(subject_key,job_id,event_type,delta,balance_after,idempotency_key)
+                       VALUES($1,$2,'release',1,$3,$4) ON CONFLICT(subject_key,idempotency_key) DO NOTHING""",
+                    key,row["id"],int(balance),"release:"+str(row["id"]))
+                await connection.execute("DELETE FROM vision_job_frames WHERE job_id=$1",row["id"])
+                await connection.execute(
+                    """UPDATE vision_jobs SET status='failed',total_bytes=0,error_code='VISION_PROCESSOR_INTERRUPTED',
+                       lease_token=NULL,lease_expires_at=NULL,completed_at=now(),updated_at=now() WHERE id=$1""",
+                    row["id"])
+                recovered+=1
+        return recovered
+
+    async def expire_due(self,connection:Any,*,limit:int=50)->int:
+        """Delete expired report/image material and refund only still-reserved jobs."""
+        if isinstance(limit,bool) or not 1<=limit<=200:raise ValueError("Invalid expiry batch limit.")
+        expired=0
+        async with connection.transaction():
+            rows=await connection.fetch(
+                """SELECT id,subject_key,status FROM vision_jobs
+                   WHERE status<>'expired' AND expires_at<=now()
+                   ORDER BY expires_at FOR UPDATE SKIP LOCKED LIMIT $1""",limit)
+            for row in rows:
+                key=row["subject_key"]
+                if row["status"] in ("queued","processing"):
+                    balance=await connection.fetchval(
+                        """UPDATE vision_credit_accounts SET balance=balance+1,updated_at=now()
+                           WHERE subject_key=$1 RETURNING balance""",key)
+                    if balance is None:raise RuntimeError("Vision credit account is unavailable.")
+                    await connection.execute(
+                        """INSERT INTO vision_credit_ledger(subject_key,job_id,event_type,delta,balance_after,idempotency_key)
+                           VALUES($1,$2,'release',1,$3,$4) ON CONFLICT(subject_key,idempotency_key) DO NOTHING""",
+                        key,row["id"],int(balance),"release:"+str(row["id"]))
+                await connection.execute("DELETE FROM vision_job_frames WHERE job_id=$1",row["id"])
+                await connection.execute(
+                    """UPDATE vision_jobs SET status='expired',total_bytes=0,result_json=NULL,
+                       lease_token=NULL,lease_expires_at=NULL,updated_at=now() WHERE id=$1""",row["id"])
+                expired+=1
+        return expired
