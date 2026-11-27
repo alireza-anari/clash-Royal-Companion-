@@ -1,7 +1,7 @@
 // Owner-run smoke of the zero-traffic stage-23 gateway and Coach candidate.
 // No network by default. No raw player, cookie, response text or secrets in output.
 const BASE='https://crc-private-beta-gateway.alirezaanari117.workers.dev';
-const GATEWAY='ea969d9a-d1a4-4fcf-8bef-15f6d07f0c56';
+const GATEWAY='0d1463fe-0822-4869-b3e9-27d15f89b527';
 const override='crc-private-beta-gateway="'+GATEWAY+'"';
 const cookieName='__Host-crc_beta_session';
 function check(condition,code){if(!condition)throw new Error(code);}
