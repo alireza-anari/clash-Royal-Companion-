@@ -38,3 +38,9 @@ Do not treat the Android Vision alpha as a prerequisite for the text Coach web p
 
 ### CI scope
 Web and Android mock tests are independent of the private database and production. A passing shared fixture test verifies the inner Worker-to-client report contract only, not successful real upload, server persistence, authorization, account credits, provider accuracy or full replay analysis.
+
+## Stage 20 — live Worker preflight
+- [x] Stage 19 web and Android CI succeeded (45961147178, 45961147170).
+- [x] Read-only Cloudflare script/module inspection, binding inventory and rollback references; exact composed Coach patch accepted downloaded legacy worker.js anchors in memory.
+- [ ] Validate full candidate syntax and exact active deployment, stage web assets and inference, then perform authorized real-account smoke and quota/usage checks. No rollout or real account request performed.
+- Detailed evidence and remaining gates: [COACH_WEB_RELEASE_V1.md](COACH_WEB_RELEASE_V1.md).
