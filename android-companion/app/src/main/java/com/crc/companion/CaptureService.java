@@ -37,6 +37,9 @@ public final class CaptureService extends Service {
             long elapsed=SystemClock.elapsedRealtime()-started;
             if(elapsed>=CaptureBuffer.DURATION_MS){end("limit");return;}
             if(elapsed-lastSample>=CaptureBuffer.INTERVAL_MS && reader!=null) {
+                NotificationManager nm=getSystemService(NotificationManager.class);
+                NotificationChannel channel=nm.getNotificationChannel(CHANNEL);
+                if(!nm.areNotificationsEnabled()||channel==null||channel.getImportance()==NotificationManager.IMPORTANCE_NONE){end("notification_denied");return;}
                 try(Image image=reader.acquireLatestImage()) {
                     if(image!=null) {
                         byte[] bytes=encode(image);

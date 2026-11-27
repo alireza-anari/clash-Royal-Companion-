@@ -33,6 +33,11 @@ public final class MainActivity extends Activity {
         layout.setOrientation(LinearLayout.VERTICAL);layout.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
         int p=(int)(20*getResources().getDisplayMetrics().density);layout.setPadding(p,p,p,p);
         scroll.addView(layout);
+        scroll.setOnApplyWindowInsetsListener((view,insets)->{
+            android.graphics.Insets bars=insets.getInsets(WindowInsets.Type.systemBars()|WindowInsets.Type.displayCutout());
+            view.setPadding(bars.left,bars.top,bars.right,bars.bottom);return insets;
+        });
+        scroll.requestApplyInsets();
         TextView title=new TextView(this);title.setText("CRC Companion · ثبت نبرد");title.setTextSize(24);layout.addView(title);
         TextView intro=new TextView(this);intro.setText("نسخه آزمایشی · بدون اینترنت و بدون تحلیل زنده\nدر پنجره مجوز اندروید، فقط برنامه Clash Royale را انتخاب کن؛ گزینه کل صفحه را انتخاب نکن. برنامه نمی‌تواند انتخاب سیستم را خودش تأیید کند. اگر پنجره بازی در دسترس نیست، لغو کن. پس از شروع، به بازی برو و از اعلان ثبت برای توقف استفاده کن. هیچ صدا یا ویدیوی کامل ثبت نمی‌شود.");
         intro.setTextSize(16);layout.addView(intro);
