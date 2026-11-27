@@ -563,3 +563,29 @@ test('web release contract connects browser client to gateway and Coach quality 
  await assert.rejects(call('تحلیل دک','deck'),e=>e.code==='UPSTREAM_RATE_LIMITED'&&e.status===429);
  assert.equal(modelCalls,3);assert.equal(upstreamCalls,4);assert.equal(privateCalls.length,0);
 });
+
+
+test('stage 23 live smoke runner uses fixed gateway override, bound snapshot and one chat',async()=>{
+ const {runSmoke}=await import('./coach-web-smoke-v23.mjs');
+ const calls=[];
+ const snapshotFixture={profile:{tag:'#TEST123'},current_deck:{card_ids:[1,2,3,4,5,6,7,8]},cards:Array.from({length:8},(_,i)=>({id:i+1,name:'Card '+(i+1),elixir_cost:3,rarity:'common'})),battles:[],partial:false};
+ const fake=async(url,opts)=>{
+  calls.push({url,opts});
+  assert.equal(opts.headers.get('Cloudflare-Workers-Version-Overrides'),'crc-private-beta-gateway="ea969d9a-d1a4-4fcf-8bef-15f6d07f0c56"');
+  const path=new URL(url).pathname;
+  if(path==='/')return new Response('fixture',{headers:{'Set-Cookie':'__Host-crc_beta_session=test; Secure; HttpOnly; Path=/'}});
+  assert.equal(opts.headers.get('Cookie'),'__Host-crc_beta_session=test');
+  if(path==='/api/v1/capabilities')return json({schema_version:'1.0',live_lookup_enabled:true,ai_coach_enabled:true});
+  if(path.startsWith('/api/v1/players/'))return json(snapshotFixture);
+  const body=JSON.parse(opts.body);
+  assert.equal(opts.method,'POST');assert.equal(body.personal.deck_cards.length,8);
+  assert.equal(body.consent_to_external_ai,true);assert.doesNotMatch(opts.body,/TEST123/);
+  return json({quality_version:'crc-coach-quality-v1',router_version:'crc-coach-model-router-v1',quality_status:'checked_structure',model:'@cf/google/gemma-4-26b-a4b-it',answer:'synthetic',external_inference:true,replay_analyzed:false,evidence_status:'client_submitted_unverified'});
+ };
+ const result=await runSmoke('#TEST123',fake);
+ assert.equal(result.coach_contract,'passed');assert.equal(result.model_calls_requested,1);
+ assert.equal(calls.length,4);assert.equal(calls.filter(c=>c.opts.method==='POST').length,1);
+ snapshotFixture.profile.tag='#OTHER123';calls.length=0;
+ await assert.rejects(runSmoke('#TEST123',fake),/PLAYER_TAG_MISMATCH/);
+ assert.equal(calls.filter(c=>c.opts.method==='POST').length,0);
+});
