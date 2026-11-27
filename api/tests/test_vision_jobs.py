@@ -146,8 +146,7 @@ async def test_worker_claim_complete_erases_images_and_consumes_one_reserved_cre
    claim=await svc.claim_next(c)
    assert claim["job_id"]==submitted["job_id"] and len(claim["frames"])==2
    assert claim["attempt_count"]==1 and claim["lease_token"]
-   with pytest.raises(VisionJobStateConflict):
-    await svc.claim_next(c)
+   assert await svc.claim_next(c) is None
    completed=await svc.complete(c,UUID(claim["job_id"]),UUID(claim["lease_token"]),worker_result((0,2000)))
    assert completed["status"]=="succeeded" and completed["total_bytes"]==0
    assert completed["result"]["replay_analyzed"] is False
