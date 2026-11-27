@@ -1,0 +1,36 @@
+name: CRC stage 24 web assets
+on:
+  push:
+    branches:
+      - feat/coach-core-experience-v1
+    paths:
+      - '.github/workflows/coach-web-assets-stage24.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: crc-private-beta-deploy
+  cancel-in-progress: false
+jobs:
+  stage:
+    if: github.repository == 'alireza-anari/clash-Royal-Companion-' && github.ref == 'refs/heads/feat/coach-core-experience-v1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    environment: crc-coach-stage
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - name: Validate release source without credentials
+        run: |
+          node --check deploy/cloudflare/stage-coach-web-assets-v24.mjs
+          node deploy/cloudflare/build-site.mjs --check
+          node --test deploy/cloudflare/stage-coach-web-assets-v24.test.mjs deploy/cloudflare/private-beta-deploy.test.mjs deploy/cloudflare/beta-edge.test.mjs
+      - name: Attach assets and verify zero-traffic version
+        env:
+          CF_ACCOUNT_ID: ${{ vars.CRC_CLOUDFLARE_ACCOUNT_ID }}
+          CF_API_TOKEN: ${{ secrets.CRC_CLOUDFLARE_API_TOKEN }}
+        run: node deploy/cloudflare/stage-coach-web-assets-v24.mjs --stage
