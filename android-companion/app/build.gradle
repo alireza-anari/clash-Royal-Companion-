@@ -7,6 +7,7 @@ android {
     compileSdk 35
     defaultConfig {
         applicationId 'com.crc.companion'
+        manifestPlaceholders = [appAuthRedirectScheme: 'com.crc.companion']
         minSdk 34
         targetSdk 35
         versionCode 1
