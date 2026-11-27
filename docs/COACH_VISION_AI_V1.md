@@ -26,3 +26,7 @@ Workers AI official model docs and pricing reviewed 2026-11-27:
 
 ## Stage 15 — integration boundary
 The private backend now contains a draft PostgreSQL job queue/credit ledger and gated API routes. The edge gateway has an exact allowlist and rejects the current shared beta session as a user identity. The migration is not applied; no processor, cleanup scheduler, credits or uploads are enabled. See COACH_VISION_INTEGRATION_V1.md.
+
+
+## Stage 16 — private queue consumer
+A scheduled Cloudflare Worker consumer now exists in code. It claims a single PostgreSQL job through a private Worker-assertion-only endpoint, uses the Workers AI binding with @cf/google/gemma-4-26b-a4b-it for at most eight selected still frames, validates each response against the observation schema, and completes or fails the lease. Successful completion erases source JPEGs; terminal failure or stale lease erases them and releases the reserved credit exactly once. Expiry removes report and frame material. The consumer runs every two minutes only when both edge and backend worker switches are explicitly enabled. All switches remain off, migrations 0003–0005 remain unapplied, the Worker is not deployed, and no model inference has occurred. The current static catalog.json is a sample catalog and must be replaced with a verified authoritative catalog before live use.

@@ -22,3 +22,7 @@ Next: native device validation and an independently reviewed, separately consent
 
 ## Stage 15 — upload manifest preparation
 The Android project now defines an AccountSession contract and a VisionUploadPackage builder. It only prepares a bounded in-memory manifest after explicit upload and external-AI consent and requires a stable acct_ account identity. No OIDC provider, account session implementation, Internet permission or HTTP upload exists yet. See COACH_VISION_INTEGRATION_V1.md.
+
+
+## Stage 16 — native account sign-in
+The app now includes provider-neutral AppAuth Authorization Code + S256 PKCE sign-in, a backend nonce challenge and ID-token exchange. The backend returns a 15-minute account-scoped bearer token; Android stores only that token and the opaque acct_ subject using an AES-GCM key held by Android Keystore. The provider redirect URI is fixed to com.crc.companion:/oauth2redirect. Set CRC_BETA_BASE_URL at build time and configure the backend OIDC issuer/client/JWKS/redirect values before sign-in can work. No image upload transport is implemented; capture remains local until separate upload consent and release gates are complete.
