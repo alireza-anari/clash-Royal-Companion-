@@ -55,3 +55,9 @@ test('no replacement slot, win prediction or actual performance estimate is inve
    assert.ok(c.tradeoff.length>20);
  }
 });
+
+test('does not propose cards with unlocked Evolution or Hero forms without slot-aware planning',()=>{
+ const r=options(deck,catalog,[{id:9,level:12,evolutionLevel:1},{id:10,level:12,evolutionLevel:2},{id:12,level:12,evolutionLevel:0}]);
+ assert.ok(!r.candidates.some(c=>c.id===9));
+ assert.ok(!r.candidates.some(c=>c.id===10));
+});

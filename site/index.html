@@ -35,6 +35,7 @@
 <section class="page active" id="page-home" aria-labelledby="home-title">
 <div class="home-heading"><div><h1 id="home-title">همراه کلش رویال</h1><p id="homePlayerSummary" class="small">برای تحلیل شخصی، بازیکن خود را اضافه کن.</p></div><a href="#player" id="homePlayerAction" class="btn primary">افزودن بازیکن ←</a></div>
 <div class="panel crc-account" id="crcAccount">♛ &nbsp; پس از دریافت اطلاعات، پروفایل شما نمایش داده می‌شود.</div><div class="crc-stats" id="crcStats"></div><div class="panel crc-performance" id="crcPerformance"></div><div class="panel home-deck-panel"><div class="panel-top"><h2>دک فعلی</h2><span class="data-pill elixir-pill"><span class="elixir-dot" aria-hidden="true"></span><span id="homeDeckElixir">— اکسیر</span></span></div><span class="chip gold" id="homeDeckSource">داده نمونه</span><div class="deck-grid" id="homeDeck"></div><div class="inline-actions"><a href="#coach" class="btn primary">تحلیل دک ←</a><a href="#deck" class="btn ghost">ویرایش دک</a></div></div>
+<aside id="crcHomeHint" class="crc-proactive-hint" aria-label="پیشنهاد مربی" hidden></aside>
 <div class="section-heading"><h2>مربی هوشمند شما</h2><p>تحلیل و پیشنهاد شخصی برای پیشرفت سریع‌تر</p></div><div class="grid quick-tools crc-actions"><a href="#coach" class="panel feature" data-crc-action="coachMetrics"><span class="icon">▣</span><h3>تحلیل دک</h3><p>نقاط قوت و ضعف</p></a><a href="#coach" class="panel feature" data-crc-action="coachOwnedOptions"><span class="icon">⇄</span><h3>پیشنهاد دک بهتر</h3><p>متناسب با کارت‌های شما</p></a><a href="#coach" class="panel feature" data-crc-action="coachBattleReport"><span class="icon">▥</span><h3>تحلیل سبک بازی</h3><p>بررسی شواهد نبردها</p></a><a href="#coach" class="panel feature" data-crc-action="coachReport"><span class="icon">◎</span><h3>برنامه پیشرفت</h3><p>اولویت‌های پیشنهادی</p></a></div><div class="grid quick-tools crc-extra-tools">
 <a href="#coach" class="panel feature"><span class="icon"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m12 2 2.7 7.3L22 12l-7.3 2.7L12 22l-2.7-7.3L2 12l7.3-2.7z"/></svg></span><h3>مربی</h3><p>پیشنهاد و تحلیل</p></a>
 <a href="#deck" class="panel feature"><span class="icon"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="4" y="3" width="12" height="16" rx="2"/><path d="M19 7h1v14H8"/></svg></span><h3>دک‌ساز</h3><p>ساخت و ویرایش</p></a>
@@ -68,6 +69,7 @@
   <div class="crc-chat-scroll" id="crcChatScroll">
     <div id="crcChatWelcome" class="crc-chat-welcome">
       <div class="crc-coach-hero"><div class="crc-crown crc-coach-art"><span aria-hidden="true">♛</span><small>AI</small></div><h2>سلام! من مربی هوشمند تو هستم.</h2><p>برای بهتر بازی کردن چه کمکی از من می‌خواهی؟</p></div>
+      <aside id="crcCoachHint" class="crc-proactive-hint" aria-label="پیشنهاد مربی" hidden></aside>
       <div class="coach-action-grid" aria-label="تحلیل‌های آماده"><button class="coach-action" type="button" data-coach-jump="coachMetrics" aria-controls="coachChatPanel"><span class="action-icon"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="4" y="3" width="12" height="16" rx="2"/><path d="M19 7h1v14H8"/></svg></span><span class="action-text"><strong>تحلیل دک</strong></span><span class="action-arrow" aria-hidden="true">‹</span></button>
 <button class="coach-action" type="button" data-coach-jump="coachOwnedOptions" aria-controls="coachChatPanel"><span class="action-icon"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/></svg></span><span class="action-text"><strong>پیشنهاد دک بهتر</strong></span><span class="action-arrow" aria-hidden="true">‹</span></button>
 <button class="coach-action" type="button" data-coach-jump="coachBattleReport" aria-controls="coachChatPanel"><span class="action-icon"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m3 3 8 8-3 3-5-5zM21 3l-8 8 3 3 5-5zM5 19l14-14M19 19 5 5M3 21l4-4m14 4-4-4"/></svg></span><span class="action-text"><strong>تحلیل سبک بازی</strong></span><span class="action-arrow" aria-hidden="true">‹</span></button>
@@ -82,7 +84,34 @@
 <button type="button" class="crc-chat-tool" data-coach-jump="coachOwnedOptions" aria-controls="coachChatPanel"><span aria-hidden="true">⇄</span>پیشنهاد دک بهتر</button>
 <button type="button" class="crc-chat-tool" data-coach-jump="coachBattleReport" aria-controls="coachChatPanel"><span aria-hidden="true">⚔</span>تحلیل سبک بازی</button>
 <button type="button" class="crc-chat-tool" data-coach-jump="coachReport" aria-controls="coachChatPanel"><span aria-hidden="true">✧</span>برنامه پیشرفت</button>
+      <button type="button" class="crc-chat-tool" data-coach-jump="coachMeta" aria-controls="coachChatPanel"><span aria-hidden="true">↗</span>بررسی متای Ranked</button>
+      <button type="button" class="crc-chat-tool" data-coach-jump="coachEvents" aria-controls="coachChatPanel"><span aria-hidden="true">✦</span>ایونت‌ها و چالش‌ها</button>
+      <button type="button" class="crc-chat-tool" id="crcCaptureOpen"><span aria-hidden="true">◉</span>ثبت تصویری نبرد (آزمایشی)</button>
+      <p class="crc-meta-note">آمار متا فقط با نمونه معتبر و تازه نمایش داده می‌شود. <a href="https://supercell.com/en/games/clashroyale/blog/" target="_blank" rel="noopener noreferrer">اخبار و تغییرات رسمی بازی</a></p>
       <div class="crc-chat-scope"><label for="coachBattleScope">مبنای نبردها</label><select id="coachBattleScope" class="text-field"><option value="all">همه نبردها</option><option value="event">نبردهای رویدادی</option><option value="other">سایر / نامشخص</option></select></div>
+      <div class="crc-chat-memory">
+        <label class="crc-chat-memory-toggle" for="crcCoachMemoryEnabled"><input id="crcCoachMemoryEnabled" type="checkbox"> حافظه مربی روی این دستگاه</label>
+        <p>اختیاری و پیش‌فرض خاموش. در صورت فعال‌سازی، حداکثر ۳ خلاصه از دک و آمار نبردها و بازخوردی که خودت ثبت می‌کنی فقط در همین مرورگر می‌ماند و همراه درخواست مربی ارسال می‌شود؛ متن چت و Battle Log خام ذخیره نمی‌شوند.</p>
+        <label for="crcCoachMemoryFocus">تمرکز تمرین</label>
+        <select id="crcCoachMemoryFocus" class="text-field" disabled>
+          <option value="balanced">بدون اولویت خاص</option>
+          <option value="cycle">چرخه و زمان‌بندی کارت‌ها</option>
+          <option value="elixir">مدیریت اکسیر</option>
+          <option value="defense">دفاع و پاسخ به حمله</option>
+          <option value="pressure">فشار و تبدیل دفاع به حمله</option>
+          <option value="deck">تعادل و هماهنگی دک</option>
+        </select>
+        <label for="crcCoachMemoryFeedback">نتیجه آخرین تمرین</label>
+        <select id="crcCoachMemoryFeedback" class="text-field" disabled>
+          <option value="">هنوز نتیجه را ثبت نکرده‌ام</option>
+          <option value="improved">بهتر شد</option>
+          <option value="same">تفاوتی نداشت</option>
+          <option value="worse">بدتر شد</option>
+          <option value="not_tried">هنوز امتحان نکردم</option>
+        </select>
+        <button type="button" id="crcCoachMemoryFeedbackSave" class="crc-chat-tool" disabled>ثبت نتیجه تمرین</button>
+        <div class="crc-chat-memory-footer"><small id="crcCoachMemoryStatus" role="status">حافظه خاموش است.</small><button type="button" id="crcCoachMemoryClear" class="btn ghost" disabled>پاک کردن حافظه</button></div>
+      </div>
     </div>
     <form id="coachChatForm" class="coach-chat-form">
       <button type="button" id="crcCoachToolsToggle" class="btn ghost crc-chat-tool-toggle" aria-label="ابزارهای تحلیل" title="ابزارهای تحلیل" aria-expanded="false" aria-controls="crcCoachTools"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
@@ -90,7 +119,7 @@
       <input id="coachChatQuestion" class="text-field" name="coachQuestion" type="text" required maxlength="280" autocomplete="off" placeholder="از مربی بپرس…" aria-describedby="crcCoachDataNotice">
       <button class="btn primary crc-chat-send" type="submit" aria-label="ارسال پیام" title="ارسال پیام"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5m-6 6 6-6 6 6"/></svg></button>
     </form>
-    <p id="crcCoachDataNotice" class="small">با ارسال پیام یا انتخاب تحلیل، سؤال و داده‌های دک، کارت‌ها و آمار نبردها برای پردازش آنلاین به Cloudflare Workers AI ارسال می‌شوند؛ نام و تگ حساب در داده‌های ساختاریافته ارسال نمی‌شوند.</p>
+    <p id="crcCoachDataNotice" class="small">با ارسال پیام یا انتخاب تحلیل، سؤال و داده‌های دک، کارت‌ها و آمار نبردها برای پردازش آنلاین به Cloudflare Workers AI ارسال می‌شوند؛ نام و تگ حساب در داده‌های ساختاریافته ارسال نمی‌شوند و Player Tag مالکیت را ثابت نمی‌کند. حداکثر دو پیام و پاسخ قبلی همین نشست ممکن است ارسال شود. حافظه بلندمدت دستگاه اختیاری و پیش‌فرض خاموش است؛ اگر روشنش کنی فقط خلاصه ساختاریافته دک و نبردها همراه درخواست مربی ارسال می‌شود، نه متن چت یا Battle Log خام. اطلاعات شخصی در متن ننویس.</p>
   </div>
 </div>
 </section>
@@ -105,7 +134,7 @@
 
 <section class="page" id="page-player" aria-labelledby="player-title">
 <div class="crc-page-hero"><h1 id="player-title">پروفایل بازیکن <span class="crc-title-icon">♛</span></h1><button class="btn ghost" id="crcChangeAccount" type="button">تغییر حساب</button></div><p class="crc-sub">حساب و مجموعه کارت‌های شما</p>
-<div id="profileSummary" class="empty-panel profile-overview"><span class="emoji">♙</span><strong>هنوز بازیکنی اضافه نشده است.</strong><p>با تگ یا فایل پروفایل شروع کن.</p></div><div class="grid two" style="margin-top:18px">
+<div id="profileSummary" class="empty-panel profile-overview"><span class="emoji">♙</span><strong>هنوز بازیکنی اضافه نشده است.</strong><p>با تگ یا فایل پروفایل شروع کن.</p></div><div id="crcProgressPanel" class="panel crc-progress-panel" aria-live="polite"><h2>رصد پیشرفت بازیکن</h2><p class="small">پس از بارگذاری پروفایل و Battle Log، عملکرد و روند دک نمایش داده می‌شود.</p></div><div class="grid two" style="margin-top:18px">
 <div class="panel">
 <h2>افزودن بازیکن</h2><label for="playerTag">Player Tag</label>
 <div class="form-row"><input id="playerTag" type="text" class="text-field" placeholder="#20VYUYRCVR" maxlength="17" aria-label="Player Tag" style="flex:1;direction:ltr;text-align:left"><button id="checkTag" type="button" class="btn ghost" hidden>بررسی تگ</button></div>
@@ -151,6 +180,18 @@
 <a href="#coach" data-nav="coach"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m12 2 2.7 7.3L22 12l-7.3 2.7L12 22l-2.7-7.3L2 12l7.3-2.7z"/></svg><span>مربی</span></a>
 <a href="#player" data-nav="player"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/></svg><span>پروفایل</span></a></nav>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
+<dialog id="crcCaptureDialog" class="crc-capture-dialog" aria-labelledby="crcCaptureTitle">
+  <div class="crc-capture-head"><h2 id="crcCaptureTitle">ثبت تصویری نبرد</h2><button id="crcCaptureClose" type="button" class="btn ghost">بستن و پاک کردن</button></div>
+  <p>فقط پنجره بازی یا تب نمایش بازی را انتخاب کن؛ از اشتراک پیام‌ها و اطلاعات خصوصی خودداری کن. صدا ضبط نمی‌شود.</p>
+  <p>حداکثر ۴ دقیقه، یک تصویر کوچک تقریباً هر ۲ ثانیه (تا سقف حافظه). پس از توقف تصاویر را مرور کن. با بستن این پنجره یا تغییر حساب پاک می‌شوند.</p>
+  <p class="crc-capture-note">نسخه آزمایشی ثبت تصویر؛ تشخیص کارت، اکسیر و تحلیل تاکتیکی هنوز فعال نیست. هیچ تصویر یا ویدیویی ارسال یا ذخیره دائمی نمی‌شود.</p>
+  <p id="crcCaptureStatus" role="status" aria-live="polite"></p>
+  <div class="crc-capture-actions"><button type="button" id="crcCaptureStart" class="btn primary" disabled>شروع ثبت با اجازه مرورگر</button><button type="button" id="crcCaptureStop" class="btn ghost" disabled>توقف</button><button type="button" id="crcCaptureClear" class="btn ghost" disabled>پاک کردن تصاویر</button></div>
+  <video id="crcCaptureVideo" muted playsinline hidden></video>
+  <p id="crcCaptureCoverage" class="crc-capture-coverage" hidden></p>
+  <select id="crcCaptureFrame" class="text-field" aria-label="نمونه تصویر پس از توقف" hidden disabled></select>
+  <canvas id="crcCapturePreview" width="1" height="1" aria-label="پیش‌نمایش نمونه ثبت‌شده؛ تحلیل نشده" hidden></canvas>
+</dialog>
 <div class="modal-backdrop" id="cardModal"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalName"><button type="button" class="close" id="closeModal" aria-label="بستن">✕</button><div class="modal-visual" id="modalVisual"></div><h2 id="modalName"></h2><p id="modalDescription"></p><div id="modalDetails" class="stat-inline"></div><div id="modalCoaching" class="modal-coaching"></div><div class="inline-actions"><button class="btn primary" id="modalToDeck">انتخاب در دک</button></div></div></div>
 <dialog id="crcOnboard" class="crc-onboard" aria-labelledby="crcOnboardTitle"><p id="crcDots">● ○ ○</p><section data-crc-step="0"><div class="crc-crown">♛</div><h2 id="crcOnboardTitle">برای شروع به Player Tag نیاز داریم</h2><p>با این شناسه، پروفایل، دک و نبردهای اخیر شما را دریافت می‌کنیم.</p><div class="crc-benefits"><span>♛<small>پروفایل</small></span><span>▣<small>دک فعلی</small></span><span>⚔<small>نبردها</small></span></div><button class="btn primary" id="crcNext" type="button">ادامه ←</button></section><section data-crc-step="1" hidden><h2>Player Tag را از بازی پیدا کن</h2><a class="crc-guide-link" href="https://cdn.royaleapi.com/static/img/info/kl/pt-copy.jpg?t=efe6bf55c" target="_blank" rel="noopener noreferrer">مشاهده تصویر واقعی بازی (RoyaleAPI) ↗</a><div class="crc-phone"><strong>Player Profile</strong><p>♛ &nbsp; Player</p><div>#2ABC123 &nbsp; ▣</div><small>نمای شماتیک راهنما</small></div><ol><li>روی پروفایل در بالای سمت چپ بازی بزن.</li><li>تگ زیر نشان پروفایل را پیدا کن.</li><li>روی تگ بزن و آن را کپی کن.</li></ol><button class="btn primary" id="crcNext2" type="button">تگ را پیدا کردم ←</button></section><section data-crc-step="2" hidden><div class="crc-crown">♛</div><h2>Player Tag خودت را وارد کن</h2><p>پس از دریافت موفق، در همین مرورگر ذخیره می‌شود.</p><div class="form-row"><input id="crcTag" class="text-field" dir="ltr" maxlength="17" placeholder="#2ABC123" aria-label="Player Tag"><button type="button" id="crcPaste" class="btn ghost">چسباندن</button></div><p class="crc-consent">پس از دریافت اطلاعات حساب، تحلیل‌ها و گفت‌وگو مستقیماً با مربی آنلاین انجام می‌شوند؛ تأیید جداگانه لازم نیست.</p><p id="crcError" role="status"></p><button class="btn primary" id="crcConnect" type="button">دریافت اطلاعات و ادامه ←</button><button class="btn ghost" id="crcBack" type="button">دیدن دوباره راهنما</button></section><section data-crc-step="3" hidden aria-live="polite"><h2>در حال آماده‌سازی حساب تو</h2><div class="crc-orbit"><div class="crc-crown">♛</div></div><div class="crc-loading"></div><div class="crc-loading-steps"><p>✓ بررسی قالب تگ</p><p id="crcLoadProfile">◌ دریافت پروفایل و دک</p><p id="crcLoadBattles">◌ دریافت نبردها</p><p id="crcLoadingText">در حال دریافت اطلاعات…</p></div></section><button type="button" id="crcSkip" class="btn ghost">بعداً</button></dialog>
 <script src="/battle-insights.js" defer></script>

@@ -26,7 +26,7 @@ test('design system has readable surfaces, mobile controls and reduced-motion su
 
 test('theme and service worker cache are refreshed for the new CSS', () => {
   assert.match(html, /name="theme-color" content="#080f1e"/);
-  assert.match(sw, /crc-mvp-static-v16/);
+  assert.match(sw, /crc-mvp-static-v31/);
 });
 
 test('coach is online-only and no per-message approval or local fallback is exposed',()=>{
@@ -55,11 +55,116 @@ test('onboarding has a single profile-fetch path and prepares the online coach w
 });
 test('battle evidence is shipped as a support module, not an offline coach',()=>{
   assert.match(html,/src="\/battle-evidence\.js"/);assert.doesNotMatch(html,/offline-coach\.js|coach-chat\.js/);
-  assert.match(sw,/crc-mvp-static-v16/);assert.match(sw,/\/battle-evidence\.js/);assert.doesNotMatch(sw,/offline-coach\.js|coach-chat\.js/);
+  assert.match(sw,/crc-mvp-static-v31/);assert.match(sw,/\/battle-evidence\.js/);assert.doesNotMatch(sw,/offline-coach\.js|coach-chat\.js/);
 });
 
 test('minimal coach keeps composer and tools separate from the welcome state',()=>{const app=fs.readFileSync(new URL('./app.js',import.meta.url),'utf8');for(const id of ['crcChatWelcome','crcChatScroll','crcCoachToolsToggle','crcCoachTools','coachChatQuestion','clearCoachChat'])assert.ok(html.includes('id="'+id+'"'),id);assert.match(html,/aria-expanded="false" aria-controls="crcCoachTools"/);assert.match(app,/\$\("crcChatWelcome"\)\.hidden=true/);assert.match(app,/\$\("crcChatWelcome"\)\.hidden=false/);assert.match(css,/body\.crc-coach-view/);assert.match(css,/\.crc-chat-scroll\{[^}]*overflow:auto/);});
 
 test('global footer never competes for coach conversation width',()=>{assert.match(css,/body\.crc-coach-view \.content > \.footer\{display:none!important\}/);assert.match(css,/body\.crc-coach-view \.content\{flex-direction:column;min-width:0\}/);assert.match(html,/<footer class="footer">/);});
 
-test('online coach pending indicator follows actual request lifecycle',()=>{const app=fs.readFileSync(new URL('./app.js',import.meta.url),'utf8');const ask=app.match(/async function askCoachChat\(question,action\)\{[\s\S]*?\n\}/)?.[0];assert.ok(ask);assert.ok(ask.indexOf('crcCoachPending(true)')<ask.indexOf('await window.CRCBackendClient.askAI'));assert.match(ask,/crcCoachPending\(false\);\s*addCoachChatMessage\("ai"/);assert.match(ask,/catch\(e\)\{\s*crcCoachPending\(false\)/);assert.match(ask,/finally\{\s*crcCoachPending\(false\)/);assert.match(css,/@keyframes crcPendingOrbit/);assert.match(css,/@keyframes crcPendingDot/);});
+test('online coach pending indicator follows actual request lifecycle',()=>{const app=fs.readFileSync(new URL('./app.js',import.meta.url),'utf8');const ask=app.match(/async function askCoachChat\(question,action\)\{[\s\S]*?\n\}/)?.[0];assert.ok(ask);assert.ok(ask.indexOf('crcCoachPending(true)')<ask.indexOf('await window.CRCBackendClient.askAI'));assert.ok(ask.indexOf("crcCoachPending(false)")<ask.indexOf('addCoachChatMessage("ai"'));assert.match(ask,/catch\(e\)\{\s*crcCoachPending\(false\)/);assert.match(ask,/finally\{\s*crcCoachPending\(false\)/);assert.match(css,/@keyframes crcPendingOrbit/);assert.match(css,/@keyframes crcPendingDot/);});
+
+test('coach presentation preserves untrusted text and selects only known card images',()=>{
+  const app=fs.readFileSync(new URL('./app.js',import.meta.url),'utf8');
+  const source=app.slice(app.indexOf('function crcCoachPresentation('),app.indexOf('function crcRenderCoachAnswer('));
+  const present=Function(source+';return crcCoachPresentation;')();
+  const safe='https://api-assets.clashroyale.com/cards/300/card.png';
+  const cards=[{id:1,name:'Knight',icon:safe},{id:2,name:'Musketeer',icon:safe},{id:3,name:'Mega Knight',icon:safe},{id:4,name:'Fake Card',icon:'https://evil.example/cards/fake.png'}];
+  const result=present('**پیشنهاد**\n- Mega Knight\nMusketeer <script>alert(1)</script> Fake Card',cards);
+  assert.equal(result.lines[0].kind,'heading');
+  assert.equal(result.lines[1].kind,'bullet');
+  assert.ok(result.lines[2].text.includes('<script>'));
+  assert.deepEqual(result.cards.map(c=>c.id),[3,2]);
+  assert.equal(present('hello',cards).cards.length,0);
+  assert.doesNotMatch(app.slice(app.indexOf('function crcRenderCoachAnswer('),app.indexOf('function crcCoachPending(')),/innerHTML|insertAdjacentHTML/);
+});
+
+test('Coach memory is opt-in, profile-scoped, separately clearable and feedback-driven',()=>{
+  const app=fs.readFileSync(new URL('./app.js',import.meta.url),'utf8');
+  for(const id of ['crcCoachMemoryEnabled','crcCoachMemoryFocus','crcCoachMemoryFeedback','crcCoachMemoryFeedbackSave','crcCoachMemoryClear','crcCoachMemoryStatus'])assert.ok(html.includes('id="'+id+'"'),id);
+  const control=html.match(/<input id="crcCoachMemoryEnabled"[^>]*>/)?.[0]||'';
+  assert.ok(control);assert.doesNotMatch(control,/\bchecked\b/);
+  assert.match(html,/پیش‌فرض خاموش/);assert.match(html,/Battle Log خام ذخیره نمی‌شوند/);
+  assert.match(app,/createCoachMemory/);assert.match(app,/coachMemoryTag/);assert.match(app,/recordPractice/);assert.match(app,/submitPracticeFeedback/);
+  const clear=app.match(/function clearCoachChat\(\)\{[\s\S]*?\n\}/)?.[0]||'';
+  assert.ok(clear);assert.doesNotMatch(clear,/coachMemory|crcCoachMemoryClear/);
+});
+
+test('player progress dashboard separates current samples from same-deck post-task evidence',()=>{
+  const app=fs.readFileSync(new URL('./app.js',import.meta.url),'utf8');
+  assert.match(html,/id="crcProgressPanel"/);
+  assert.match(app,/function renderProgressPanel\(\)/);
+  assert.match(app,/coachMemoryUpdatePracticeProgress/);
+  assert.match(app,/coachDistinctBattles\(report\.entries\)/);
+  assert.match(app,/coachPracticeDelta\(report\.entries,pending\)/);
+  assert.match(app,/نبردهای بعدی با همان ۸ کارت/);
+  assert.match(app,/رابطه علت‌ومعلولی را ثابت نمی‌کند/);
+  assert.match(app,/addPracticeProgress/);
+});
+
+test('validated suggested swaps are tracked against the recommended deck, not falsely attributed to the old deck',()=>{
+  const app=fs.readFileSync(new URL('./app.js',import.meta.url),'utf8');
+  assert.match(app,/action==="suggestions"&&reply\.swap/);
+  assert.match(app,/trackingDeck=trackingDeck\.map\(id=>id===reply\.swap\.remove_id\?reply\.swap\.add_id:id\)/);
+  assert.match(app,/targetKind="suggested_deck"/);
+  assert.match(app,/previousTag!==incomingTag\)\{battles=null/);
+  assert.match(app,/نبردهای بعدی با دک پیشنهادی/);
+});
+
+test('card collection UI exposes raw levels, Evolution/Hero unlocks and guarded Collection Level estimate',()=>{
+  const app=fs.readFileSync(new URL('./app.js',import.meta.url),'utf8');
+  const client=fs.readFileSync(new URL('./backend-client.js',import.meta.url),'utf8');
+  assert.match(app,/function crcFormBadges/);
+  assert.match(app,/Evolution ✓/);assert.match(app,/Hero ✓/);
+  assert.match(app,/تخمین Collection Level/);
+  assert.match(client,/function cardFormProgress/);
+  assert.match(client,/function collectionLevel/);
+  assert.match(client,/maxEvolutionLevel/);
+});
+
+test('RC practice plan is bounded, requires validated responses and preserves player control',()=>{
+ const app=fs.readFileSync(new URL('./app.js',import.meta.url),'utf8');
+ assert.match(app,/coachPracticePlan\(memory\)/);
+ assert.match(app,/reply\.qualityStatus==="checked_structure"/);
+ assert.match(app,/۵ نتیجه مشخص فقط نقطه مرور تمرین است/);
+ assert.match(app,/var raw=player&&player\.tag;/);
+});
+
+test('Coach memory payload and tracked deck are tied to the loaded profile and original request',()=>{
+ const app=fs.readFileSync(new URL('./app.js',import.meta.url),'utf8');
+ assert.match(app,/requestTag=coachMemoryTag\(\),requestDeck=deck\.slice\(\)/);
+ assert.match(app,/memoryStore&&requestTag\)personal\.coach_memory=memoryStore\.read\(requestTag\)/);
+ assert.match(app,/trackingDeck=requestDeck\.slice\(\)/);
+ assert.match(app,/practiceStore\.recordPractice\(requestTag,action,trackingDeck/);
+});
+
+test('proactive coach is a quiet single prompt and not an automatic AI request',()=>{
+ const app=fs.readFileSync(new URL('./app.js',import.meta.url),'utf8');
+ assert.match(html,/id="crcHomeHint"[^>]*hidden/);assert.match(html,/id="crcCoachHint"[^>]*hidden/);
+ const hint=app.slice(app.indexOf('function renderCoachHints(){'),app.indexOf('function coachMemorySnapshot(){'));
+ assert.match(hint,/button\.addEventListener\("click"/);
+ assert.match(hint,/crcHintSession\.dismiss/);
+ assert.match(hint,/store&&store\.isEnabled\(tag\)/);
+ assert.doesNotMatch(hint,/innerHTML|fetch\(|setInterval|Notification|localStorage/);
+});
+
+test('meta shortcut is explicit and links official changes separately from statistics',()=>{
+ const app=fs.readFileSync(new URL('./app.js',import.meta.url),'utf8');
+ assert.match(html,/data-coach-jump="coachMeta"/);
+ assert.match(html,/https:\/\/supercell\.com\/en\/games\/clashroyale\/blog\//);
+ assert.match(app,/if\(key==="coachMeta"\)/);
+ assert.match(app,/متای Ranked/);
+});
+
+test('event shortcut is explicit and online',()=>{const app=fs.readFileSync(new URL('./app.js',import.meta.url),'utf8');assert.match(html,/data-coach-jump="coachEvents"/);assert.match(app,/if\(key==="coachEvents"\)/);});
+
+test('capture is separate from online coach, explicit, temporary and non-networked',()=>{
+ const app=fs.readFileSync(new URL('./app.js',import.meta.url),'utf8');
+ assert.match(html,/id="crcCaptureDialog"/);assert.match(html,/id="crcCaptureStart"[^>]*disabled/);
+ const section=app.slice(app.indexOf('function setupBattleCapture(){'),app.indexOf('function setupEvents(){'));
+ assert.match(section,/getDisplayMedia/);assert.match(section,/audio:false/);assert.match(section,/pagehide/);
+ assert.doesNotMatch(section,/fetch\(|localStorage|sessionStorage|MediaRecorder|askCoachChat/);
+ assert.match(app,/function coachAccountChanged\(\)\{discardBattleCapture/);
+});
+
+test('capture report only shows observed coverage',()=>{const app=fs.readFileSync(new URL('./app.js',import.meta.url),'utf8');assert.match(html,/id="crcCaptureCoverage"[^>]*hidden/);assert.match(app,/coverage\.textContent/);assert.match(app,/تشخیص کارت، اکسیر و نقشه نیروها هنوز فعال نیست/);});

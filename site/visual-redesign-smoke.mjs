@@ -22,6 +22,7 @@ try{
     await page.locator('#page-'+view+'.active').waitFor();
     assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+2),'horizontal overflow: '+view+' '+name);
     assert.equal(await page.locator('.content > .footer').isVisible(),view!=='coach','footer visibility: '+view);
+    if(view==='player'){assert.ok(await page.locator('#crcProgressPanel').isVisible());assert.match(await page.locator('#crcProgressPanel').textContent(),/رصد پیشرفت/);}
     if(view==='coach')assert.ok(await page.locator('#page-coach').evaluate(el=>{const r=el.getBoundingClientRect();const p=el.parentElement;const cs=getComputedStyle(p);return Math.abs(r.width-Math.min(900,p.clientWidth-parseFloat(cs.paddingLeft)-parseFloat(cs.paddingRight)))<=2;}),'coach uses full available width: '+name);
     await page.screenshot({path:'visual-check/'+name+'-'+view+'.png',fullPage:true});
   }
@@ -35,9 +36,10 @@ try{
   assert.equal(await page.locator('#coachChatMessages .is-user').count(),1);assert.equal(await welcome.isVisible(),false);
   assert.equal(await page.locator('#coachChatMessages .is-status').count(),1);
   await toggle.click();assert.equal(await menu.isVisible(),true);assert.equal(await toggle.getAttribute('aria-expanded'),'true');
+  assert.equal(await menu.locator('#crcCoachMemoryEnabled').isChecked(),false);assert.equal(await menu.locator('#crcCoachMemoryEnabled').isDisabled(),true);
   await page.screenshot({path:'visual-check/'+name+'-coach-tools.png'});
   await page.keyboard.press('Escape');assert.equal(await menu.isVisible(),false);
-  await toggle.click();await menu.locator('[data-coach-jump="coachReport"]').click();
+  await toggle.click();assert.equal(await menu.locator('[data-coach-jump="coachMeta"]').isVisible(),true);assert.equal(await menu.locator('[data-coach-jump="coachEvents"]').isVisible(),true);await menu.locator('[data-coach-jump="coachReport"]').click();
   assert.equal(await menu.isVisible(),false);assert.equal(await page.locator('#coachChatMessages .is-user').count(),2);
   await page.locator('#coachChatQuestion').fill('تست گفتگو');await page.locator('#coachChatForm [type=submit]').click();
   assert.equal(await page.locator('#coachChatMessages .is-user').count(),3);
@@ -48,7 +50,7 @@ try{
   assert.equal(await page.locator('#crcCoachPending').count(),0,'no spinner for unavailable coach');
   // Test pending, success and failure with a deferred mock of the online coach.
   const injected=await fs.readFile(path.join(root,'app.js'),'utf8');
-  const harness=injected.replace(/\}\)\(\);\s*$/, "window.__crcPendingTest={run:async function(fail){coachAICap={ai_coach_enabled:true};window.CRCBetaSession={enabled:true,fetch:()=>new Promise((resolve,reject)=>{window.__crcPendingTest.finish=()=>fail?reject(new Error(\"test failure\")):resolve({ok:true,json:async()=>({answer:\"پاسخ آزمایشی\",model:\"@cf/google/gemma-4-26b-a4b-it\",external_inference:true,replay_analyzed:false,evidence_status:\"client_submitted_unverified\"})});})};return askCoachChat(\"تست انتظار\",\"overview\");}};})();");
+  const harness=injected.replace(/\}\)\(\);\s*$/, "window.__crcPendingTest={run:async function(fail){coachAICap={ai_coach_enabled:true};window.CRCBetaSession={enabled:true,fetch:()=>new Promise((resolve,reject)=>{window.__crcPendingTest.finish=()=>fail?reject(new Error(\"test failure\")):resolve({ok:true,json:async()=>({answer:\"## نتیجه آزمایشی\\n- تمرین دفاع\",model:\"@cf/google/gemma-4-26b-a4b-it\",external_inference:true,replay_analyzed:false,evidence_status:\"client_submitted_unverified\",quality_version:\"crc-coach-quality-v1\",quality_status:\"limited\",quality_swap:null,model_route:\"quality\",fallback_used:false,knowledge_sources:[{id:\"K01\",title:\"Official source\",url:\"https://support.supercell.com/clash-royale/en/articles/cards-and-decks.html\",authority:\"official-support\"},{id:\"K99\",title:\"Unsafe source\",url:\"https://example.invalid/\",authority:\"official-support\"}]})});})};return askCoachChat(\"تست انتظار\",\"overview\");}};})();");
   const loadingPage=await browser.newPage({viewport});
   await loadingPage.route('**/*',route=>route.request().url().endsWith('/app.js')?route.fulfill({contentType:'application/javascript',body:harness}):route.request().url().startsWith('http://127.0.0.1:')?route.continue():route.abort());
   await loadingPage.goto('http://127.0.0.1:'+server.address().port+'/#coach');
@@ -62,11 +64,51 @@ try{
     await loadingPage.evaluate(()=>{const finish=window.__crcPendingTest.finish;delete window.__crcPendingTest.finish;finish();});
     await loadingPage.locator('#crcCoachPending').waitFor({state:'detached'});
     assert.ok(await loadingPage.locator(fail?'#coachChatMessages .is-status':'#coachChatMessages .is-coach').count());
+    if(!fail){
+      const answer=loadingPage.locator('#coachChatMessages .is-coach').last();
+      assert.match(await answer.locator('.coach-chat-evidence').textContent(),/پاسخ محدودشده/);
+      assert.equal(await answer.locator('.crc-answer-heading').count(),1);
+      assert.equal(await answer.locator('.crc-answer-bullet').count(),1);
+      assert.equal(await answer.locator('.coach-chat-sources a').count(),1);
+      assert.match(await answer.locator('.coach-chat-sources a').getAttribute('href'),/^https:\/\/support\.supercell\.com\//);
+    }
   }
   await loadingPage.close();
+  await toggle.click();await menu.locator('#crcCaptureOpen').click();
+  assert.equal(await page.locator('#crcCaptureDialog').isVisible(),true);assert.equal(await page.locator('#crcCaptureStop').isDisabled(),true);
+  assert.match(await page.locator('#crcCaptureDialog').textContent(),/تحلیل تاکتیکی هنوز فعال نیست/);assert.equal(await page.locator('#crcCaptureCoverage').isVisible(),false);
+  await page.screenshot({path:'visual-check/'+name+'-capture.png'});
+  await page.locator('#crcCaptureClose').click();assert.equal(await page.locator('#crcCaptureDialog').isVisible(),false);
   await page.locator('#clearCoachChat').click();assert.equal(await welcome.isVisible(),true);assert.equal(await page.locator('#coachChatMessages .is-user').count(),0);
   await page.evaluate(()=>location.hash='player');await page.locator('#page-player.active').waitFor();await page.locator('#crcChangeAccount').click();await page.locator('#crcNext').click();await page.locator('#crcNext2').click();await page.locator('#crcConnect').click();assert.ok(await page.locator('#crcError').textContent());
   await page.screenshot({path:'visual-check/'+name+'-onboarding.png'});
+  await page.locator('#crcOnboard').evaluate(el=>el.close());
+  assert.equal(await page.locator('#crcHomeHint').isVisible(),false);
+  const sample=JSON.parse(await fs.readFile(path.join(root,'catalog.json'),'utf8')).cards.filter(c=>c.type!=='support').slice(0,8);
+  const owned=sample.map((c,i)=>({id:c.id,name:c.name,rarity:'common',level:12,maxLevel:16,elixirCost:c.elixir,evolutionLevel:0,maxEvolutionLevel:i===0?1:0}));
+  const file={name:'mock-profile.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify({tag:'#TEST123',name:'Mock',cards:owned,currentDeck:owned}))};
+  let aiCalls=0;page.on('request',r=>{if(r.url().includes('/api/v1/coach/chat'))aiCalls++;});
+  await page.locator('#profileFile').setInputFiles(file);
+  await page.waitForFunction(()=>document.querySelector('#profileSummary').textContent.includes('Mock'));
+  await page.evaluate(()=>location.hash='home');
+  await page.locator('#crcHomeHint').waitFor();
+  assert.match(await page.locator('#crcHomeHint').textContent(),/Evolution/);
+  assert.equal(await page.locator('#crcHomeHint .crc-hint-footer button').isDisabled(),true);
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+2),'proactive hint overflow: '+name);
+  await page.screenshot({path:'visual-check/'+name+'-proactive.png'});
+  await page.locator('#crcHomeHint .crc-hint-dismiss').click();
+  assert.equal(await page.locator('#crcHomeHint').isVisible(),false);
+  await page.evaluate(()=>location.hash='coach');await page.locator('#page-coach.active').waitFor();
+  assert.equal(await page.locator('#crcCoachHint').isVisible(),false);
+  // A new profile with an incomplete deck must not reuse the previous profile's eighth card.
+  await page.evaluate(()=>location.hash='player');await page.locator('#page-player.active').waitFor();
+  await page.locator('#profileFile').setInputFiles({name:'partial-profile.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify({tag:'#TEST456',name:'Partial',cards:owned,currentDeck:owned.slice(0,7)}))});
+  await page.waitForFunction(()=>document.querySelector('#profileSummary').textContent.includes('Partial'));
+  assert.match(await page.locator('#crcIncompleteProfileDeck').textContent(),/7 از ۸/);
+  await page.evaluate(()=>location.hash='home');await page.locator('#page-home.active').waitFor();
+  assert.equal(await page.locator('#homeDeck .deck-slot').count(),8);
+  assert.equal(await page.locator('#homeDeck .deck-slot.empty').count(),1);
+  assert.equal(aiCalls,0);
   assert.deepEqual(errors,[]);
   await page.close();
  }

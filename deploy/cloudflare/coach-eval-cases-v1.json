@@ -1,0 +1,2400 @@
+{
+  "version": "crc-coach-eval-v1",
+  "created_at": "2026-11-26",
+  "description": "60 synthetic Persian evaluation cases. No real player identifiers or account data.",
+  "models": {
+    "primary": "@cf/google/gemma-4-26b-a4b-it",
+    "candidate": "@cf/zai-org/glm-4.7-flash"
+  },
+  "fixtures": {
+    "deck": {
+      "battles": null,
+      "personal": {
+        "deck_cards": [
+          {
+            "id": 26000000,
+            "name": "Giant",
+            "rarity": "rare",
+            "level": 12,
+            "elixir": 5,
+            "role": "win condition",
+            "active_form": "base",
+            "unlocked_forms": []
+          },
+          {
+            "id": 26000001,
+            "name": "Musketeer",
+            "rarity": "rare",
+            "level": 12,
+            "elixir": 4,
+            "role": "ranged air defense",
+            "active_form": "base",
+            "unlocked_forms": []
+          },
+          {
+            "id": 26000002,
+            "name": "Mini P.E.K.K.A",
+            "rarity": "rare",
+            "level": 13,
+            "elixir": 4,
+            "role": "tank killer",
+            "active_form": "base",
+            "unlocked_forms": []
+          },
+          {
+            "id": 26000003,
+            "name": "Bomber",
+            "rarity": "common",
+            "level": 12,
+            "elixir": 2,
+            "role": "ground splash",
+            "active_form": "base",
+            "unlocked_forms": []
+          },
+          {
+            "id": 26000004,
+            "name": "Tesla",
+            "rarity": "common",
+            "level": 12,
+            "elixir": 4,
+            "role": "defensive building and pull",
+            "active_form": "base",
+            "unlocked_forms": []
+          },
+          {
+            "id": 26000005,
+            "name": "Zap",
+            "rarity": "common",
+            "level": 12,
+            "elixir": 2,
+            "role": "small spell and reset",
+            "active_form": "base",
+            "unlocked_forms": []
+          },
+          {
+            "id": 26000006,
+            "name": "Fireball",
+            "rarity": "rare",
+            "level": 12,
+            "elixir": 4,
+            "role": "medium spell",
+            "active_form": "base",
+            "unlocked_forms": []
+          },
+          {
+            "id": 26000007,
+            "name": "Skeletons",
+            "rarity": "common",
+            "level": 13,
+            "elixir": 1,
+            "role": "cycle and distraction",
+            "active_form": "base",
+            "unlocked_forms": []
+          }
+        ],
+        "allowed_single_swaps": []
+      }
+    },
+    "battle": {
+      "battles": {
+        "matched_records": 20,
+        "wins": 11,
+        "losses": 7,
+        "draws": 1,
+        "unknown": 1,
+        "filter": "all"
+      },
+      "personal": {
+        "deck_cards": [
+          {
+            "id": 26000000,
+            "name": "Giant",
+            "rarity": "rare",
+            "level": 12,
+            "elixir": 5,
+            "role": "win condition",
+            "active_form": "base",
+            "unlocked_forms": []
+          },
+          {
+            "id": 26000001,
+            "name": "Musketeer",
+            "rarity": "rare",
+            "level": 12,
+            "elixir": 4,
+            "role": "ranged air defense",
+            "active_form": "base",
+            "unlocked_forms": []
+          },
+          {
+            "id": 26000002,
+            "name": "Mini P.E.K.K.A",
+            "rarity": "rare",
+            "level": 13,
+            "elixir": 4,
+            "role": "tank killer",
+            "active_form": "base",
+            "unlocked_forms": []
+          },
+          {
+            "id": 26000003,
+            "name": "Bomber",
+            "rarity": "common",
+            "level": 12,
+            "elixir": 2,
+            "role": "ground splash",
+            "active_form": "base",
+            "unlocked_forms": []
+          },
+          {
+            "id": 26000004,
+            "name": "Tesla",
+            "rarity": "common",
+            "level": 12,
+            "elixir": 4,
+            "role": "defensive building and pull",
+            "active_form": "base",
+            "unlocked_forms": []
+          },
+          {
+            "id": 26000005,
+            "name": "Zap",
+            "rarity": "common",
+            "level": 12,
+            "elixir": 2,
+            "role": "small spell and reset",
+            "active_form": "base",
+            "unlocked_forms": []
+          },
+          {
+            "id": 26000006,
+            "name": "Fireball",
+            "rarity": "rare",
+            "level": 12,
+            "elixir": 4,
+            "role": "medium spell",
+            "active_form": "base",
+            "unlocked_forms": []
+          },
+          {
+            "id": 26000007,
+            "name": "Skeletons",
+            "rarity": "common",
+            "level": 13,
+            "elixir": 1,
+            "role": "cycle and distraction",
+            "active_form": "base",
+            "unlocked_forms": []
+          }
+        ],
+        "selected_deck_results": {
+          "wins": 7,
+          "losses": 3,
+          "draws": 0,
+          "unknown": 0
+        },
+        "allowed_single_swaps": []
+      }
+    },
+    "battleSmall": {
+      "battles": {
+        "matched_records": 4,
+        "wins": 3,
+        "losses": 1,
+        "draws": 0,
+        "unknown": 0,
+        "filter": "all"
+      },
+      "personal": {
+        "deck_cards": [
+          {
+            "id": 26000000,
+            "name": "Giant",
+            "rarity": "rare",
+            "level": 12,
+            "elixir": 5,
+            "role": "win condition",
+            "active_form": "base",
+            "unlocked_forms": []
+          },
+          {
+            "id": 26000001,
+            "name": "Musketeer",
+            "rarity": "rare",
+            "level": 12,
+            "elixir": 4,
+            "role": "ranged air defense",
+            "active_form": "base",
+            "unlocked_forms": []
+          },
+          {
+            "id": 26000002,
+            "name": "Mini P.E.K.K.A",
+            "rarity": "rare",
+            "level": 13,
+            "elixir": 4,
+            "role": "tank killer",
+            "active_form": "base",
+            "unlocked_forms": []
+          },
+          {
+            "id": 26000003,
+            "name": "Bomber",
+            "rarity": "common",
+            "level": 12,
+            "elixir": 2,
+            "role": "ground splash",
+            "active_form": "base",
+            "unlocked_forms": []
+          },
+          {
+            "id": 26000004,
+            "name": "Tesla",
+            "rarity": "common",
+            "level": 12,
+            "elixir": 4,
+            "role": "defensive building and pull",
+            "active_form": "base",
+            "unlocked_forms": []
+          },
+          {
+            "id": 26000005,
+            "name": "Zap",
+            "rarity": "common",
+            "level": 12,
+            "elixir": 2,
+            "role": "small spell and reset",
+            "active_form": "base",
+            "unlocked_forms": []
+          },
+          {
+            "id": 26000006,
+            "name": "Fireball",
+            "rarity": "rare",
+            "level": 12,
+            "elixir": 4,
+            "role": "medium spell",
+            "active_form": "base",
+            "unlocked_forms": []
+          },
+          {
+            "id": 26000007,
+            "name": "Skeletons",
+            "rarity": "common",
+            "level": 13,
+            "elixir": 1,
+            "role": "cycle and distraction",
+            "active_form": "base",
+            "unlocked_forms": []
+          }
+        ],
+        "selected_deck_results": {
+          "wins": 3,
+          "losses": 1,
+          "draws": 0,
+          "unknown": 0
+        },
+        "allowed_single_swaps": []
+      }
+    },
+    "noEvidence": {
+      "battles": null,
+      "personal": {
+        "deck_cards": [],
+        "allowed_single_swaps": []
+      }
+    },
+    "swap": {
+      "battles": null,
+      "personal": {
+        "deck_cards": [
+          {
+            "id": 26000000,
+            "name": "Giant",
+            "rarity": "rare",
+            "level": 12,
+            "elixir": 5,
+            "role": "win condition",
+            "active_form": "base",
+            "unlocked_forms": []
+          },
+          {
+            "id": 26000001,
+            "name": "Musketeer",
+            "rarity": "rare",
+            "level": 12,
+            "elixir": 4,
+            "role": "ranged air defense",
+            "active_form": "base",
+            "unlocked_forms": []
+          },
+          {
+            "id": 26000002,
+            "name": "Mini P.E.K.K.A",
+            "rarity": "rare",
+            "level": 13,
+            "elixir": 4,
+            "role": "tank killer",
+            "active_form": "base",
+            "unlocked_forms": []
+          },
+          {
+            "id": 26000003,
+            "name": "Bomber",
+            "rarity": "common",
+            "level": 12,
+            "elixir": 2,
+            "role": "ground splash",
+            "active_form": "base",
+            "unlocked_forms": []
+          },
+          {
+            "id": 26000004,
+            "name": "Tesla",
+            "rarity": "common",
+            "level": 12,
+            "elixir": 4,
+            "role": "defensive building and pull",
+            "active_form": "base",
+            "unlocked_forms": []
+          },
+          {
+            "id": 26000005,
+            "name": "Zap",
+            "rarity": "common",
+            "level": 12,
+            "elixir": 2,
+            "role": "small spell and reset",
+            "active_form": "base",
+            "unlocked_forms": []
+          },
+          {
+            "id": 26000006,
+            "name": "Fireball",
+            "rarity": "rare",
+            "level": 12,
+            "elixir": 4,
+            "role": "medium spell",
+            "active_form": "base",
+            "unlocked_forms": []
+          },
+          {
+            "id": 26000007,
+            "name": "Skeletons",
+            "rarity": "common",
+            "level": 13,
+            "elixir": 1,
+            "role": "cycle and distraction",
+            "active_form": "base",
+            "unlocked_forms": []
+          }
+        ],
+        "allowed_single_swaps": [
+          {
+            "remove_id": 26000004,
+            "add_id": 26000008,
+            "remove": "Tesla",
+            "add": "Baby Dragon",
+            "elixir_delta": 0,
+            "level_gap": -1,
+            "gain": [
+              "air",
+              "splash"
+            ],
+            "loss": [
+              "pull"
+            ]
+          },
+          {
+            "remove_id": 26000003,
+            "add_id": 26000009,
+            "remove": "Bomber",
+            "add": "Electro Spirit",
+            "elixir_delta": -1,
+            "level_gap": -1,
+            "gain": [
+              "air",
+              "reset"
+            ],
+            "loss": [
+              "splash"
+            ]
+          },
+          {
+            "remove_id": 26000006,
+            "add_id": 26000010,
+            "remove": "Fireball",
+            "add": "The Log",
+            "elixir_delta": -2,
+            "level_gap": 0,
+            "gain": [
+              "smallspell"
+            ],
+            "loss": [
+              "damage"
+            ]
+          },
+          {
+            "remove_id": 26000007,
+            "add_id": 26000011,
+            "remove": "Skeletons",
+            "add": "Spear Goblins",
+            "elixir_delta": 1,
+            "level_gap": 1,
+            "gain": [
+              "air",
+              "damage"
+            ],
+            "loss": [
+              "cycle"
+            ]
+          }
+        ]
+      }
+    },
+    "swapEmpty": {
+      "battles": null,
+      "personal": {
+        "deck_cards": [
+          {
+            "id": 26000000,
+            "name": "Giant",
+            "rarity": "rare",
+            "level": 12,
+            "elixir": 5,
+            "role": "win condition",
+            "active_form": "base",
+            "unlocked_forms": []
+          },
+          {
+            "id": 26000001,
+            "name": "Musketeer",
+            "rarity": "rare",
+            "level": 12,
+            "elixir": 4,
+            "role": "ranged air defense",
+            "active_form": "base",
+            "unlocked_forms": []
+          },
+          {
+            "id": 26000002,
+            "name": "Mini P.E.K.K.A",
+            "rarity": "rare",
+            "level": 13,
+            "elixir": 4,
+            "role": "tank killer",
+            "active_form": "base",
+            "unlocked_forms": []
+          },
+          {
+            "id": 26000003,
+            "name": "Bomber",
+            "rarity": "common",
+            "level": 12,
+            "elixir": 2,
+            "role": "ground splash",
+            "active_form": "base",
+            "unlocked_forms": []
+          },
+          {
+            "id": 26000004,
+            "name": "Tesla",
+            "rarity": "common",
+            "level": 12,
+            "elixir": 4,
+            "role": "defensive building and pull",
+            "active_form": "base",
+            "unlocked_forms": []
+          },
+          {
+            "id": 26000005,
+            "name": "Zap",
+            "rarity": "common",
+            "level": 12,
+            "elixir": 2,
+            "role": "small spell and reset",
+            "active_form": "base",
+            "unlocked_forms": []
+          },
+          {
+            "id": 26000006,
+            "name": "Fireball",
+            "rarity": "rare",
+            "level": 12,
+            "elixir": 4,
+            "role": "medium spell",
+            "active_form": "base",
+            "unlocked_forms": []
+          },
+          {
+            "id": 26000007,
+            "name": "Skeletons",
+            "rarity": "common",
+            "level": 13,
+            "elixir": 1,
+            "role": "cycle and distraction",
+            "active_form": "base",
+            "unlocked_forms": []
+          }
+        ],
+        "allowed_single_swaps": []
+      }
+    },
+    "swapProtected": {
+      "battles": null,
+      "personal": {
+        "deck_cards": [
+          {
+            "id": 26000000,
+            "name": "Giant",
+            "rarity": "rare",
+            "level": 12,
+            "elixir": 5,
+            "role": "win condition",
+            "active_form": "evo",
+            "unlocked_forms": [
+              "evo"
+            ]
+          },
+          {
+            "id": 26000001,
+            "name": "Musketeer",
+            "rarity": "rare",
+            "level": 12,
+            "elixir": 4,
+            "role": "ranged air defense",
+            "active_form": "base",
+            "unlocked_forms": []
+          },
+          {
+            "id": 26000002,
+            "name": "Mini P.E.K.K.A",
+            "rarity": "rare",
+            "level": 13,
+            "elixir": 4,
+            "role": "tank killer",
+            "active_form": "base",
+            "unlocked_forms": []
+          },
+          {
+            "id": 26000003,
+            "name": "Bomber",
+            "rarity": "common",
+            "level": 12,
+            "elixir": 2,
+            "role": "ground splash",
+            "active_form": "base",
+            "unlocked_forms": []
+          },
+          {
+            "id": 26000004,
+            "name": "Tesla",
+            "rarity": "common",
+            "level": 12,
+            "elixir": 4,
+            "role": "defensive building and pull",
+            "active_form": "base",
+            "unlocked_forms": []
+          },
+          {
+            "id": 26000005,
+            "name": "Zap",
+            "rarity": "common",
+            "level": 12,
+            "elixir": 2,
+            "role": "small spell and reset",
+            "active_form": "base",
+            "unlocked_forms": []
+          },
+          {
+            "id": 26000006,
+            "name": "Fireball",
+            "rarity": "rare",
+            "level": 12,
+            "elixir": 4,
+            "role": "medium spell",
+            "active_form": "base",
+            "unlocked_forms": []
+          },
+          {
+            "id": 26000007,
+            "name": "Skeletons",
+            "rarity": "common",
+            "level": 13,
+            "elixir": 1,
+            "role": "cycle and distraction",
+            "active_form": "base",
+            "unlocked_forms": []
+          }
+        ],
+        "allowed_single_swaps": [
+          {
+            "remove_id": 26000000,
+            "add_id": 26000008,
+            "remove": "Giant",
+            "add": "Baby Dragon",
+            "elixir_delta": 0,
+            "level_gap": -1,
+            "gain": [
+              "air",
+              "splash"
+            ],
+            "loss": [
+              "pull"
+            ]
+          },
+          {
+            "remove_id": 26000000,
+            "add_id": 26000009,
+            "remove": "Giant",
+            "add": "Electro Spirit",
+            "elixir_delta": -1,
+            "level_gap": -1,
+            "gain": [
+              "air",
+              "reset"
+            ],
+            "loss": [
+              "splash"
+            ]
+          },
+          {
+            "remove_id": 26000000,
+            "add_id": 26000010,
+            "remove": "Giant",
+            "add": "The Log",
+            "elixir_delta": -2,
+            "level_gap": 0,
+            "gain": [
+              "smallspell"
+            ],
+            "loss": [
+              "damage"
+            ]
+          },
+          {
+            "remove_id": 26000000,
+            "add_id": 26000011,
+            "remove": "Giant",
+            "add": "Spear Goblins",
+            "elixir_delta": 1,
+            "level_gap": 1,
+            "gain": [
+              "air",
+              "damage"
+            ],
+            "loss": [
+              "cycle"
+            ]
+          }
+        ]
+      }
+    },
+    "evo": {
+      "battles": null,
+      "personal": {
+        "deck_cards": [
+          {
+            "id": 26000000,
+            "name": "Giant",
+            "rarity": "rare",
+            "level": 12,
+            "elixir": 5,
+            "role": "win condition",
+            "active_form": "evo",
+            "unlocked_forms": [
+              "evo"
+            ]
+          },
+          {
+            "id": 26000001,
+            "name": "Musketeer",
+            "rarity": "rare",
+            "level": 12,
+            "elixir": 4,
+            "role": "ranged air defense",
+            "active_form": "base",
+            "unlocked_forms": []
+          },
+          {
+            "id": 26000002,
+            "name": "Mini P.E.K.K.A",
+            "rarity": "rare",
+            "level": 13,
+            "elixir": 4,
+            "role": "tank killer",
+            "active_form": "base",
+            "unlocked_forms": []
+          },
+          {
+            "id": 26000003,
+            "name": "Bomber",
+            "rarity": "common",
+            "level": 12,
+            "elixir": 2,
+            "role": "ground splash",
+            "active_form": "base",
+            "unlocked_forms": []
+          },
+          {
+            "id": 26000004,
+            "name": "Tesla",
+            "rarity": "common",
+            "level": 12,
+            "elixir": 4,
+            "role": "defensive building and pull",
+            "active_form": "base",
+            "unlocked_forms": []
+          },
+          {
+            "id": 26000005,
+            "name": "Zap",
+            "rarity": "common",
+            "level": 12,
+            "elixir": 2,
+            "role": "small spell and reset",
+            "active_form": "base",
+            "unlocked_forms": []
+          },
+          {
+            "id": 26000006,
+            "name": "Fireball",
+            "rarity": "rare",
+            "level": 12,
+            "elixir": 4,
+            "role": "medium spell",
+            "active_form": "base",
+            "unlocked_forms": []
+          },
+          {
+            "id": 26000007,
+            "name": "Skeletons",
+            "rarity": "common",
+            "level": 13,
+            "elixir": 1,
+            "role": "cycle and distraction",
+            "active_form": "base",
+            "unlocked_forms": []
+          }
+        ],
+        "allowed_single_swaps": []
+      }
+    },
+    "hero": {
+      "battles": null,
+      "personal": {
+        "deck_cards": [
+          {
+            "id": 26000000,
+            "name": "Giant",
+            "rarity": "rare",
+            "level": 12,
+            "elixir": 5,
+            "role": "win condition",
+            "active_form": "base",
+            "unlocked_forms": []
+          },
+          {
+            "id": 26000001,
+            "name": "Musketeer",
+            "rarity": "rare",
+            "level": 12,
+            "elixir": 4,
+            "role": "ranged air defense",
+            "active_form": "base",
+            "unlocked_forms": []
+          },
+          {
+            "id": 26000002,
+            "name": "Mini P.E.K.K.A",
+            "rarity": "rare",
+            "level": 13,
+            "elixir": 4,
+            "role": "tank killer",
+            "active_form": "base",
+            "unlocked_forms": []
+          },
+          {
+            "id": 26000003,
+            "name": "Bomber",
+            "rarity": "common",
+            "level": 12,
+            "elixir": 2,
+            "role": "ground splash",
+            "active_form": "base",
+            "unlocked_forms": []
+          },
+          {
+            "id": 26000004,
+            "name": "Tesla",
+            "rarity": "common",
+            "level": 12,
+            "elixir": 4,
+            "role": "defensive building and pull",
+            "active_form": "base",
+            "unlocked_forms": []
+          },
+          {
+            "id": 26000005,
+            "name": "Zap",
+            "rarity": "common",
+            "level": 12,
+            "elixir": 2,
+            "role": "small spell and reset",
+            "active_form": "base",
+            "unlocked_forms": []
+          },
+          {
+            "id": 26000006,
+            "name": "Fireball",
+            "rarity": "rare",
+            "level": 12,
+            "elixir": 4,
+            "role": "medium spell",
+            "active_form": "base",
+            "unlocked_forms": []
+          },
+          {
+            "id": 26000012,
+            "name": "Electro Wizard",
+            "rarity": "legendary",
+            "level": 12,
+            "elixir": 4,
+            "role": "reset and air defense",
+            "active_form": "hero",
+            "unlocked_forms": [
+              "hero"
+            ]
+          }
+        ],
+        "allowed_single_swaps": []
+      }
+    },
+    "meta": {
+      "battles": null,
+      "personal": {
+        "deck_cards": [],
+        "allowed_single_swaps": []
+      }
+    }
+  },
+  "scenarios": [
+    {
+      "id": "D01",
+      "category": "deck",
+      "fixture": "deck",
+      "intent": "deck",
+      "language": "fa",
+      "question": "در این دک شرط برد اصلی کدام کارت است و چرا؟",
+      "rubric": {
+        "mustIncludeAny": [
+          [
+            "Giant",
+            "غول"
+          ],
+          [
+            "شرط برد",
+            "win condition"
+          ]
+        ],
+        "mustNotInclude": [],
+        "requiredSourceIds": [],
+        "requiredFactKeys": [],
+        "mustAbstain": false
+      }
+    },
+    {
+      "id": "D02",
+      "category": "deck",
+      "fixture": "deck",
+      "intent": "deck",
+      "language": "fa",
+      "question": "نقش هر کارت را فقط بر اساس داده‌های همین پروفایل توضیح بده.",
+      "rubric": {
+        "mustIncludeAny": [
+          [
+            "Musketeer"
+          ],
+          [
+            "Mini P.E.K.K.A"
+          ],
+          [
+            "Tesla"
+          ],
+          [
+            "Skeletons"
+          ]
+        ],
+        "mustNotInclude": [],
+        "requiredSourceIds": [],
+        "requiredFactKeys": [],
+        "mustAbstain": false
+      }
+    },
+    {
+      "id": "D03",
+      "category": "deck",
+      "fixture": "deck",
+      "intent": "deck",
+      "language": "fa",
+      "question": "میانگین اکسیر این دک و مجموع هزینه چهار کارت ارزان‌تر را بررسی کن.",
+      "rubric": {
+        "mustIncludeAny": [
+          [
+            "میانگین اکسیر ثبت‌شده"
+          ]
+        ],
+        "mustNotInclude": [],
+        "requiredSourceIds": [],
+        "requiredFactKeys": [
+          "elixir"
+        ],
+        "mustAbstain": false
+      }
+    },
+    {
+      "id": "D04",
+      "category": "deck",
+      "fixture": "deck",
+      "intent": "deck",
+      "language": "fa",
+      "question": "آیا Star Level باعث افزایش قدرت یا آسیب کارت می‌شود؟",
+      "rubric": {
+        "mustIncludeAny": [
+          [
+            "ظاهر",
+            "cosmetic"
+          ],
+          [
+            "گیم‌پلی",
+            "قدرت",
+            "آسیب"
+          ]
+        ],
+        "mustNotInclude": [
+          "Star Level.*افزایش.*قدرت"
+        ],
+        "requiredSourceIds": [
+          "K01"
+        ],
+        "requiredFactKeys": [],
+        "mustAbstain": false
+      }
+    },
+    {
+      "id": "D05",
+      "category": "deck",
+      "fixture": "deck",
+      "intent": "deck",
+      "language": "fa",
+      "question": "تفاوت کمیابی کارت (rarity) با سطح کارت (level) چیست؟",
+      "rubric": {
+        "mustIncludeAny": [
+          [
+            "کمیابی",
+            "rarity"
+          ],
+          [
+            "سطح",
+            "level"
+          ]
+        ],
+        "mustNotInclude": [],
+        "requiredSourceIds": [
+          "K01"
+        ],
+        "requiredFactKeys": [],
+        "mustAbstain": false
+      }
+    },
+    {
+      "id": "D06",
+      "category": "deck",
+      "fixture": "deck",
+      "intent": "deck",
+      "language": "fa",
+      "question": "آیا می‌توان برای حالت‌های مختلف بازی دک‌های جداگانه داشت؟",
+      "rubric": {
+        "mustIncludeAny": [
+          [
+            "جدا",
+            "separate"
+          ],
+          [
+            "حالت بازی",
+            "مود"
+          ]
+        ],
+        "mustNotInclude": [],
+        "requiredSourceIds": [
+          "K01"
+        ],
+        "requiredFactKeys": [],
+        "mustAbstain": false
+      }
+    },
+    {
+      "id": "D07",
+      "category": "deck",
+      "fixture": "deck",
+      "intent": "deck",
+      "language": "fa",
+      "question": "در Trophy Road معیار اصلی matchmaking چیست؟ آیا سطح کارت‌ها هم در آن دخیل است؟",
+      "rubric": {
+        "mustIncludeAny": [
+          [
+            "تروفی",
+            "trophies"
+          ],
+          [
+            "سطح کارت",
+            "card level"
+          ]
+        ],
+        "mustNotInclude": [],
+        "requiredSourceIds": [
+          "K02"
+        ],
+        "requiredFactKeys": [],
+        "mustAbstain": false
+      }
+    },
+    {
+      "id": "D08",
+      "category": "deck",
+      "fixture": "deck",
+      "intent": "deck",
+      "language": "fa",
+      "question": "برای اینکه یک کارت دوباره به دستم برگردد، بعد از بازی‌کردنش چند کارت دیگر باید بازی کنم؟",
+      "rubric": {
+        "mustIncludeAny": [
+          [
+            "چهار",
+            "4",
+            "۴"
+          ],
+          [
+            "کارت"
+          ]
+        ],
+        "mustNotInclude": [],
+        "requiredSourceIds": [
+          "K02"
+        ],
+        "requiredFactKeys": [],
+        "mustAbstain": false
+      }
+    },
+    {
+      "id": "D09",
+      "category": "deck",
+      "fixture": "deck",
+      "intent": "deck",
+      "language": "fa",
+      "question": "کارت‌هایی که فقط ساختمان را هدف می‌گیرند معمولاً چه نقشی در دک دارند؟",
+      "rubric": {
+        "mustIncludeAny": [
+          [
+            "شرط برد",
+            "win condition"
+          ]
+        ],
+        "mustNotInclude": [],
+        "requiredSourceIds": [
+          "K02"
+        ],
+        "requiredFactKeys": [],
+        "mustAbstain": false
+      }
+    },
+    {
+      "id": "D10",
+      "category": "deck",
+      "fixture": "deck",
+      "intent": "deck",
+      "language": "fa",
+      "question": "آیا فقط با دیدن rarity می‌توان گفت یک کارت از بقیه بهتر است؟",
+      "rubric": {
+        "mustIncludeAny": [
+          [
+            "به‌تنهایی",
+            "تنها",
+            "فقط"
+          ],
+          [
+            "بهترین",
+            "قدرت"
+          ]
+        ],
+        "mustNotInclude": [],
+        "requiredSourceIds": [
+          "K01"
+        ],
+        "requiredFactKeys": [],
+        "mustAbstain": false
+      }
+    },
+    {
+      "id": "D11",
+      "category": "deck",
+      "fixture": "deck",
+      "intent": "deck",
+      "language": "fa",
+      "question": "ارتقای Level کارت چه چیزهایی را تغییر می‌دهد؟",
+      "rubric": {
+        "mustIncludeAny": [
+          [
+            "جان",
+            "سلامت",
+            "health"
+          ],
+          [
+            "آسیب",
+            "damage"
+          ]
+        ],
+        "mustNotInclude": [],
+        "requiredSourceIds": [
+          "K01"
+        ],
+        "requiredFactKeys": [],
+        "mustAbstain": false
+      }
+    },
+    {
+      "id": "D12",
+      "category": "deck",
+      "fixture": "noEvidence",
+      "intent": "deck",
+      "language": "fa",
+      "question": "آیا می‌توانی از این داده‌ها مالکیت قطعی همه کارت‌ها را نتیجه بگیری؟",
+      "rubric": {
+        "mustIncludeAny": [
+          [
+            "تأیید",
+            "تایید",
+            "نمی‌توان",
+            "امکان بررسی",
+            "وجود ندارد"
+          ],
+          [
+            "مالکیت",
+            "کارت"
+          ]
+        ],
+        "mustNotInclude": [],
+        "requiredSourceIds": [],
+        "requiredFactKeys": [],
+        "mustAbstain": true
+      }
+    },
+    {
+      "id": "D13",
+      "category": "deck",
+      "fixture": "deck",
+      "intent": "deck",
+      "language": "fa",
+      "question": "آیا این دک حتماً در Ladder نرخ برد خوبی دارد؟",
+      "rubric": {
+        "mustIncludeAny": [
+          [
+            "تضمین",
+            "نمی‌توان",
+            "داده",
+            "آمار"
+          ]
+        ],
+        "mustNotInclude": [
+          "حتماً.*برد",
+          "تضمین.*برد"
+        ],
+        "requiredSourceIds": [],
+        "requiredFactKeys": [],
+        "mustAbstain": false
+      }
+    },
+    {
+      "id": "D14",
+      "category": "deck",
+      "fixture": "deck",
+      "intent": "deck",
+      "language": "fa",
+      "question": "هزینه اکسیر این دک را محاسبه کن و بگو میانگینش در داده ثبت‌شده چقدر است.",
+      "rubric": {
+        "mustIncludeAny": [
+          [
+            "میانگین اکسیر ثبت‌شده"
+          ]
+        ],
+        "mustNotInclude": [],
+        "requiredSourceIds": [],
+        "requiredFactKeys": [
+          "elixir"
+        ],
+        "mustAbstain": false
+      }
+    },
+    {
+      "id": "D15",
+      "category": "deck",
+      "fixture": "deck",
+      "intent": "deck",
+      "language": "fa",
+      "question": "اگر وضعیت فرم یک کارت unknown باشد، آیا باید فرض کنیم Evolution آن باز شده است؟",
+      "rubric": {
+        "mustIncludeAny": [
+          [
+            "نباید",
+            "نمی‌توان",
+            "مشخص نیست",
+            "معنای باز شدن"
+          ],
+          [
+            "تأیید",
+            "تایید",
+            "اطلاعات",
+            "باز شدن Evolution"
+          ]
+        ],
+        "mustNotInclude": [],
+        "requiredSourceIds": [
+          "K01",
+          "K03"
+        ],
+        "requiredFactKeys": [],
+        "mustAbstain": false
+      }
+    },
+    {
+      "id": "D16",
+      "category": "deck",
+      "fixture": "deck",
+      "intent": "deck",
+      "language": "fa",
+      "question": "آیا کارت‌های ارزان‌تر این دک می‌توانند به چرخه سریع‌تر کمک کنند؟",
+      "rubric": {
+        "mustIncludeAny": [
+          [
+            "چرخه",
+            "cycle"
+          ],
+          [
+            "اکسیر",
+            "هزینه"
+          ]
+        ],
+        "mustNotInclude": [],
+        "requiredSourceIds": [
+          "K02"
+        ],
+        "requiredFactKeys": [],
+        "mustAbstain": false
+      }
+    },
+    {
+      "id": "D17",
+      "category": "deck",
+      "fixture": "deck",
+      "intent": "deck",
+      "language": "fa",
+      "question": "با توجه به سطح کارت‌ها، کدام را فوراً ارتقا بدهم؟ منابع و هدف من را هم نمی‌دانی.",
+      "rubric": {
+        "mustIncludeAny": [
+          [
+            "منابع",
+            "هدف",
+            "اولویت"
+          ],
+          [
+            "اطلاعات",
+            "نمی‌توان",
+            "بستگی"
+          ]
+        ],
+        "mustNotInclude": [],
+        "requiredSourceIds": [],
+        "requiredFactKeys": [],
+        "mustAbstain": true
+      }
+    },
+    {
+      "id": "D18",
+      "category": "deck",
+      "fixture": "deck",
+      "intent": "deck",
+      "language": "fa",
+      "question": "آیا کمیابی Legendary به‌تنهایی یعنی کارت همیشه از Common بهتر است؟",
+      "rubric": {
+        "mustIncludeAny": [
+          [
+            "کمیابی",
+            "rarity"
+          ],
+          [
+            "به‌تنهایی",
+            "همیشه",
+            "ترکیب"
+          ]
+        ],
+        "mustNotInclude": [],
+        "requiredSourceIds": [
+          "K01"
+        ],
+        "requiredFactKeys": [],
+        "mustAbstain": false
+      }
+    },
+    {
+      "id": "D19",
+      "category": "deck",
+      "fixture": "deck",
+      "intent": "deck",
+      "language": "fa",
+      "question": "آیا Star Level جای Evolution را می‌گیرد یا قابلیت جدیدی باز می‌کند؟",
+      "rubric": {
+        "mustIncludeAny": [
+          [
+            "ظاهر",
+            "cosmetic"
+          ],
+          [
+            "Evolution",
+            "قابلیت"
+          ]
+        ],
+        "mustNotInclude": [],
+        "requiredSourceIds": [
+          "K01",
+          "K03"
+        ],
+        "requiredFactKeys": [],
+        "mustAbstain": false
+      }
+    },
+    {
+      "id": "D20",
+      "category": "deck",
+      "fixture": "deck",
+      "intent": "deck",
+      "language": "fa",
+      "question": "آیا سطح کارت‌ها در matchmaking بخش Trophy Road لحاظ می‌شود؟",
+      "rubric": {
+        "mustIncludeAny": [
+          [
+            "تروفی",
+            "trophies"
+          ],
+          [
+            "لحاظ",
+            "دخیل",
+            "نمی‌شود",
+            "نیست"
+          ]
+        ],
+        "mustNotInclude": [],
+        "requiredSourceIds": [
+          "K02"
+        ],
+        "requiredFactKeys": [],
+        "mustAbstain": false
+      }
+    },
+    {
+      "id": "B01",
+      "category": "battle",
+      "fixture": "battle",
+      "intent": "style",
+      "language": "fa",
+      "question": "عملکرد کلی نبردهای ثبت‌شده را تحلیل کن؛ نمونه و محدودیت نتیجه را هم بگو.",
+      "rubric": {
+        "mustIncludeAny": [
+          [
+            "کل نبردهای ارسالی"
+          ],
+          [
+            "نمونه",
+            "نبرد"
+          ]
+        ],
+        "mustNotInclude": [],
+        "requiredSourceIds": [],
+        "requiredFactKeys": [
+          "overall"
+        ],
+        "mustAbstain": false
+      }
+    },
+    {
+      "id": "B02",
+      "category": "battle",
+      "fixture": "battle",
+      "intent": "style",
+      "language": "fa",
+      "question": "عملکرد همین دک انتخاب‌شده را جدا از بقیه بررسی کن.",
+      "rubric": {
+        "mustIncludeAny": [
+          [
+            "همین دک انتخاب‌شده"
+          ]
+        ],
+        "mustNotInclude": [],
+        "requiredSourceIds": [],
+        "requiredFactKeys": [
+          "selected"
+        ],
+        "mustAbstain": false
+      }
+    },
+    {
+      "id": "B03",
+      "category": "battle",
+      "fixture": "battle",
+      "intent": "style",
+      "language": "fa",
+      "question": "از روی آمار ثبت‌شده چه چیزی درباره برد و باخت می‌توان گفت؟",
+      "rubric": {
+        "mustIncludeAny": [
+          [
+            "برد",
+            "باخت"
+          ],
+          [
+            "کل نبردهای ارسالی"
+          ]
+        ],
+        "mustNotInclude": [],
+        "requiredSourceIds": [],
+        "requiredFactKeys": [
+          "overall"
+        ],
+        "mustAbstain": false
+      }
+    },
+    {
+      "id": "B04",
+      "category": "battle",
+      "fixture": "battle",
+      "intent": "style",
+      "language": "fa",
+      "question": "نتیجه دک انتخاب‌شده را با کل نبردها مقایسه کن؛ نتیجه قطعی نگیر.",
+      "rubric": {
+        "mustIncludeAny": [
+          [
+            "همین دک انتخاب‌شده"
+          ],
+          [
+            "کل نبردهای ارسالی"
+          ]
+        ],
+        "mustNotInclude": [],
+        "requiredSourceIds": [],
+        "requiredFactKeys": [
+          "overall",
+          "selected"
+        ],
+        "mustAbstain": false
+      }
+    },
+    {
+      "id": "B05",
+      "category": "battle",
+      "fixture": "battle",
+      "intent": "style",
+      "language": "fa",
+      "question": "میانگین اکسیر دک و نتایج همین دک را کنار هم نشان بده.",
+      "rubric": {
+        "mustIncludeAny": [
+          [
+            "میانگین اکسیر ثبت‌شده"
+          ],
+          [
+            "همین دک انتخاب‌شده"
+          ]
+        ],
+        "mustNotInclude": [],
+        "requiredSourceIds": [],
+        "requiredFactKeys": [
+          "elixir",
+          "selected"
+        ],
+        "mustAbstain": false
+      }
+    },
+    {
+      "id": "B06",
+      "category": "battle",
+      "fixture": "battle",
+      "intent": "style",
+      "language": "fa",
+      "question": "دقیقاً چرا در آخرین نبرد باختم؟ فقط آمار تجمیعی دارم، ریپلی ندارم.",
+      "rubric": {
+        "mustIncludeAny": [
+          [
+            "علت دقیق",
+            "دقیقاً",
+            "نمی‌توان",
+            "قابل اثبات",
+            "مشخص نیست"
+          ],
+          [
+            "ریپلی",
+            "بازپخش",
+            "جزئیات",
+            "وجود ندارد"
+          ]
+        ],
+        "mustNotInclude": [
+          "مشکل‌ساز بوده",
+          "باعث باخت",
+          "علت.{0,15}اکسیر",
+          "به دلیل.{0,15}چرخه"
+        ],
+        "requiredSourceIds": [],
+        "requiredFactKeys": [],
+        "mustAbstain": true
+      }
+    },
+    {
+      "id": "B07",
+      "category": "battle",
+      "fixture": "battle",
+      "intent": "style",
+      "language": "fa",
+      "question": "آیا می‌توانی ثابت کنی Tesla باعث باخت‌های من شده است؟ داده کارت‌به‌کارت ندارم.",
+      "rubric": {
+        "mustIncludeAny": [
+          [
+            "نمی‌توان",
+            "مشخص نیست",
+            "شواهد"
+          ],
+          [
+            "علت",
+            "رابطه",
+            "اثبات"
+          ]
+        ],
+        "mustNotInclude": [],
+        "requiredSourceIds": [],
+        "requiredFactKeys": [],
+        "mustAbstain": true
+      }
+    },
+    {
+      "id": "B08",
+      "category": "battle",
+      "fixture": "noEvidence",
+      "intent": "style",
+      "language": "fa",
+      "question": "نبردهای اخیرم را تحلیل کن؛ در این درخواست هیچ آمار یا نبردی ارسال نشده است.",
+      "rubric": {
+        "mustIncludeAny": [
+          [
+            "اطلاعات",
+            "آمار",
+            "داده"
+          ],
+          [
+            "ارسال",
+            "بارگذاری",
+            "ارائه"
+          ]
+        ],
+        "mustNotInclude": [],
+        "requiredSourceIds": [],
+        "requiredFactKeys": [],
+        "mustAbstain": true
+      }
+    },
+    {
+      "id": "B09",
+      "category": "battle",
+      "fixture": "battle",
+      "intent": "style",
+      "language": "fa",
+      "question": "سه برد از چهار بازی داشتم؛ آیا این برای نتیجه‌گیری درباره عملکرد پایدار کافی است؟",
+      "rubric": {
+        "mustIncludeAny": [
+          [
+            "نمونه کوچک",
+            "کم",
+            "چهار"
+          ],
+          [
+            "قطعی",
+            "پایدار",
+            "اطمینان"
+          ]
+        ],
+        "mustNotInclude": [],
+        "requiredSourceIds": [],
+        "requiredFactKeys": [
+          "overall"
+        ],
+        "mustAbstain": false
+      }
+    },
+    {
+      "id": "B10",
+      "category": "battle",
+      "fixture": "noEvidence",
+      "intent": "style",
+      "language": "fa",
+      "question": "الگوی کارت‌های حریفانم چه بوده است؟ هیچ فهرست کارت حریف در داده‌ها نیست.",
+      "rubric": {
+        "mustIncludeAny": [
+          [
+            "داده",
+            "اطلاعات"
+          ],
+          [
+            "حریف"
+          ],
+          [
+            "در دسترس",
+            "نمی‌توان",
+            "وجود ندارد"
+          ]
+        ],
+        "mustNotInclude": [
+          "حداقل ۵۰",
+          "50 battles",
+          "۵۰ نبرد"
+        ],
+        "requiredSourceIds": [],
+        "requiredFactKeys": [],
+        "mustAbstain": true
+      }
+    },
+    {
+      "id": "S01",
+      "category": "swap",
+      "fixture": "swap",
+      "intent": "suggestions",
+      "language": "fa",
+      "question": "برای بهتر شدن دفاع هوایی و داشتن Splash، از گزینه‌های مجاز کدام تعویض را انتخاب می‌کنی؟",
+      "rubric": {
+        "mustIncludeAny": [],
+        "mustNotInclude": [],
+        "requiredSourceIds": [],
+        "requiredFactKeys": [],
+        "expectedSwapIndex": 0,
+        "mustAbstain": false
+      }
+    },
+    {
+      "id": "S02",
+      "category": "swap",
+      "fixture": "swap",
+      "intent": "suggestions",
+      "language": "fa",
+      "question": "به Reset بیشتری برای متوقف‌کردن حمله دشمن نیاز دارم؛ کدام گزینه مجاز مناسب‌تر است؟",
+      "rubric": {
+        "mustIncludeAny": [],
+        "mustNotInclude": [],
+        "requiredSourceIds": [],
+        "requiredFactKeys": [],
+        "expectedSwapIndex": 1,
+        "mustAbstain": false
+      }
+    },
+    {
+      "id": "S03",
+      "category": "swap",
+      "fixture": "swap",
+      "intent": "suggestions",
+      "language": "fa",
+      "question": "می‌خواهم به‌جای طلسم سنگین‌تر یک Small Spell ارزان‌تر داشته باشم؛ کدام تعویض را انتخاب می‌کنی؟",
+      "rubric": {
+        "mustIncludeAny": [],
+        "mustNotInclude": [],
+        "requiredSourceIds": [],
+        "requiredFactKeys": [],
+        "expectedSwapIndex": 2,
+        "mustAbstain": false
+      }
+    },
+    {
+      "id": "S04",
+      "category": "swap",
+      "fixture": "swap",
+      "intent": "suggestions",
+      "language": "fa",
+      "question": "می‌خواهم به‌جای کارت چرخه، یک گزینه ارزان با حمله هوایی و آسیب مستقیم داشته باشم؛ کدام تعویض مجاز را انتخاب می‌کنی؟",
+      "rubric": {
+        "mustIncludeAny": [],
+        "mustNotInclude": [],
+        "requiredSourceIds": [],
+        "requiredFactKeys": [],
+        "expectedSwapIndex": 3,
+        "mustAbstain": false
+      }
+    },
+    {
+      "id": "S05",
+      "category": "swap",
+      "fixture": "swap",
+      "intent": "suggestions",
+      "language": "fa",
+      "question": "هدفم کاهش میانگین اکسیر است و به Small Spell نیاز دارم؛ کدام گزینه با این هدف سازگار است؟",
+      "rubric": {
+        "mustIncludeAny": [],
+        "mustNotInclude": [],
+        "requiredSourceIds": [],
+        "requiredFactKeys": [],
+        "expectedSwapIndex": 2,
+        "mustAbstain": false
+      }
+    },
+    {
+      "id": "S06",
+      "category": "swap",
+      "fixture": "swap",
+      "intent": "suggestions",
+      "language": "fa",
+      "question": "دفاع هوایی من ضعیف است؛ تعویضی می‌خواهم که هزینه اکسیر را افزایش ندهد.",
+      "rubric": {
+        "mustIncludeAny": [],
+        "mustNotInclude": [],
+        "requiredSourceIds": [],
+        "requiredFactKeys": [],
+        "expectedSwapIndex": 0,
+        "mustAbstain": false
+      }
+    },
+    {
+      "id": "S07",
+      "category": "swap",
+      "fixture": "swapEmpty",
+      "intent": "suggestions",
+      "language": "fa",
+      "question": "یک کارت از دکم را عوض کن؛ اما در داده فعلی هیچ گزینه مجاز single swap وجود ندارد.",
+      "rubric": {
+        "mustIncludeAny": [
+          [
+            "پیشنهاد تعویض",
+            "پیشنهاد آزمایشی",
+            "ندارم",
+            "تاییدشده"
+          ]
+        ],
+        "mustNotInclude": [],
+        "requiredSourceIds": [],
+        "requiredFactKeys": [],
+        "expectedSwapIndex": null,
+        "mustAbstain": false
+      }
+    },
+    {
+      "id": "S08",
+      "category": "swap",
+      "fixture": "noEvidence",
+      "intent": "suggestions",
+      "language": "fa",
+      "question": "با اطلاعات ناقص دک، یک تعویض قطعی پیشنهاد بده.",
+      "rubric": {
+        "mustIncludeAny": [
+          [
+            "پیشنهاد",
+            "اطلاعات",
+            "داده"
+          ],
+          [
+            "ندارم",
+            "نمی‌توان",
+            "کافی"
+          ]
+        ],
+        "mustNotInclude": [],
+        "requiredSourceIds": [],
+        "requiredFactKeys": [],
+        "expectedSwapIndex": null,
+        "mustAbstain": false
+      }
+    },
+    {
+      "id": "S09",
+      "category": "swap",
+      "fixture": "swapProtected",
+      "intent": "suggestions",
+      "language": "fa",
+      "question": "یکی از گزینه‌ها Giant با فرم Evolution فعال را حذف می‌کند؛ آن را پیشنهاد نده و فقط تعویض امن مجاز را انتخاب کن.",
+      "rubric": {
+        "mustIncludeAny": [
+          [
+            "پیشنهاد تعویض",
+            "تاییدشده",
+            "ندارم",
+            "فرم"
+          ]
+        ],
+        "mustNotInclude": [],
+        "requiredSourceIds": [],
+        "requiredFactKeys": [],
+        "expectedSwapIndex": null,
+        "mustAbstain": false
+      }
+    },
+    {
+      "id": "S10",
+      "category": "swap",
+      "fixture": "swap",
+      "intent": "suggestions",
+      "language": "fa",
+      "question": "فقط یک کارت را از فهرست مجاز عوض کن؛ چند تعویض هم‌زمان نمی‌خواهم. گزینه اول را برای دفاع هوایی انتخاب کن.",
+      "rubric": {
+        "mustIncludeAny": [],
+        "mustNotInclude": [],
+        "requiredSourceIds": [],
+        "requiredFactKeys": [],
+        "expectedSwapIndex": 0,
+        "mustAbstain": false
+      }
+    },
+    {
+      "id": "E01",
+      "category": "evolution-hero",
+      "fixture": "evo",
+      "intent": "progress",
+      "language": "fa",
+      "question": "برای بازکردن Evolution یک کارت، طبق راهنمای رسمی چند Evolution Shard از همان کارت لازم است؟",
+      "rubric": {
+        "mustIncludeAny": [
+          [
+            "شش",
+            "6",
+            "۶"
+          ],
+          [
+            "Evolution Shard",
+            "Shard"
+          ]
+        ],
+        "mustNotInclude": [],
+        "requiredSourceIds": [
+          "K03"
+        ],
+        "requiredFactKeys": [],
+        "mustAbstain": false
+      }
+    },
+    {
+      "id": "E02",
+      "category": "evolution-hero",
+      "fixture": "evo",
+      "intent": "progress",
+      "language": "fa",
+      "question": "برای استفاده از Evolution، کارت باید در کدام جایگاه دک قرار بگیرد؟",
+      "rubric": {
+        "mustIncludeAny": [
+          [
+            "Evolution Slot",
+            "Wild Slot"
+          ],
+          [
+            "جایگاه"
+          ]
+        ],
+        "mustNotInclude": [],
+        "requiredSourceIds": [
+          "K03"
+        ],
+        "requiredFactKeys": [],
+        "mustAbstain": false
+      }
+    },
+    {
+      "id": "E03",
+      "category": "evolution-hero",
+      "fixture": "evo",
+      "intent": "progress",
+      "language": "fa",
+      "question": "اگر کارت Evolution را در جایگاه معمولی بگذارم چه فرمی اجرا می‌شود؟",
+      "rubric": {
+        "mustIncludeAny": [
+          [
+            "فرم پایه",
+            "عادی",
+            "base"
+          ]
+        ],
+        "mustNotInclude": [],
+        "requiredSourceIds": [
+          "K03"
+        ],
+        "requiredFactKeys": [],
+        "mustAbstain": false
+      }
+    },
+    {
+      "id": "E04",
+      "category": "evolution-hero",
+      "fixture": "evo",
+      "intent": "progress",
+      "language": "fa",
+      "question": "چرخه Evolution در نبرد چگونه کار می‌کند و قابلیت ویژه چه زمانی اجرا می‌شود؟",
+      "rubric": {
+        "mustIncludeAny": [
+          [
+            "چرخه",
+            "cycle"
+          ],
+          [
+            "خودکار",
+            "بازی بعدی",
+            "بعدی"
+          ]
+        ],
+        "mustNotInclude": [],
+        "requiredSourceIds": [
+          "K03"
+        ],
+        "requiredFactKeys": [],
+        "mustAbstain": false
+      }
+    },
+    {
+      "id": "E05",
+      "category": "evolution-hero",
+      "fixture": "evo",
+      "intent": "progress",
+      "language": "fa",
+      "question": "طبق خبر نوامبر ۲۰۲۶، Evolution غول چه زمانی خشمگین می‌شود و چه تغییری دارد؟",
+      "rubric": {
+        "mustIncludeAny": [
+          [
+            "یک چرخه",
+            "چرخه"
+          ],
+          [
+            "۵۰",
+            "50"
+          ],
+          [
+            "Rage",
+            "خشم"
+          ]
+        ],
+        "mustNotInclude": [],
+        "requiredSourceIds": [
+          "K04"
+        ],
+        "requiredFactKeys": [],
+        "mustAbstain": false
+      }
+    },
+    {
+      "id": "E06",
+      "category": "evolution-hero",
+      "fixture": "evo",
+      "intent": "progress",
+      "language": "fa",
+      "question": "Evolution آینه بعد از چند چرخه فعال می‌شود و کدام کارت را کپی می‌کند؟",
+      "rubric": {
+        "mustIncludeAny": [
+          [
+            "دو چرخه",
+            "2"
+          ],
+          [
+            "آخرین کارت",
+            "آخرین کارتی"
+          ]
+        ],
+        "mustNotInclude": [],
+        "requiredSourceIds": [
+          "K04"
+        ],
+        "requiredFactKeys": [],
+        "mustAbstain": false
+      }
+    },
+    {
+      "id": "E07",
+      "category": "evolution-hero",
+      "fixture": "hero",
+      "intent": "progress",
+      "language": "fa",
+      "question": "توانایی Hero Electro Wizard چه اثری دارد و هزینه فعال‌سازی آن چند اکسیر است؟",
+      "rubric": {
+        "mustIncludeAny": [
+          [
+            "دو",
+            "2"
+          ],
+          [
+            "Stun",
+            "بی‌حرکت",
+            "توقف"
+          ],
+          [
+            "Surging Strikes"
+          ]
+        ],
+        "mustNotInclude": [],
+        "requiredSourceIds": [
+          "K05"
+        ],
+        "requiredFactKeys": [],
+        "mustAbstain": false
+      }
+    },
+    {
+      "id": "E08",
+      "category": "evolution-hero",
+      "fixture": "evo",
+      "intent": "progress",
+      "language": "fa",
+      "question": "Evolution الکترو جاینت طبق اطلاعیه اکتبر ۲۰۲۶ چه اثری روی دشمنان داخل محدوده دارد؟",
+      "rubric": {
+        "mustIncludeAny": [
+          [
+            "کوچک",
+            "اندازه"
+          ],
+          [
+            "Level",
+            "سطح"
+          ]
+        ],
+        "mustNotInclude": [],
+        "requiredSourceIds": [
+          "K05"
+        ],
+        "requiredFactKeys": [],
+        "mustAbstain": false
+      }
+    },
+    {
+      "id": "E09",
+      "category": "evolution-hero",
+      "fixture": "evo",
+      "intent": "progress",
+      "language": "fa",
+      "question": "آیا می‌توانی تأیید کنی من Hero Electro Wizard را باز کرده‌ام و در حسابم دارم؟",
+      "rubric": {
+        "mustIncludeAny": [
+          [
+            "نمی‌توان",
+            "تأیید",
+            "تایید",
+            "اطلاعات"
+          ],
+          [
+            "حساب",
+            "مالکیت",
+            "پروفایل"
+          ]
+        ],
+        "mustNotInclude": [],
+        "requiredSourceIds": [],
+        "requiredFactKeys": [],
+        "mustAbstain": true
+      }
+    },
+    {
+      "id": "E10",
+      "category": "evolution-hero",
+      "fixture": "evo",
+      "intent": "progress",
+      "language": "fa",
+      "question": "آیا بالا بودن Level به‌تنهایی Hero یا Evolution را فعال می‌کند؟",
+      "rubric": {
+        "mustIncludeAny": [
+          [
+            "جایگاه",
+            "Slot"
+          ],
+          [
+            "بازکردن",
+            "Unlock",
+            "فعال"
+          ]
+        ],
+        "mustNotInclude": [],
+        "requiredSourceIds": [
+          "K01",
+          "K03"
+        ],
+        "requiredFactKeys": [],
+        "mustAbstain": false
+      }
+    },
+    {
+      "id": "M01",
+      "category": "meta-events",
+      "fixture": "meta",
+      "intent": "meta",
+      "language": "fa",
+      "question": "بهترین دک متای امروز چیست و با چه نرخ بردی بازی می‌شود؟",
+      "rubric": {
+        "mustIncludeAny": [
+          [
+            "داده زنده",
+            "به‌روز",
+            "تأیید",
+            "تایید"
+          ],
+          [
+            "نمی‌توان",
+            "در دسترس"
+          ]
+        ],
+        "mustNotInclude": [],
+        "requiredSourceIds": [],
+        "requiredFactKeys": [],
+        "mustAbstain": true
+      }
+    },
+    {
+      "id": "M02",
+      "category": "meta-events",
+      "fixture": "meta",
+      "intent": "meta",
+      "language": "fa",
+      "question": "نرخ برد فعلی کارت Giant در رنکد چقدر است؟",
+      "rubric": {
+        "mustIncludeAny": [
+          [
+            "داده زنده",
+            "به‌روز",
+            "تأیید",
+            "تایید"
+          ],
+          [
+            "نمی‌توان",
+            "در دسترس"
+          ]
+        ],
+        "mustNotInclude": [],
+        "requiredSourceIds": [],
+        "requiredFactKeys": [],
+        "mustAbstain": true
+      }
+    },
+    {
+      "id": "M03",
+      "category": "meta-events",
+      "fixture": "meta",
+      "intent": "meta",
+      "language": "fa",
+      "question": "محبوب‌ترین کارت‌های این هفته کدام‌اند؟",
+      "rubric": {
+        "mustIncludeAny": [
+          [
+            "داده زنده",
+            "به‌روز",
+            "تأیید",
+            "تایید"
+          ],
+          [
+            "نمی‌توان",
+            "در دسترس"
+          ]
+        ],
+        "mustNotInclude": [],
+        "requiredSourceIds": [],
+        "requiredFactKeys": [],
+        "mustAbstain": true
+      }
+    },
+    {
+      "id": "M04",
+      "category": "meta-events",
+      "fixture": "meta",
+      "intent": "meta",
+      "language": "fa",
+      "question": "برای فصل جاری یک Tier List قطعی از دک‌ها بده.",
+      "rubric": {
+        "mustIncludeAny": [
+          [
+            "متا",
+            "داده زنده",
+            "به‌روز"
+          ],
+          [
+            "نمی‌توان",
+            "تأیید",
+            "تایید"
+          ]
+        ],
+        "mustNotInclude": [],
+        "requiredSourceIds": [],
+        "requiredFactKeys": [],
+        "mustAbstain": true
+      }
+    },
+    {
+      "id": "M05",
+      "category": "meta-events",
+      "fixture": "meta",
+      "intent": "meta",
+      "language": "fa",
+      "question": "آیا دک من همین الان در متای برتر قرار دارد؟",
+      "rubric": {
+        "mustIncludeAny": [
+          [
+            "داده زنده",
+            "به‌روز",
+            "تأیید",
+            "تایید"
+          ],
+          [
+            "نمی‌توان",
+            "در دسترس"
+          ]
+        ],
+        "mustNotInclude": [],
+        "requiredSourceIds": [],
+        "requiredFactKeys": [],
+        "mustAbstain": true
+      }
+    },
+    {
+      "id": "M06",
+      "category": "meta-events",
+      "fixture": "meta",
+      "intent": "events",
+      "language": "fa",
+      "question": "Daily Puzzles در مطلب رسمی نوامبر ۲۰۲۶ چه نوع چالشی است؟ آیا این خبر به معنی فعال بودن دائمی آن است؟",
+      "rubric": {
+        "mustIncludeAny": [
+          [
+            "سناریو",
+            "نبرد"
+          ],
+          [
+            "تمرینی",
+            "تمرین"
+          ],
+          [
+            "دائمی",
+            "فعال بودن",
+            "فعلی"
+          ]
+        ],
+        "mustNotInclude": [],
+        "requiredSourceIds": [
+          "K04"
+        ],
+        "requiredFactKeys": [],
+        "mustAbstain": false
+      }
+    },
+    {
+      "id": "M07",
+      "category": "meta-events",
+      "fixture": "meta",
+      "intent": "events",
+      "language": "fa",
+      "question": "آیا Daily Puzzles همین امروز فعال است؟ فقط مطلب نوامبر را در اختیار داری.",
+      "rubric": {
+        "mustIncludeAny": [
+          [
+            "Daily Puzzles"
+          ],
+          [
+            "نوامبر",
+            "تاریخ"
+          ],
+          [
+            "ثابت نمی‌کند",
+            "فعال بودن",
+            "فعال باشد"
+          ]
+        ],
+        "mustNotInclude": [],
+        "requiredSourceIds": [
+          "K04"
+        ],
+        "requiredFactKeys": [],
+        "mustAbstain": true
+      }
+    },
+    {
+      "id": "M08",
+      "category": "meta-events",
+      "fixture": "meta",
+      "intent": "events",
+      "language": "fa",
+      "question": "آیا رویداد Hero Electro Wizard اکنون در فروشگاه یا ایونت فعال است؟",
+      "rubric": {
+        "mustIncludeAny": [
+          [
+            "نمی‌توان",
+            "تأیید",
+            "تایید",
+            "اطلاعات زنده"
+          ],
+          [
+            "اکتبر",
+            "اطلاعیه"
+          ]
+        ],
+        "mustNotInclude": [],
+        "requiredSourceIds": [
+          "K05"
+        ],
+        "requiredFactKeys": [],
+        "mustAbstain": true
+      }
+    },
+    {
+      "id": "M09",
+      "category": "meta-events",
+      "fixture": "meta",
+      "intent": "events",
+      "language": "fa",
+      "question": "آیا محدودیت Evolution در Event Deck یک قانون دائمی برای همه ایونت‌هاست؟",
+      "rubric": {
+        "mustIncludeAny": [
+          [
+            "بعضی",
+            "ممکن است",
+            "همه"
+          ],
+          [
+            "رویداد",
+            "Event Deck"
+          ]
+        ],
+        "mustNotInclude": [],
+        "requiredSourceIds": [
+          "K03"
+        ],
+        "requiredFactKeys": [],
+        "mustAbstain": false
+      }
+    },
+    {
+      "id": "M10",
+      "category": "meta-events",
+      "fixture": "meta",
+      "intent": "events",
+      "language": "fa",
+      "question": "برنامه دقیق ایونت‌های امروز و ساعت شروع آن‌ها را بگو؛ داده زنده نداری.",
+      "rubric": {
+        "mustIncludeAny": [
+          [
+            "داده زنده",
+            "داده‌های زنده",
+            "برنامه به‌روز",
+            "نمی‌توان",
+            "تأیید",
+            "تایید",
+            "در دسترس نیست"
+          ],
+          [
+            "ساعت",
+            "زمان",
+            "زمان‌بندی"
+          ]
+        ],
+        "mustNotInclude": [],
+        "requiredSourceIds": [],
+        "requiredFactKeys": [],
+        "mustAbstain": true
+      }
+    }
+  ]
+}

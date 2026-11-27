@@ -1,0 +1,9 @@
+# Coach proactive prompts v1 (stage 9)
+
+One contextual in-app prompt on the dashboard and coach welcome; no unsolicited chat, notification, background job, provider call or new storage. Dismissal is in-memory, bounded to 16 loaded profiles and 24 signal keys each; new sessions reset it. The highest-priority current signal is shown unless dismissed; no queue of replacement prompts.
+
+Priority: optional memory practice review at five known results; explicitly supported but not recorded-unlocked Evolution/Hero on an owned card of the selected account's current deck; a card at least two normalized levels below the median of that deck when all levels/rarity caps are known; three recent distinct losses on the same main-card deck and reported mode/classification within seven days. These are review prompts, not diagnoses or affordability claims. For cards/battles the selected deck must equal the actual profile deck and all eight IDs must be present exactly once in the submitted collection. Missing/contradictory data produces no prompt. Player tag does not prove ownership. Battle evidence is limited to observed summaries and cannot establish cause or tactical errors.
+
+The player chooses whether to ask the existing online coach. The prompt itself is deterministic and labeled as a review suggestion based on available data, not an AI response. The ask button is disabled when the existing online coach is unavailable. Practice review opens existing feedback controls without inference. Memory-off does not read historical records. No event or live-meta claim is generated.
+
+Tests cover missing evidence, explicitly locked forms, level normalization, same-mode deduplication, stale data, priority, session/profile dismissal, mock mobile/desktop UI and no automatic AI request. No production configuration, provider, quota, credential or deployment change. Live integration remains a release gate.

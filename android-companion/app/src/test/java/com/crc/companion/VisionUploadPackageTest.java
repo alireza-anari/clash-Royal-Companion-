@@ -1,0 +1,67 @@
+package com.crc.companion;
+
+import org.junit.Test;
+import static org.junit.Assert.*;
+import java.util.Base64;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+public class VisionUploadPackageTest {
+    private static final String SUBJECT="acct_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+    private static final String TOKEN="short-lived-test-access-token-not-real";
+    private static final class Session implements AccountSession {
+        final boolean authenticated;final String subject,token;
+        Session(boolean a,String s,String t){authenticated=a;subject=s;token=t;}
+        public boolean isAuthenticated(){return authenticated;}
+        public String stableAccountSubject(){return subject;}
+        public String accessToken(){return token;}
+    }
+    private byte[] jpeg(int n){byte[] b=new byte[n];b[0]=(byte)255;b[1]=(byte)216;b[n-2]=(byte)255;b[n-1]=(byte)217;return b;}
+    private CaptureBuffer ready(int count){
+        CaptureBuffer b=new CaptureBuffer();b.prepare();b.activate();
+        for(int i=0;i<count;i++)assertEquals(CaptureBuffer.Add.ACCEPTED,b.add(i*2000,180,320,jpeg(32)));
+        b.finish("user_stop");return b;
+    }
+    @Test public void requiresExplicitConsentsAndRealAccountSession(){
+        CaptureBuffer b=ready(2);
+        try{VisionUploadPackage.build(b,new Session(true,SUBJECT,TOKEN),false,true);fail();}
+        catch(SecurityException expected){}
+        try{VisionUploadPackage.build(b,new Session(true,SUBJECT,TOKEN),true,false);fail();}
+        catch(SecurityException expected){}
+        try{VisionUploadPackage.build(b,new Session(false,SUBJECT,TOKEN),true,true);fail();}
+        catch(SecurityException expected){}
+        for(String subject:new String[]{"shared-beta-subject","#ABC123","acct_not_hex"}){
+            try{VisionUploadPackage.build(b,new Session(true,subject,TOKEN),true,true);fail();}
+            catch(SecurityException expected){}
+        }
+        try{VisionUploadPackage.build(b,new Session(true,SUBJECT,""),true,true);fail();}
+        catch(SecurityException expected){}
+    }
+    @Test public void buildsOnlyBoundedPostBattleManifestAndNeverEmbedsAccountCredentials(){
+        CaptureBuffer b=ready(120);
+        VisionUploadPackage.PreparedUpload result=VisionUploadPackage.build(b,new Session(true,SUBJECT,TOKEN),true,true);
+        assertEquals(8,result.frameCount());assertEquals(8*32,result.totalBytes());
+        assertEquals(java.util.List.of(0L,34000L,68000L,102000L,136000L,170000L,204000L,238000L),result.selectedTimes());
+        try{result.selectedTimes().add(100L);fail();}catch(UnsupportedOperationException expected){}
+        assertFalse(result.jsonBody().contains(SUBJECT));assertFalse(result.jsonBody().contains(TOKEN));
+        assertTrue(result.jsonBody().contains("\"client_request_id\":\""+result.requestId()+"\""));
+        assertTrue(result.jsonBody().contains("\"consent_to_upload\":true"));
+        assertTrue(result.jsonBody().contains("\"consent_to_external_ai\":true"));
+        Pattern pattern=Pattern.compile("\\{\"at_ms\":(\\d+),\"mime\":\"image/jpeg\",\"width\":180,\"height\":320,\"data_base64\":\"([A-Za-z0-9+/=]+)\"\\}");
+        Matcher matcher=pattern.matcher(result.jsonBody());int count=0;long previous=-1;
+        while(matcher.find()){
+            long at=Long.parseLong(matcher.group(1));assertTrue(at>previous);previous=at;
+            byte[] decoded=Base64.getDecoder().decode(matcher.group(2));
+            assertEquals(32,decoded.length);assertEquals(255,decoded[0]&255);count++;
+        }
+        assertEquals(8,count);
+        assertFalse(result.toString().contains("data_base64"));
+    }
+    @Test public void refusesActiveOrMissingCapture(){
+        CaptureBuffer active=new CaptureBuffer();active.prepare();active.activate();
+        try{VisionUploadPackage.build(active,new Session(true,SUBJECT,TOKEN),true,true);fail();}
+        catch(IllegalStateException expected){}
+        try{VisionUploadPackage.build(new CaptureBuffer(),new Session(true,SUBJECT,TOKEN),true,true);fail();}
+        catch(IllegalStateException expected){}
+    }
+}

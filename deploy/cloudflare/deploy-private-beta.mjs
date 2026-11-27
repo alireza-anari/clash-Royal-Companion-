@@ -52,6 +52,9 @@ export function buildWorkerMetadata(assetJwt) {
     "BETA_AUTH_AUDIENCE",
     "BETA_ALLOW_WORKERS_DEV",
     "BETA_AI_CHAT_ENABLED",
+    "BETA_VISION_ENABLED",
+    "BETA_VISION_WORKER_ENABLED",
+    "BETA_IDENTITY_EXCHANGE_SUBJECT",
     "BETA_SESSION_HMAC_HEX",
     "BETA_ASSERTION_HMAC_HEX",
     "BETA_INVITE_CODES_JSON",
@@ -59,6 +62,7 @@ export function buildWorkerMetadata(assetJwt) {
   ];
   const bindings = [
     { name: "ASSETS", type: "assets" },
+    { name: "AI", type: "ai" },
     ...inherited.map((name) => ({ name, type: "inherit" })),
     { name: "LEGACY_LIVE", type: "service", service: LEGACY_LIVE_WORKER_NAME },
   ];
@@ -67,6 +71,7 @@ export function buildWorkerMetadata(assetJwt) {
     compatibility_date: "2026-11-22",
     usage_model: "standard",
     bindings,
+    triggers: { crons: ["*/2 * * * *"] },
     keep_bindings: ["vpc_service"],
     assets: {
       jwt: assetJwt,
@@ -246,7 +251,9 @@ export async function runPrivateBetaDeployment(env = process.env) {
       bindings.find((binding) => binding.name === "PRIVATE_API")?.service_id !== PRIVATE_API_SERVICE_ID ||
       bindings.find((binding) => binding.name === "LEGACY_LIVE")?.service !== LEGACY_LIVE_WORKER_NAME ||
       bindings.find((binding) => binding.name === "BETA_ENABLED")?.text !== "true" ||
-      bindings.find((binding) => binding.name === "BETA_AI_CHAT_ENABLED")?.text !== "true") {
+      bindings.find((binding) => binding.name === "BETA_AI_CHAT_ENABLED")?.text !== "true" ||
+      bindings.find((binding) => binding.name === "BETA_VISION_WORKER_ENABLED")?.text === "true" ||
+      !bindings.some((binding) => binding.name === "AI" && binding.type === "ai")) {
     throw new Error("Deployed private beta Worker bindings failed the active-service check.");
   }
 

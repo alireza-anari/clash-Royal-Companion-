@@ -1,0 +1,31 @@
+{
+  "version": "crc-vision-lab-v1",
+  "model": "@cf/google/gemma-4-26b-a4b-it",
+  "replay_analyzed": false,
+  "selected": [
+    0
+  ],
+  "calls": 1,
+  "results": [
+    {
+      "at_ms": 0,
+      "status": "unverified",
+      "observation": {
+        "screen": "battle",
+        "game_clock_s": 120,
+        "elixir": 5,
+        "hand": [
+          1
+        ],
+        "units": [
+          {
+            "card_id": 2,
+            "x": 0.4,
+            "y": 0.5,
+            "side": "opponent"
+          }
+        ]
+      }
+    }
+  ]
+}
