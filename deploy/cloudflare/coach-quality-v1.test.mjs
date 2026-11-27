@@ -180,3 +180,15 @@ test('event guide refuses invented reward, current status or deck eligibility',(
  assert.match(coachEventAnswer('محدودیت Evolution در Event Deck').answer,/بعضی/);
  assert.match(coachEventAnswer('Hero Electro Wizard رویداد فعال است؟').answer,/اکتبر/);
 });
+
+test('limited deck answer retains all known card names, never the rejected model text',()=>{
+ const personal={deck_source:'battle-import',deck_cards:deck.map(c=>({...c,coach_roles:['air','unknown-role']}))};
+ const r=coachQualityEvaluate('bad json',{personal,intent:'deck'});
+ assert.equal(r.status,'limited');assert.equal(r.reason,'INVALID_JSON');
+ assert.match(r.answer,/نه لزوماً دک فعلی/);
+ for(const c of deck)assert.ok(r.answer.includes(c.name+':'));
+ assert.doesNotMatch(r.answer,/bad json|unknown-role/);
+ assert.equal(r.swap,null);
+ const invalid=coachQualityEvaluate('bad json',{personal:{...personal,deck_cards:deck.slice(0,7)},intent:'deck'});
+ assert.doesNotMatch(invalid.answer,/Card 1:/);
+});
