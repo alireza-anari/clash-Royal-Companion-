@@ -11,21 +11,6 @@ ALTER TABLE vision_jobs
   ADD COLUMN IF NOT EXISTS completed_at TIMESTAMPTZ,
   ADD COLUMN IF NOT EXISTS model_name TEXT;
 
-DO $
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_constraint WHERE conname='vision_jobs_lease_state_check'
-      AND conrelid='vision_jobs'::regclass
-  ) THEN
-    ALTER TABLE vision_jobs ADD CONSTRAINT vision_jobs_lease_state_check
-      CHECK (
-        (status='processing' AND lease_token IS NOT NULL AND lease_expires_at IS NOT NULL)
-        OR
-        (status<>'processing' AND lease_token IS NULL AND lease_expires_at IS NULL)
-      );
-  END IF;
-END $;
-
 CREATE INDEX IF NOT EXISTS vision_jobs_worker_claim_idx
   ON vision_jobs(status,created_at,id);
 
