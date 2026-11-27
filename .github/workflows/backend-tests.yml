@@ -1,0 +1,108 @@
+name: Backend tests
+on:
+  push:
+    branches-ignore: [main]
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: test-only-ephemeral
+          POSTGRES_DB: crc_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d crc_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      CRC_TEST_POSTGRES_DSN: postgresql://postgres:test-only-ephemeral@127.0.0.1:5432/crc_test
+    defaults:
+      run:
+        working-directory: api
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -e '.[test]'
+      - run: python -m pytest
+      - name: Verify release template is disabled (no deployment)
+        run: python -m crc_api.release_preflight ../deploy/release/beta-manifest.example.json --mode require-disabled
+      - name: Verify infrastructure plan cannot create a paid resource
+        run: python -m crc_api.infra_preflight ../deploy/infra/digitalocean-beta-plan.example.json
+      - name: Verify AWS Free Tier evaluation is read-only and billing-unapproved
+        run: python -m crc_api.aws_free_tier_preflight ../deploy/infra/aws-free-tier-plan.example.json
+      - name: Validate optional $50 budget runway without provisioning
+        run: python -m crc_api.aws_credit_scenario ../deploy/infra/aws-mvp-credit-scenario.example.json
+
+
+  cloudformation-review:
+    name: AWS EC2 template static lint (never deploy)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install AWS CloudFormation schema linter (no AWS credentials)
+        run: python -m pip install 'cfn-lint>=1,<2'
+      - name: Validate private EC2 draft without any AWS API call
+        run: |
+          cfn-lint deploy/infra/aws-ec2-private-beta.review.json
+          cfn-lint deploy/infra/aws-github-oidc-readonly.bootstrap.json
+          cfn-lint deploy/infra/aws-github-backend-sync.review.json
+
+  local-container:
+    name: Isolated Docker build and smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Build local-only image
+        run: docker build --file deploy/docker/Dockerfile.local --tag crc-local-ci .
+      - name: Reject nonlocal configuration at startup
+        run: |
+          if docker run --rm --network none --env CRC_RUNTIME_MODE=production \
+            --entrypoint python crc-local-ci -c "from crc_api.main import app" >/dev/null 2>&1; then
+            echo "::error::Public mode unexpectedly started"
+            exit 1
+          fi
+      - name: Smoke local health inside a network-isolated container
+        run: |
+          docker run -d --name crc-api-smoke \
+            --network none --read-only --cap-drop ALL \
+            --security-opt no-new-privileges crc-local-ci
+          trap 'docker rm -f crc-api-smoke >/dev/null 2>&1 || true' EXIT
+          success=0
+          for attempt in $(seq 1 20); do
+            if docker exec crc-api-smoke python -c \
+                "import json,urllib.request; d=json.load(urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health/live',timeout=2)); assert d['status']=='ok'; c=json.load(urllib.request.urlopen('http://127.0.0.1:8000/api/v1/capabilities',timeout=2)); assert c['live_lookup_enabled'] is False"; then
+              success=1
+              break
+            fi
+            sleep 1
+          done
+          docker logs --tail 15 crc-api-smoke
+          test "$success" = 1
+          test "$(docker inspect -f '{{.HostConfig.NetworkMode}}' crc-api-smoke)" = none
+          test "$(docker inspect -f '{{.Config.User}}' crc-api-smoke)" = "10001:10001"
+
+  private-beta-tls:
+    name: Disposable private beta PostgreSQL verify-full (never EC2)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+      - name: Verify independent client TLS, CA/hostname rejection and asyncpg
+        run: bash deploy/docker/ci-test-private-beta-tls.sh

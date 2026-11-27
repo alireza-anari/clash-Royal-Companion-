@@ -1,0 +1,94 @@
+{
+  "schema_version": 3,
+  "status": "NOT_CONFIGURED_NOT_DEPLOYABLE",
+  "purpose": "private-beta-only",
+  "cloudflare": {
+    "worker_entrypoint": "deploy/cloudflare/beta-edge-worker.mjs",
+    "custom_hostname": null,
+    "workers_dev_enabled": true,
+    "preview_urls_enabled": false,
+    "static_assets_binding": {
+      "name": "ASSETS",
+      "directory": "site",
+      "worker_first": true
+    },
+    "vpc_service_binding": {
+      "name": "PRIVATE_API",
+      "service_id": null,
+      "scope": "one approved private origin only"
+    },
+    "edge_enabled": false,
+    "invite_session_gate_covers_every_route": false,
+    "auth_method": "per-user invite code + HttpOnly session cookie + short-lived Worker HMAC assertion",
+    "worker_hostname": "crc-private-beta-gateway.alirezaanari117.workers.dev",
+    "worker_script": "crc-private-beta-gateway",
+    "required_worker_variables": [
+      "BETA_HOSTNAME",
+      "BETA_AUTH_ISSUER",
+      "BETA_AUTH_AUDIENCE",
+      "BETA_ALLOW_WORKERS_DEV",
+      "BETA_ENABLED"
+    ],
+    "required_worker_secrets": [
+      "BETA_INVITE_CODES_JSON",
+      "BETA_SESSION_HMAC_HEX",
+      "BETA_ASSERTION_HMAC_HEX"
+    ],
+    "worker_deployed": true,
+    "worker_enabled": false,
+    "ai_chat_enabled": false,
+    "assets_binding": "ASSETS",
+    "vpc_binding": "PRIVATE_API",
+    "vpc_service_name": "crc-private-beta-api",
+    "vpc_service_id": "01a202d5-1889-72d3-9a12-4a2838612589",
+    "vpc_service_host": "127.0.0.1",
+    "vpc_service_http_port": 8000,
+    "vpc_tunnel_id": "45520fe5-2670-417e-8f8e-932c60821aa6",
+    "tunnel_connected": false,
+    "vpc_binding_attached": true
+  },
+  "backend": {
+    "app_factory": "crc_api.beta_gateway:create_beta_app",
+    "repository_branch": "feat/backend-bootstrap",
+    "origin_isolated": false,
+    "outbound_static_ipv4": null,
+    "runtime_gate_set": false,
+    "live_lookup_enabled": false,
+    "credentials_sources": "operator-approved private secret manager only",
+    "required_private_env_names": [
+      "CRC_BETA_HOST",
+      "CRC_BETA_AUTH_ISSUER",
+      "CRC_BETA_AUTH_AUDIENCE",
+      "CRC_BETA_ALLOWED_SUBJECTS",
+      "CRC_BETA_WORKER_ASSERTION_HMAC_HEX",
+      "CRC_BETA_POSTGRES_DSN",
+      "CRC_BETA_QUOTA_HMAC_HEX",
+      "SUPERCELL_API_KEY"
+    ],
+    "private_beta_service_installed": false,
+    "runtime_gate_enabled": false,
+    "worker_assertion_secrets_configured": false,
+    "invite_secrets_configured": false,
+    "postgres_tls_verified": true,
+    "quota_table_migrated": true,
+    "quota_cleanup_timer_enabled": true,
+    "post_migration_backup_created": true,
+    "fixed_egress_ip_verified": false,
+    "github_aws_oidc_connected": false
+  },
+  "database": {
+    "migration_path": "api/migrations/DRAFT_0001_gateway_quota.sql",
+    "production_migration_approved": false,
+    "tls_mode": "verify-full",
+    "least_privilege_role_configured": false,
+    "cleanup_job_installed": false
+  },
+  "operations": {
+    "immutable_releases_only": true,
+    "health_path": "/api/v1/health/ready",
+    "rollback_plan_path": "docs/PRIVATE_BETA_DEPLOYMENT_SP_BETA_05.md",
+    "owner_approved": false,
+    "monitoring_installed": false,
+    "health_requires_signed_worker_assertion": true
+  }
+}

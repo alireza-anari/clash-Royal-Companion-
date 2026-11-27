@@ -1,0 +1,26 @@
+{
+  "schema_version": 2,
+  "target": "private-beta",
+  "backend_commit": "",
+  "frontend_commit": "",
+  "controls": {
+    "edge_enabled": false,
+    "backend_live_lookup_enabled": false
+  },
+  "proofs": {
+    "owner_approved": false,
+    "spending_approved": false,
+    "fixed_egress_ipv4_confirmed": false,
+    "supercell_key_ip_allowlist_confirmed": false,
+    "private_origin_isolated": false,
+    "invite_session_gates_all_beta_routes": false,
+    "worker_assertion_end_to_end_verified": false,
+    "postgres_tls_verify_full_confirmed": false,
+    "postgres_quota_migration_reviewed": false,
+    "quota_retention_job_installed": false,
+    "same_origin_browser_session_verified": false,
+    "rollback_drill_passed": false,
+    "monitoring_and_alerts_ready": false,
+    "api_and_fan_content_terms_reviewed": false
+  }
+}

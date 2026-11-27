@@ -1,0 +1,234 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "REVIEW ONLY: billable AWS EC2 candidate for CRC private beta. Never deploy without owner spend approval. Default guard creates no resources.",
+  "Parameters": {
+    "OwnerApprovedForCredits": {
+      "Type": "String",
+      "Default": "NO",
+      "AllowedValues": [
+        "NO",
+        "YES"
+      ],
+      "Description": "YES requires explicit authorization of credit consumption and cleanup plan; NO default creates no resources."
+    },
+    "VpcId": {
+      "Type": "AWS::EC2::VPC::Id",
+      "Description": "Pre-existing reviewed VPC; do not create a new paid NAT gateway."
+    },
+    "PublicSubnetId": {
+      "Type": "AWS::EC2::Subnet::Id",
+      "Description": "Reviewed public subnet with internet gateway route; no inbound SG rules are created."
+    },
+    "AmiId": {
+      "Type": "AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>",
+      "Default": "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64",
+      "Description": "Region-local Amazon Linux 2023 x86_64 AMI, operator must confirm Free Tier eligibility."
+    },
+    "InstanceType": {
+      "Type": "String",
+      "Default": "t3.small",
+      "AllowedValues": [
+        "t3.micro",
+        "t3.small"
+      ],
+      "Description": "Review free-plan eligibility, burst CPU mode, RAM and current price."
+    }
+  },
+  "Conditions": {
+    "CreateBetaInfrastructure": {
+      "Fn::Equals": [
+        {
+          "Ref": "OwnerApprovedForCredits"
+        },
+        "YES"
+      ]
+    }
+  },
+  "Resources": {
+    "BetaSecurityGroup": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Condition": "CreateBetaInfrastructure",
+      "Properties": {
+        "GroupDescription": "CRC beta EC2 NO INBOUND, HTTPS outbound only",
+        "VpcId": {
+          "Ref": "VpcId"
+        },
+        "SecurityGroupIngress": [],
+        "SecurityGroupEgress": [
+          {
+            "IpProtocol": "tcp",
+            "FromPort": 443,
+            "ToPort": 443,
+            "CidrIp": "0.0.0.0/0",
+            "Description": "SSM, Cloudflare Tunnel and HTTPS updates only"
+          }
+        ],
+        "Tags": [
+          {
+            "Key": "Project",
+            "Value": "CRC-private-beta"
+          },
+          {
+            "Key": "Stage",
+            "Value": "reviewed-trial"
+          }
+        ]
+      }
+    },
+    "BetaSsmRole": {
+      "Type": "AWS::IAM::Role",
+      "Condition": "CreateBetaInfrastructure",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": [
+                  "ec2.amazonaws.com"
+                ]
+              },
+              "Action": [
+                "sts:AssumeRole"
+              ]
+            }
+          ]
+        },
+        "ManagedPolicyArns": [
+          "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+        ],
+        "Tags": [
+          {
+            "Key": "Project",
+            "Value": "CRC-private-beta"
+          }
+        ]
+      }
+    },
+    "BetaInstanceProfile": {
+      "Type": "AWS::IAM::InstanceProfile",
+      "Condition": "CreateBetaInfrastructure",
+      "Properties": {
+        "Roles": [
+          {
+            "Ref": "BetaSsmRole"
+          }
+        ]
+      }
+    },
+    "BetaInstance": {
+      "Type": "AWS::EC2::Instance",
+      "Condition": "CreateBetaInfrastructure",
+      "Properties": {
+        "ImageId": {
+          "Ref": "AmiId"
+        },
+        "InstanceType": {
+          "Ref": "InstanceType"
+        },
+        "IamInstanceProfile": {
+          "Ref": "BetaInstanceProfile"
+        },
+        "Monitoring": false,
+        "MetadataOptions": {
+          "HttpEndpoint": "enabled",
+          "HttpTokens": "required",
+          "HttpPutResponseHopLimit": 1,
+          "InstanceMetadataTags": "disabled"
+        },
+        "NetworkInterfaces": [
+          {
+            "DeviceIndex": "0",
+            "AssociatePublicIpAddress": false,
+            "DeleteOnTermination": true,
+            "SubnetId": {
+              "Ref": "PublicSubnetId"
+            },
+            "GroupSet": [
+              {
+                "Ref": "BetaSecurityGroup"
+              }
+            ]
+          }
+        ],
+        "BlockDeviceMappings": [
+          {
+            "DeviceName": "/dev/xvda",
+            "Ebs": {
+              "VolumeSize": 20,
+              "VolumeType": "gp3",
+              "Encrypted": true,
+              "DeleteOnTermination": true
+            }
+          }
+        ],
+        "CreditSpecification": {
+          "CPUCredits": "standard"
+        },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "crc-private-beta-review"
+          },
+          {
+            "Key": "Project",
+            "Value": "CRC-private-beta"
+          },
+          {
+            "Key": "OwnerApprovalRequired",
+            "Value": "true"
+          }
+        ]
+      }
+    },
+    "BetaElasticIp": {
+      "Type": "AWS::EC2::EIP",
+      "Condition": "CreateBetaInfrastructure",
+      "Properties": {
+        "Domain": "vpc",
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "crc-private-beta-egress"
+          },
+          {
+            "Key": "Project",
+            "Value": "CRC-private-beta"
+          }
+        ]
+      }
+    },
+    "BetaEipAssociation": {
+      "Type": "AWS::EC2::EIPAssociation",
+      "Condition": "CreateBetaInfrastructure",
+      "Properties": {
+        "AllocationId": {
+          "Fn::GetAtt": [
+            "BetaElasticIp",
+            "AllocationId"
+          ]
+        },
+        "InstanceId": {
+          "Ref": "BetaInstance"
+        }
+      }
+    }
+  },
+  "Outputs": {
+    "BetaInstanceId": {
+      "Condition": "CreateBetaInfrastructure",
+      "Description": "Instance ID after explicit launch; NO state creates nothing.",
+      "Value": {
+        "Ref": "BetaInstance"
+      }
+    },
+    "BetaEgressIPv4": {
+      "Condition": "CreateBetaInfrastructure",
+      "Description": "Verify real outbound IP before Supercell key allowlist.",
+      "Value": {
+        "Ref": "BetaElasticIp"
+      }
+    }
+  }
+}

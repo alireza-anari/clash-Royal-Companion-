@@ -1,0 +1,150 @@
+name: CRC private backend GitHub to EC2 sync
+
+# Explicit opt-in: no AWS calls or server changes unless the owner configures
+# a dedicated least-privilege OIDC role and enables CRC_BACKEND_AUTOSYNC.
+on:
+  push:
+    branches:
+      - feat/backend-bootstrap
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: crc-backend-ec2-sync
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    name: Verify private backend before synchronization
+    if: ${{ vars.CRC_BACKEND_AUTOSYNC == 'enabled' && vars.AWS_CRC_BACKEND_SYNC_ROLE_ARN != '' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: test-only-ephemeral
+          POSTGRES_DB: crc_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d crc_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      CRC_TEST_POSTGRES_DSN: postgresql://postgres:test-only-ephemeral@127.0.0.1:5432/crc_test
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Test the exact revision before AWS access
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install -e 'api/.[test]'
+          python -m pytest api/tests
+          python -m json.tool deploy/infra/aws-github-backend-sync.review.json >/dev/null
+          python - <<'PY'
+          from pathlib import Path
+          import ast
+          p=Path("deploy/aws/sync-private-backend.sh")
+          text=p.read_text()
+          assert "git merge --ff-only" in text
+          assert "git diff --check" in text
+          assert "systemctl" not in text
+          assert "OPENROUTER_API_KEY" not in text
+          assert "aws ssm get-parameter" not in text
+          for f in Path("api/src/crc_api").rglob("*.py"):
+              ast.parse(f.read_text(encoding="utf-8"),filename=str(f))
+          print("Backend code-only sync guards checked.")
+          PY
+
+  sync:
+    name: Fast-forward only the existing CRC EC2 backend worktree
+    needs: verify
+    if: ${{ needs.verify.result == 'success' && github.repository == 'alireza-anari/clash-Royal-Companion-' && github.ref == 'refs/heads/feat/backend-bootstrap' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      AWS_REGION: eu-north-1
+      AWS_EC2_METADATA_DISABLED: 'true'
+      CRC_INSTANCE: i-0d4cbc63a5953cf14
+      CRC_DOCUMENT: CRC-Sync-Private-Backend
+    steps:
+      - name: Obtain short-lived scoped AWS credentials via GitHub OIDC
+        uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502
+        with:
+          role-to-assume: ${{ vars.AWS_CRC_BACKEND_SYNC_ROLE_ARN }}
+          aws-region: eu-north-1
+          role-session-name: crc-backend-${{ github.run_id }}
+          role-duration-seconds: 900
+          mask-aws-account-id: true
+          unset-current-credentials: true
+      - name: Request only the approved SSM backend-sync document
+        id: dispatch
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]]
+          PARAMS="$(mktemp)"
+          trap 'rm -f "$PARAMS"' EXIT
+          python - "$PARAMS" <<'PY'
+          import json, os, pathlib, sys
+          pathlib.Path(sys.argv[1]).write_text(
+              json.dumps({"CommitSha":[os.environ["GITHUB_SHA"]]}))
+          PY
+          ID="$(aws ssm send-command \
+            --region "$AWS_REGION" \
+            --document-name "$CRC_DOCUMENT" \
+            --instance-ids "$CRC_INSTANCE" \
+            --parameters "file://$PARAMS" \
+            --timeout-seconds 240 \
+            --max-concurrency 1 --max-errors 0 \
+            --comment "CRC verified backend SHA $GITHUB_SHA" \
+            --query 'Command.CommandId' --output text)"
+          [[ "$ID" =~ ^[0-9a-f-]{36}$ ]] || exit 1
+          echo "command_id=$ID" >> "$GITHUB_OUTPUT"
+          echo "Only existing approved Stockholm backend instance targeted."
+      - name: Verify exact instance update result (no secret or app logs)
+        shell: bash
+        env:
+          CRC_COMMAND_ID: ${{ steps.dispatch.outputs.command_id }}
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 42); do
+            STATUS="$(aws ssm get-command-invocation \
+              --region "$AWS_REGION" \
+              --command-id "$CRC_COMMAND_ID" \
+              --instance-id "$CRC_INSTANCE" \
+              --query 'Status' --output text 2>/dev/null || true)"
+            case "$STATUS" in
+              Success)
+                echo "Private backend checkout fast-forward completed."
+                echo "No FastAPI restart, database migration, AI switch or Cloudflare publication."
+                exit 0
+                ;;
+              Failed|Cancelled|TimedOut|Cancelling)
+                echo "::error::Backend synchronization failed; SSM status=$STATUS."
+                exit 1
+                ;;
+              Pending|InProgress|Delayed|"")
+                sleep 8
+                ;;
+              *)
+                echo "::error::Unexpected SSM status: $STATUS"
+                exit 1
+                ;;
+            esac
+          done
+          echo "::error::Backend synchronization result timed out."
+          exit 1

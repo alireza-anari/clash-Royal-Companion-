@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "purpose": "crc-private-beta-pre-provision",
+  "operation": "read-only-plan",
+  "billing_approved": false,
+  "provision_enabled": false,
+  "expected_existing_droplets": 0,
+  "region": "fra1",
+  "machine": {
+    "provider": "DigitalOcean",
+    "kind": "basic-droplet",
+    "size_slug": "s-1vcpu-2gb",
+    "vcpu": 1,
+    "ram_mib": 2048,
+    "baseline_usd_per_month": 12
+  },
+  "pricing": {
+    "observed_date": "2026-11-21",
+    "currency": "USD",
+    "baseline_excludes_ipv4_backup_tax_and_egress_overage": true,
+    "billing_limit_usd_per_month": null
+  },
+  "network": {
+    "public_ipv4_required_for_allowlist": true,
+    "public_ipv4_egress_needs_live_verification": true,
+    "api_listen_host": "127.0.0.1",
+    "api_port": 8000,
+    "api_publicly_exposed": false,
+    "ssh_source_allowlist_configured": false,
+    "cloudflare_vpc_service_provisioned": false,
+    "cloudflare_tunnel_provisioned": false
+  },
+  "security": {
+    "ssh_key_approved": false,
+    "full_access_policy_ready": false,
+    "database_tls_verify_full_ready": false,
+    "backup_policy_reviewed": false,
+    "quota_cleanup_scheduler_ready": false,
+    "supercell_key_approved": false,
+    "backend_live_enabled": false,
+    "edge_enabled": false
+  },
+  "references": {
+    "cloudflare_worker": "deploy/cloudflare/beta-edge-worker.mjs",
+    "backend_entrypoint": "crc_api.beta_gateway:create_beta_app",
+    "runbook": "docs/PRIVATE_BETA_DEPLOYMENT_SP_BETA_05.md"
+  }
+}

@@ -1,0 +1,24 @@
+# REVIEW-ONLY private beta image; intentionally separate from Dockerfile.local.
+# No service is launched by building this image.
+FROM python:3.12-slim
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    CRC_BETA_LIVE_LOOKUP_ENABLED=false \
+    CRC_BETA_AI_ENABLED=false
+
+WORKDIR /opt/crc
+COPY api/ /opt/crc/api/
+RUN python -m pip install --no-cache-dir '/opt/crc/api[security]' \
+    && python -m compileall -q /opt/crc/api/src
+
+# An isolated Unix user cannot read a private CA key, the Docker socket,
+# or the PostgreSQL data volume. Mount ONLY the verified public CA certificate
+# read-only at /run/crc-beta/db-ca/ca.crt; never mount the whole DB volume.
+USER 10001:10001
+
+# 0.0.0.0 is INSIDE the Docker network namespace. The reviewed compose
+# maps only host 127.0.0.1:8001, never a public EC2 address.
+# Factory refuses startup without explicit owner approval, secrets and CA.
+CMD ["python", "-m", "uvicorn", "crc_api.beta_gateway:create_beta_app", "--factory", "--host", "0.0.0.0", "--port", "8001", "--workers", "1", "--no-access-log"]

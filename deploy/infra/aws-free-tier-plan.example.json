@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "purpose": "crc-private-beta-aws-free-tier-review",
+  "operation": "read-only-plan",
+  "account": {
+    "aws_account_connected_to_chat": false,
+    "created_on": "unknown",
+    "free_tier_model": "unverified",
+    "credits_remaining_usd": null,
+    "free_plan_end_date": null,
+    "billing_mode": "unverified",
+    "free_tier_eligibility_confirmed": false
+  },
+  "region": "eu-central-1",
+  "compute": {
+    "service": "EC2",
+    "instance_type": "UNDECIDED",
+    "candidate_types": [
+      "t3.micro",
+      "t3.small"
+    ],
+    "t3_small_requires_new_plan_eligibility_check": true,
+    "recommended_min_memory_gib_for_api_and_postgres": 2,
+    "ami": "UNDECIDED",
+    "architecture": "UNDECIDED",
+    "launched": false,
+    "allocated_ebs_gib": null
+  },
+  "network": {
+    "fixed_outbound_ipv4_required_for_supercell": true,
+    "elastic_ip_allocated": false,
+    "elastic_ip_can_incur_hourly_charges": true,
+    "public_ipv4_hourly_list_usd": 0.005,
+    "public_ipv4_estimated_730h_usd": 3.65,
+    "security_group_ingress_approved": false,
+    "inbound_api_port_open": false,
+    "cloudflare_tunnel_ready": false,
+    "worker_vpc_service_ready": false,
+    "fixed_ipv4_allowlisted_in_supercell": false
+  },
+  "security": {
+    "iam_least_privilege_confirmed": false,
+    "aws_budget_alerts_configured": false,
+    "budget_alert_is_not_hard_spending_cap": true,
+    "ec2_instance_profile_for_ssm_reviewed": false,
+    "credentials_and_key_management_reviewed": false,
+    "postgres_tls_verify_full_ready": false,
+    "postgres_quota_cleanup_ready": false,
+    "access_policy_ready": false,
+    "backend_live_lookup_enabled": false,
+    "cloudflare_edge_enabled": false
+  },
+  "money": {
+    "owner_authorized_recurring_spend": false,
+    "spending_cap_approved_usd": null,
+    "instance_cost_verified": false,
+    "storage_cost_verified": false,
+    "public_ipv4_credit_coverage_verified": false,
+    "total_monthly_cost_verified": false,
+    "no_cost_guarantee": false
+  },
+  "resources_created": false,
+  "links": {
+    "aws_free_tier": "https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/free-tier.html",
+    "ec2_free_tier": "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-free-tier-usage.html",
+    "public_ipv4_pricing": "https://aws.amazon.com/vpc/pricing/",
+    "runbook": "docs/PRIVATE_BETA_DEPLOYMENT_SP_BETA_05.md"
+  }
+}
