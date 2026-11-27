@@ -115,6 +115,7 @@ class BetaConfig:
         live = os.environ.get("CRC_BETA_LIVE_LOOKUP_ENABLED", "false") == "true"
         vision_requested = os.environ.get("CRC_BETA_VISION_ENABLED", "false") == "true"
         vision_processor_ready = os.environ.get("CRC_BETA_VISION_PROCESSOR_READY", "false") == "true"
+        vision_worker_requested = os.environ.get("CRC_BETA_VISION_WORKER_ENABLED", "false") == "true"
         vision_subjects = frozenset(s.strip() for s in
             os.environ.get("CRC_BETA_VISION_ALLOWED_SUBJECTS", "").split(",") if s.strip())
         try:
@@ -131,7 +132,8 @@ class BetaConfig:
             raise UnsafeBetaConfiguration("Invalid account identity key configuration.") from None
         config = cls(host, issuer, audience, subjects, secret_bytes, assertion_bytes, dsn,
                      live_lookup_enabled=live, vision_requested=vision_requested,
-                     vision_processor_ready=vision_processor_ready, vision_subjects=vision_subjects,
+                     vision_processor_ready=vision_processor_ready, vision_worker_requested=vision_worker_requested,
+                     vision_subjects=vision_subjects,
                      vision_hmac_secret=vision_secret, oidc_issuer=oidc_issuer,
                      oidc_client_id=oidc_client_id, oidc_jwks_url=oidc_jwks_url,
                      oidc_redirect_uri=oidc_redirect_uri, account_hmac_secret=account_secret)
