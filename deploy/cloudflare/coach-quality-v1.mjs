@@ -118,7 +118,7 @@ export function coachQualityEvaluate(raw,context={}){
   const facts=coachQualityFacts(battles,personal);
   const known=new Map((Array.isArray(docs)?docs:[]).map(d=>[d.id,d]));
   const roster=intent==='deck'?coachQualityDeckRoster(personal):'';
-  const fallback=(reason)=>({answer:('پاسخ مدل از بررسی ساختار یا شواهد عبور نکرد. اطلاعات تاییدنشده نمایش داده نشد.'+(Object.keys(facts).length?'\n\n## داده‌های ارسالی قابل محاسبه\n'+Object.values(facts).join('\n'):'\nسؤال را دقیق‌تر بپرس یا اطلاعات حساب و دک را بارگذاری کن.'))+(roster?'\n\n'+roster:''),status:'limited',reason,checks:{schema:false,selected_facts:false,swap:false,source_ids:false},sources:[],swap:null});
+  const fallback=(reason)=>({answer:((roster?roster+'\n\n':'')+'پاسخ مدل از بررسی ساختار یا شواهد عبور نکرد. اطلاعات تاییدنشده نمایش داده نشد.'+(Object.keys(facts).length?'\n\n## داده‌های ارسالی قابل محاسبه\n'+Object.values(facts).join('\n'):'\nسؤال را دقیق‌تر بپرس یا اطلاعات حساب و دک را بارگذاری کن.')).slice(0,2900),status:'limited',reason,checks:{schema:false,selected_facts:false,swap:false,source_ids:false},sources:[],swap:null});
   if(typeof raw!=='string'||raw.length>6000)return fallback('INVALID_OUTPUT');
   let v;
   try{v=JSON.parse(raw.trim());}catch{return fallback('INVALID_JSON');}
@@ -157,6 +157,10 @@ export function patchCoachQuality(source){
   const once=(old,nu)=>{if(s.split(old).length!==2)throw new Error('Coach quality anchor mismatch: '+old.slice(0,80));s=s.replace(old,()=>nu);};
   const declarations=[coachMetaDeclarations(),coachEventDeclarations(),'const QUALITY_VERSION='+JSON.stringify(QUALITY_VERSION)+';',coachQualityFacts.toString(),coachQualitySwap.toString(),coachQualityNumericClaim.toString(),coachQualityPersonalStatsClaim.toString(),coachQualityDeckRoster.toString(),coachQualityEvaluate.toString()].join('\n');
   once('async function previewChat(request,env) {',declarations+'\nasync function previewChat(request,env) {');
+  // Older prompts asked the model to write numeric stats and every card role in prose.
+  // Keep the new JSON contract authoritative; the server renders those facts.
+  s=s.replace('تعداد برد و باخت را با مخرج مشخص بگو؛ برای نرخ برد از مجموع برد، باخت و مساوی استفاده کن، نامشخص را جدا بگو.','برای آمار فقط کلیدهای معتبر fact_keys را انتخاب کن؛ سرور تعداد و نرخ برد را می‌نویسد.');
+  s=s.replace('اگر هر هشت کارت در داده هستند، برای هر کارت یک توضیح مختصر متناسب با نقش واقعی آن ارائه کن؛ اگر نقش نامشخص است حدس قطعی نزن.','برای تحلیل دک، سرور فهرست هشت کارت و نقش‌های شناخته‌شده را می‌نویسد؛ فقط یک راهنمای کوتاه و کاربردی بده و نقش نامعلوم را حدس نزن.');
   once('CRC_COACH_IDENTITY_V1','CRC_COACH_IDENTITY_V1. قالب خروجی الزامی: فقط یک شیء JSON معتبر، بدون Markdown یا کدبلاک بیرونی، با چهار کلید answer (متن ساده حداکثر ۱۵۰۰ نویسه)، swap_index (null یا اندیس صفر تا سه از allowed_single_swaps فقط برای پیشنهاد تعویض)، fact_keys (آرایه حداکثر سه کلید از overall,selected,elixir,memory,practice فقط اگر داده موجود است)، source_ids (آرایه حداکثر سه شناسه منبع بازیابی‌شده که واقعاً استفاده کردی). هیچ آمار شخصی مثل تعداد نبرد، برد/باخت یا میانگین اکسیر و نرخ برد را در answer ننویس؛ سرور آن‌ها را محاسبه می‌کند. پیشنهاد تعویض فقط با اندیس، نه متن. اگر شواهد ناکافی است answer را کوتاه و صادقانه بنویس. مثال ساختاری: '+JSON.stringify({answer:'سلام!',swap_index:null,fact_keys:[],source_ids:[]}).replaceAll('"','\\"')+'.');
   once('    answer=coachFormatAnswer(answer,retrievedKnowledge).trim().slice(0,2900);','    const quality=coachQualityEvaluate(answer,{battles:evidence,personal,docs:retrievedKnowledge,intent:coachPlan.intent});\n    answer=quality.answer;');
   once('knowledge_sources:coachKnowledgeSources(retrievedKnowledge)','knowledge_sources:coachKnowledgeSources(quality.sources),quality_version:QUALITY_VERSION,quality_status:quality.status,quality_reason:quality.reason,quality_checks:quality.checks,quality_swap:quality.swap');
