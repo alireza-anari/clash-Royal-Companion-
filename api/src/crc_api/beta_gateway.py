@@ -181,7 +181,8 @@ def create_beta_app(
     api = supercell if supercell is not None else SupercellClient()
     if settings.live_lookup_enabled and not api.configured:
         raise UnsafeBetaConfiguration("Private beta Supercell provider is not configured.")
-    identity_subjects = settings.allowed_subjects | ({VISION_WORKER_SUBJECT} if settings.vision_worker_requested else set())\n    identity = verifier or WorkerAssertionVerifier(settings.auth_issuer, settings.audience, frozenset(identity_subjects), settings.worker_assertion_secret)
+    identity_subjects = settings.allowed_subjects | ({VISION_WORKER_SUBJECT} if settings.vision_worker_requested else set())
+    identity = verifier or WorkerAssertionVerifier(settings.auth_issuer, settings.audience, frozenset(identity_subjects), settings.worker_assertion_secret)
     budget = quota or PostgresSharedQuota(settings.quota_hmac_secret)
     # Even a configured API key cannot activate inference by itself.
     ai_switch = os.environ.get("CRC_BETA_AI_ENABLED", "false").strip().lower() == "true"
