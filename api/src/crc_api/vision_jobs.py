@@ -8,7 +8,6 @@ from datetime import datetime
 from hashlib import sha256
 from io import BytesIO
 from typing import Any, Literal
-import base64
 from uuid import UUID, uuid4
 from PIL import Image, UnidentifiedImageError
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, model_validator

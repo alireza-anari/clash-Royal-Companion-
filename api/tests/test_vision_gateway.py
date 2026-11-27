@@ -5,7 +5,7 @@ from uuid import uuid4
 import jwt
 from fastapi.testclient import TestClient
 from PIL import Image
-from crc_api.beta_gateway import BetaConfig,create_beta_app
+from crc_api.beta_gateway import BetaConfig,create_beta_app,UnsafeBetaConfiguration
 from crc_api.security.worker_assertion import WorkerAssertionVerifier
 from crc_api.supercell import SupercellClient
 HOST="vision.beta.comp.example";ISSUER="https://"+HOST;AUD="vision-test-audience"
@@ -135,5 +135,5 @@ def test_worker_claim_routes_are_separate_from_user_and_vision_routes():
   assert bad.status_code==403
 
 def test_worker_subject_cannot_be_enabled_without_vision_processor_readiness():
- with pytest.raises(Exception):
+ with pytest.raises(UnsafeBetaConfiguration):
   config(vision_worker_requested=True,vision_processor_ready=False).validate()
