@@ -483,7 +483,7 @@ test('OIDC exchange rejects unexpected payload keys before forwarding ID tokens'
 });
 
 test('short-lived OIDC bearer tokens authenticate native vision requests without forwarding caller credentials',async()=>{
- const {currentMobileSession,deriveMobileSessionSecret}=await import('./beta-edge-worker.mjs');
+ const {currentMobileSession,deriveMobileSessionSecret,authConfig}=await import('./beta-edge-worker.mjs');
  const {env,privateCalls}=sandbox({BETA_VISION_ENABLED:'true'});
  const secret=await deriveMobileSessionSecret(Buffer.from(ASSERTION_KEY,'hex'));
  const token=signJwt(Buffer.from(secret).toString('hex'),{
