@@ -14,7 +14,10 @@ def jpeg(w=160,h=240):
  im=Image.new("RGB",(w,h),(90,120,180));s=BytesIO();im.save(s,format="JPEG",quality=80);im.close();return s.getvalue()
 def frame(at_ms,raw=None):
  raw=raw or jpeg()
- with Image.open(BytesIO(raw)) as im: w,h=im.size
+ try:
+  with Image.open(BytesIO(raw)) as im: w,h=im.size
+ except Exception:
+  w,h=160,240
  return {"at_ms":at_ms,"mime":"image/jpeg","width":w,"height":h,"data_base64":base64.b64encode(raw).decode("ascii")}
 def payload(request_id=None,upload=True,external=True,frames=None):
  return VisionJobRequest.model_validate({"client_request_id":str(request_id or uuid4()),"consent_to_upload":upload,
