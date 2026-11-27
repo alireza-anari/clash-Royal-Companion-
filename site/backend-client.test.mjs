@@ -470,3 +470,14 @@ test('capture coverage reflects observed samples and gaps, never reconstructed g
  assert.equal(c.samples,3);assert.equal(c.last_ms,9000);assert.equal(c.largest_gap_ms,7000);assert.equal(c.long_gap_count,1);assert.equal(c.replay_analyzed,false);
  assert.equal(api.battleCaptureCoverage([0,0]),null);assert.equal(api.battleCaptureCoverage([240000]),null);assert.equal(api.battleCaptureCoverage([]),null);
 });
+
+
+test('partial current deck keeps exactly the returned valid IDs and rejects duplicates or oversized decks',()=>{
+ const partial={...profile,current_deck:{...profile.current_deck,card_ids:[1,2,3,4,5,6,7]}};
+ const p=api.normalizedToProfile(partial,cards);
+ assert.deepEqual(Array.from(p.currentDeck,c=>c.id),[1,2,3,4,5,6,7]);
+ for(const ids of [[1,2,3,4,5,6,7,7],[1,2,3,4,5,6,7,8,9],[1,2,0],[1,2,'3']]){
+  const invalid=api.normalizedToProfile({...profile,current_deck:{card_ids:ids}},cards);
+  assert.equal(invalid.currentDeck,undefined);
+ }
+});
