@@ -32,7 +32,7 @@ class VisionFrameInput(BaseModel):
     mime:Literal["image/jpeg"]
     width:int=Field(ge=1,le=MAX_SIDE)
     height:int=Field(ge=1,le=MAX_SIDE)
-    data_base64:str=Field(min_length=16,max_length=MAX_BASE64_FRAME_CHARS)
+    data_base64:str=Field(min_length=4,max_length=MAX_BASE64_FRAME_CHARS)
     def sanitized(self)->dict[str,Any]:
         try: raw=base64.b64decode(self.data_base64,validate=True)
         except (binascii.Error,ValueError) as exc: raise VisionInputError("Invalid image encoding.") from exc
@@ -126,14 +126,16 @@ class PostgresVisionJobs:
                 return self._public(existing,True)
             account=await connection.fetchrow(
                 "SELECT balance FROM vision_credit_accounts WHERE subject_key=$1 FOR UPDATE",subject_key)
-            if account is None or int(account["balance"])<1: raise VisionCreditsExhausted()
-            # The account row lock serializes submissions; recheck idempotency after waiting.
+            # The account row lock serializes submissions; recheck idempotency
+            # before checking balance because a concurrent retry may have used
+            # the last credit while this transaction waited.
             existing=await connection.fetchrow(
                 """SELECT id,status,frame_count,total_bytes,payload_sha256,created_at,updated_at,expires_at,result_json,error_code
                    FROM vision_jobs WHERE subject_key=$1 AND client_request_id=$2""",subject_key,payload.client_request_id)
             if existing is not None:
                 if existing["payload_sha256"]!=payload_hash: raise VisionIdempotencyConflict()
                 return self._public(existing,True)
+            if account is None or int(account["balance"])<1: raise VisionCreditsExhausted()
             job_id=uuid4()
             row=await connection.fetchrow(
                 """INSERT INTO vision_jobs(id,subject_key,client_request_id,status,frame_count,total_bytes,payload_sha256)

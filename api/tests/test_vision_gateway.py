@@ -55,19 +55,19 @@ def app(settings=None,vision=None):
   verifier=WorkerAssertionVerifier(ISSUER,AUD,frozenset({SUBJECT}),WORKER),quota=Quota(),
   supercell=SupercellClient(token=""),pool_factory=pool_factory,vision_jobs=vision or Vision())
 def test_vision_capability_and_fail_closed_gate():
- with TestClient(app(config(vision_requested=False))) as c:
+ with TestClient(app(config(vision_requested=False)),base_url='https://'+HOST) as c:
   r=c.get("/api/v1/vision/capabilities",headers={"X-CRC-Worker-Assertion":token()})
   assert r.status_code==200 and r.json()["enabled"] is False
- with TestClient(app(config())) as c:
+ with TestClient(app(config()),base_url='https://'+HOST) as c:
   r=c.get("/api/v1/vision/capabilities",headers={"X-CRC-Worker-Assertion":token()})
   assert r.status_code==200 and r.json()["enabled"] is True and r.json()["max_frames"]==8
  for settings in [config(vision_processor_ready=False),config(vision_subjects=frozenset())]:
-  with TestClient(app(settings)) as c:
+  with TestClient(app(settings),base_url='https://'+HOST) as c:
    r=c.post("/api/v1/vision/jobs",headers={"X-CRC-Worker-Assertion":token()},json=image_payload())
    assert r.status_code==503 and r.json()["error"]["code"]=="VISION_ANALYSIS_DISABLED"
 def test_upload_requires_both_consents_and_returns_only_job_metadata():
  vision=Vision()
- with TestClient(app(vision=vision)) as c:
+ with TestClient(app(vision=vision),base_url='https://'+HOST) as c:
   h={"X-CRC-Worker-Assertion":token()}
   denied=c.post("/api/v1/vision/jobs",headers=h,json=image_payload(external=False))
   assert denied.status_code==403 and not vision.calls
@@ -77,7 +77,7 @@ def test_upload_requires_both_consents_and_returns_only_job_metadata():
   assert vision.calls[0][0:2]==("submit",SUBJECT)
 def test_status_and_cancel_are_account_scoped():
  vision=Vision()
- with TestClient(app(vision=vision)) as c:
+ with TestClient(app(vision=vision),base_url='https://'+HOST) as c:
   h={"X-CRC-Worker-Assertion":token()};job=uuid4()
   assert c.get(f"/api/v1/vision/jobs/{job}",headers=h).status_code==200
   assert c.delete(f"/api/v1/vision/jobs/{job}",headers=h).status_code==200
