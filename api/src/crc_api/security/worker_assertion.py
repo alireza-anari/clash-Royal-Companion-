@@ -15,6 +15,7 @@ import jwt
 
 SUBJECT = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$")
 JTI = re.compile(r"^[A-Za-z0-9_-]{16,128}$")
+ACCOUNT_SUBJECT = re.compile(r"^acct_[a-f0-9]{32}$")
 
 
 @dataclass(frozen=True)
@@ -31,6 +32,8 @@ class WorkerAssertionVerifier:
         audience: str,
         allowed_subjects: frozenset[str],
         secret: bytes,
+        *,
+        allow_account_subjects: bool = False,
     ):
         parsed = urlsplit(issuer)
         if (
@@ -54,6 +57,7 @@ class WorkerAssertionVerifier:
         self.audience = audience
         self.allowed_subjects = allowed_subjects
         self.secret = secret
+        self.allow_account_subjects = bool(allow_account_subjects)
 
     async def verify(self, assertion: str) -> str:
         """Return only the invited subject; never return or log JWT claims."""
@@ -85,7 +89,7 @@ class WorkerAssertionVerifier:
         if (
             not isinstance(subject, str)
             or not SUBJECT.fullmatch(subject)
-            or subject not in self.allowed_subjects
+            or (subject not in self.allowed_subjects and not (self.allow_account_subjects and ACCOUNT_SUBJECT.fullmatch(subject)))
             or isinstance(issued, bool)
             or not isinstance(issued, (int, float))
             or isinstance(expires, bool)

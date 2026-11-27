@@ -73,3 +73,26 @@ def test_issuer_and_key_configuration_are_pinned():
         WorkerAssertionVerifier("https://evil.example/path", AUDIENCE, frozenset({SUBJECT}), SECRET)
     with pytest.raises(ValueError):
         WorkerAssertionVerifier(ISSUER, AUDIENCE, frozenset({SUBJECT}), b"short")
+
+
+@pytest.mark.asyncio
+async def test_oidc_account_subjects_are_accepted_only_when_explicitly_enabled():
+    account = "acct_" + "a" * 32
+    assertion = jwt.encode({
+        "iss": ISSUER, "aud": AUDIENCE, "sub": account,
+        "iat": int(time.time()), "exp": int(time.time()) + 60,
+        "jti": "account-token-identifier-1234",
+    }, SECRET, algorithm="HS256")
+    with pytest.raises(WorkerAssertionDenied):
+        await verifier().verify(assertion)
+    enabled = WorkerAssertionVerifier(
+        ISSUER, AUDIENCE, frozenset({SUBJECT}), SECRET, allow_account_subjects=True
+    )
+    assert await enabled.verify(assertion) == account
+    invalid = jwt.encode({
+        "iss": ISSUER, "aud": AUDIENCE, "sub": "acct_not-hex",
+        "iat": int(time.time()), "exp": int(time.time()) + 60,
+        "jti": "account-token-identifier-1234",
+    }, SECRET, algorithm="HS256")
+    with pytest.raises(WorkerAssertionDenied):
+        await enabled.verify(invalid)
