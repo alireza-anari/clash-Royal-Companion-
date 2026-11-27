@@ -65,7 +65,10 @@ public final class VisionApiClient {
         if(!s.equals(subject()))throw new SecurityException("Account changed");
         return new Attempt(s,payload);
     }
-    public Response capabilities()throws Exception{return request("GET",ROOT+"capabilities",subject(),null);}
+    public Response capabilities()throws Exception{return capabilities(subject());}
+    public Response capabilities(String expectedSubject)throws Exception{
+        return request("GET",ROOT+"capabilities",expectedSubject,null);
+    }
     /** Call only after a fresh capabilities check and explicit user confirmation. Never retries. */
     public Response submit(Attempt attempt,boolean uploadConsent,boolean aiConsent)throws Exception{
         if(attempt==null||!uploadConsent||!aiConsent)throw new SecurityException("Both consents required");
