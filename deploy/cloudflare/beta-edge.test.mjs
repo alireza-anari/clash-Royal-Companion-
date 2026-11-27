@@ -366,3 +366,15 @@ test('vision job status and deletion use only the private API and require accoun
   assert.equal(privateCalls[1].method,'DELETE');
   assert.equal(legacyCalls.length,0);
 });
+
+
+test('mobile bearer token alone is not accepted until device identity exchange exists',async()=>{
+  const {env,privateCalls}=sandbox({BETA_VISION_ENABLED:'true'});
+  const response=await routeRequest(req('/api/v1/vision/jobs',{
+    Authorization:'Bearer mobile-short-lived-token',
+    Origin:BASE,'Content-Type':'application/json'
+  },{method:'POST',body:JSON.stringify({consent_to_upload:true,consent_to_external_ai:true,frames:[]})}),env);
+  assert.equal(response.status,401);
+  assert.equal((await response.json()).error.code,'SESSION_REQUIRED');
+  assert.equal(privateCalls.length,0);
+});
